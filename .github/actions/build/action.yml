@@ -1,0 +1,17 @@
+name: Build Project
+description: Configure & build with CMake (with coverage)
+
+runs:
+  using: composite
+  steps:
+    - name: Configure (with coverage)
+      shell: bash
+      run: |
+        cmake -S . -B build \
+          -DENABLE_COVERAGE=ON \
+          -DCMAKE_BUILD_TYPE=Debug
+
+    - name: Build
+      shell: bash
+      run: |
+        cmake --build build -- -j$(nproc)

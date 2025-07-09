@@ -1,0 +1,27 @@
+name: "Test & Coverage"
+description: "Run unit tests with CTest and enforce a minimum coverage with gcovr"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run tests
+      shell: bash
+      run: |
+        echo "🧪 Running CTest…"
+        ctest --test-dir build --output-on-failure
+
+    - name: Generate coverage report
+      shell: bash
+      run: |
+        echo "📊 Generating coverage summary…"
+        # Falla si coverage < 20%
+        gcovr -r . --txt-summary --fail-under-line 20 > coverage.txt
+        cat coverage.txt
+
+    - name: Upload coverage report
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: coverage.txt
+        retention-days: 1

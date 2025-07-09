@@ -1,0 +1,35 @@
+name: Documentation Check
+description: Generate Doxygen docs and verify HTML output
+
+runs:
+  using: composite
+  steps:
+    - name: Clean previous docs
+      shell: bash
+      run: |
+        # Remove prior Doxygen output
+        rm -rf docs/html docs/xml docs/latex
+
+    - name: Run Doxygen
+      shell: bash
+      run: |
+        echo "🛠 Generating documentation with Doxygen…"
+        doxygen Doxyfile 2> doxygen-warnings.txt
+
+    - name: Verify HTML output
+      shell: bash
+      run: |
+        if [ -d docs/html ] && [ -f docs/html/index.html ]; then
+          echo "✅ Documentation successfully generated: docs/html/index.html"
+        else
+          echo "❌ Documentation HTML missing. Check doxygen-warnings.txt for details."
+          exit 1
+        fi
+
+    - name: Upload Doxygen warnings
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: Doxygen warnings
+        path: doxygen-warnings.txt
+        retention-days: 1

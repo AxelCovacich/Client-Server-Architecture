@@ -1,0 +1,41 @@
+name: Full CI build and check.
+
+# Run on any push to develop or to any feature branch,
+# and on PRs targeting develop, plus manual dispatch
+
+on:
+  push:
+    branches:
+      - develop
+      - 'feature/**'
+  pull_request:
+    branches:
+      - develop
+    types: [opened, reopened, synchronize, ready_for_review]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: doxygen gcovr lcov cppcheck graphviz clang-format valgrind bc clang-tidy
+          version: 1.0
+
+      - name: Build project
+        uses: ./.github/actions/build
+
+      - name: Run style check
+        uses: ./.github/actions/style
+
+      - name: Documentation check
+        uses: ./.github/actions/documentation
+        
+      - name: Test and coverage check
+        uses: ./.github/actions/test_and_coverage

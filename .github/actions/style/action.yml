@@ -1,0 +1,26 @@
+
+name: Style Check
+description: Fail if code is not formatted with clang-format
+
+runs:
+  using: "composite"
+  steps:
+    - name: Verify formatting
+      shell: bash
+      run: |
+        #gather source files
+        
+        SOURCE_FILES=$(git ls-files '*.c' '*.h' '*.cpp' '*.hpp') #list all git files with those terminations, all code source in any directories
+        echo "Checking formatting on $SOURCE_FILES"
+
+        # 2) Apply clang‑format in‑place (only in the runner copy)
+        clang-format --style=file -i $SOURCE_FILES
+
+        
+        # 3) If any files would be changed, git diff --exit-code will be non-zero.
+        #    When that happens, prints the diff to see exactly what’s off.
+        if ! git diff --exit-code; then
+          echo "❌ clang-format made changes, please apply and commit them:"
+          git diff
+          exit 1
+        fi
