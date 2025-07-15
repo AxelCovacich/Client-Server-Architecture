@@ -3,6 +3,8 @@
 # The CDash pipeline: generate the coverage report and run testing.
 # We can use that in our favor prior to running SonarScanner.
 # It also runs memcheck and creates the valgrind report
+cd ..
+
 echo "===== Starting CDash pipeline with valgrind ====="
 
 ctest -VV -S Pipeline.cmake > CDashSummary.log
@@ -65,7 +67,7 @@ else
 fi
 
 # Generate Clang tidy report for sonar.cxx.clangtidy.reportPaths=PATH_TO/clangtidy.xml
-python3 run-clang-tidy.py -checks='*' -p='build' -header-filter='*' src >build/clangtidy.txt
+python3 scripts/run-clang-tidy.py -checks='*' -p='build' -header-filter='*' src >build/clangtidy.txt
 
 if [ -f build/clangtidy.txt ]; then
   echo "=== Clang tidy report generated ==="
@@ -75,5 +77,4 @@ else
 fi
 
 echo "==== All reports generated correctly ===="
-sonar-scanner -Dsonar.token=sqp_72ddb1568c1a1426da78121071453db0fde03256
-exit 0
+sonar-scanner -Dsonar.token=sqp_31871915cad95a280353f845ccf115cfd7f8ef3e

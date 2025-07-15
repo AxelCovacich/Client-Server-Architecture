@@ -33,14 +33,16 @@ add_executable(test_all
 
 # 6) Include directories for your production headers and Unity
 target_include_directories(test_all PRIVATE
-  ${CMAKE_SOURCE_DIR}/include       # production API headers
+  ${CMAKE_SOURCE_DIR}/include/server
+  ${CMAKE_SOURCE_DIR}/include/client
   ${unity_SOURCE_DIR}/src           # Unity framework headers
 )
 
 # 7) Link against Unity and the CoreLib library containing your logic
 target_link_libraries(test_all PRIVATE
-  Unity::Unity
-  CoreLib
+  unity
+  ServerLib
+  ClientLib
 )
 
 # 8) Register the single test with CTest

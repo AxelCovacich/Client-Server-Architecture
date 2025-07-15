@@ -10,6 +10,12 @@ set(CTEST_USE_LAUNCHERS YES)
   set(CTEST_BUILD_NAME "linux-x86_64-gcc")
   set(CTEST_SOURCE_DIRECTORY "${CTEST_SCRIPT_DIRECTORY}")
   set(CTEST_BINARY_DIRECTORY "${CTEST_SCRIPT_DIRECTORY}/build")
+  
+  # Exclude third-party libs and our own tests from the coverage report
+  list(APPEND CTEST_CUSTOM_COVERAGE_EXCLUDE
+  "/external/"
+  "/tests/"
+  )
 
   # Build settings
   set(CTEST_CMAKE_GENERATOR Ninja)

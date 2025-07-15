@@ -15,7 +15,7 @@ runs:
       run: |
         echo "📊 Generating coverage summary…"
         # Falla si coverage < 20%
-        gcovr -r . --txt-summary --fail-under-line 20 > coverage.txt
+        gcovr -r . --exclude 'external/.*' --exclude 'tests/.*' --txt-summary --fail-under-line 20 > coverage.txt
         cat coverage.txt
 
     - name: Upload coverage report
