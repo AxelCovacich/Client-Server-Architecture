@@ -1,0 +1,89 @@
+
+#include "client.h"
+#include "input_handler.h"
+#include "unity.h"
+#include <stdlib.h>
+#include <string.h>
+
+/**
+ * @brief Tests that a normal string message results in the SEND action.
+ */
+void test_process_input_returns_send_for_normal_message() {
+
+    char buffer[] = "hello server\n";
+
+    UserInputAction result = process_user_input(buffer);
+
+    TEST_ASSERT_EQUAL_INT(INPUT_ACTION_SEND, result);
+}
+
+/**
+ * @brief Tests that the "end" command results in the QUIT action.
+ */
+void test_process_input_returns_quit_for_end_command() {
+    char buffer[] = "end\n";
+
+    UserInputAction result = process_user_input(buffer);
+
+    TEST_ASSERT_EQUAL_INT(INPUT_ACTION_QUIT, result);
+}
+
+/**
+ * @brief Tests that an empty input (just a newline) results in the CONTINUE action.
+ */
+void test_process_input_returns_continue_for_empty_input() {
+    char buffer[] = "\n";
+
+    UserInputAction result = process_user_input(buffer);
+
+    TEST_ASSERT_EQUAL_STRING("", buffer);
+    TEST_ASSERT_EQUAL_INT(INPUT_ACTION_CONTINUE, result);
+}
+
+/**
+ * @brief Tests that a simple, single-word input is correctly formatted into a JSON command.
+ */
+void test_build_json_for_simple_command() {
+
+    char input[] = "Status";
+
+    const char *expected_json = "{\"command\":\"Status\"}";
+
+    json_build_result result_json = build_json_from_input(input);
+
+    TEST_ASSERT_EQUAL_INT(JSON_BUILD_SUCCESS, result_json.status);
+    TEST_ASSERT_NOT_NULL(result_json.json_string);
+    TEST_ASSERT_EQUAL_STRING(expected_json, result_json.json_string);
+
+    free(result_json.json_string);
+}
+
+/**
+ * @brief Tests that a command with arguments is correctly formatted with a payload.
+ */
+void test_build_json_for_command_with_args() {
+    char input[] = "update_stock medicine medkit 150";
+    // The order is not garantized but 99.9% it is
+    const char *expected_json =
+        "{\"command\":\"update_stock\",\"payload\":{\"category\":\"medicine\",\"item\":\"medkit\",\"quantity\":150}}";
+
+    json_build_result result = build_json_from_input(input);
+
+    TEST_ASSERT_EQUAL_INT(JSON_BUILD_SUCCESS, result.status);
+    TEST_ASSERT_NOT_NULL(result.json_string);
+    TEST_ASSERT_EQUAL_STRING(expected_json, result.json_string);
+
+    free(result.json_string);
+}
+
+/**
+ * @brief Tests that the function returns a syntax error for incomplete commands.
+ */
+void test_build_json_fails_on_missing_arguments() {
+    char input[] = "update_stock medkit";
+
+    json_build_result result = build_json_from_input(input);
+
+    TEST_ASSERT_EQUAL_INT(JSON_BUILD_ERROR_SYNTAX, result.status);
+    TEST_ASSERT_NULL(result.json_string);
+}

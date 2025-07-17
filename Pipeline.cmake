@@ -15,6 +15,7 @@ set(CTEST_USE_LAUNCHERS YES)
   list(APPEND CTEST_CUSTOM_COVERAGE_EXCLUDE
   "/external/"
   "/tests/"
+  "build/_deps"
   )
 
   # Build settings

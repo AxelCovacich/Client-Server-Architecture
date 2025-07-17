@@ -138,7 +138,7 @@ void Server::handleClient(int client_socket) {
         string client_message(buffer);
         cout << "Thread " << this_thread::get_id() << " received: " << client_message << '\n';
 
-        commandProcessor::commandResult result = commandProcessor::processCommand(client_message);
+        commandProcessor::commandResult result = commandProcessor::processCommand(client_message, false);
 
         if (write(client_socket, result.first.c_str(), result.first.length()) < 0) {
 

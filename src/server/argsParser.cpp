@@ -19,7 +19,7 @@ ParseResult parseArguments(int argc, char *argv[]) {
             cerr << "Error: Port must be between 1 and 65535." << endl;
             return std::nullopt;
         }
-        return port; // Éxito
+        return port; // Success
     } catch (const exception &e) {
         cerr << "Error: Invalid port number provided." << endl;
         return std::nullopt;

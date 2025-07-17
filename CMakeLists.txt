@@ -73,48 +73,56 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib) # for .a libs
 
 
-# ---------------------------------------------------------
-# ServerLib and ClientLib
-# ---------------------------------------------------------
-# 1. Server-side logic library
-add_library(ServerLib STATIC
+# --- Dependencies ---
+
+FetchContent_Declare(
+  json
+  GIT_REPOSITORY https://github.com/nlohmann/json
+  GIT_TAG v3.12.0
+)
+FetchContent_MakeAvailable(json)
+
+# --- Library Definitions ---
+
+# 1. ServerLib
+add_library(ServerLib STATIC)
+
+# Add the library's source files
+target_sources(ServerLib PRIVATE
     src/server/server.cpp
     src/server/commandProcessor.cpp
     src/server/argsParser.cpp
-    # ... add other server modules here
-)
-# Make headers from 'include/server' available
-target_include_directories(ServerLib PUBLIC
-  ${CMAKE_SOURCE_DIR}/include/server
 )
 
-# 2. Client-side logic library (as a shared library .so)
+# Add the path to ServerLib's PUBLIC headers
+target_include_directories(ServerLib PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/server
+)
+
+target_link_libraries(ServerLib PUBLIC nlohmann_json::nlohmann_json)
+
+# 2. ClientLib
 add_library(ClientLib SHARED
     src/client/client.c
-    #src/client/facade.c
-    # ... add other client logic files here
+    src/client/input_handler.c
+    external/cJSON/cJSON.c
 )
 target_include_directories(ClientLib PUBLIC
-  ${CMAKE_SOURCE_DIR}/include/client)
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/client
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/cJSON
+)
 
+# --- Executable Definitions ---
 
-# ---------------------------------------------------------
-#   Executable Definitions
-# ---------------------------------------------------------
 # 1. Server Executable
-# The source file only contains the main() function
 add_executable(server src/server/main.cpp)
 
-# Link the server executable against its logic library
 target_link_libraries(server PRIVATE ServerLib)
 
+
 # 2. Client Executable
-# This source file also only contains main()
 add_executable(client src/client/main.c)
-
-# Link the client executable against its logic library
 target_link_libraries(client PRIVATE ClientLib)
-
 # ---------------------------------------------------------
 #  tests
 # ---------------------------------------------------------
@@ -134,3 +142,6 @@ endif()
 if(RUN_TESTS)
   add_subdirectory(tests)
 endif()
+
+get_target_property(SERVER_LIB_INCLUDES ServerLib INTERFACE_INCLUDE_DIRECTORIES)
+message(STATUS "Include Dirs for ServerLib: ${SERVER_LIB_INCLUDES}")

@@ -3,6 +3,7 @@
 #define _POSIX_C_SOURCE 200112L // Necessary to use getaddrinfo
 
 #include "client.h"
+#include "input_handler.h"
 #include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,7 +16,9 @@
  * @brief Handles a single transaction: sends a message and receives the response.
  * @param sockfd The socket file descriptor.
  * @param message The message to send to the server.
- * @return `true` if the transaction was successful, `false` on any error or if the server closes the connection.
+ * @return `TRANSACTION_SUCCESS` if the transaction was successful, `TRANSACTION_ERROR` on any error,
+ * `TRANSACTION_SERVER_CLOSED` if the server closes the connection, `TRANSACTION_CLOSE` if client closes connection with
+ * end command.
  */
 static transaction_result handle_server_transaction(int sockfd, const char *message) {
 
@@ -38,6 +41,54 @@ static transaction_result handle_server_transaction(int sockfd, const char *mess
     buffer[bytes_read] = '\0';
     printf("Answer from server: %s\n", buffer);
     return TRANSACTION_SUCCESS;
+}
+
+/**
+ * @brief Executes a specific client action based on parsed user input.
+ *
+ * This function acts as a dispatcher for the main communication loop. It takes
+ * a UserInputAction and performs the corresponding task, such as building and
+ * sending a JSON message or handling the quit sequence.
+ *
+ * @param sockfd The active socket file descriptor for the server connection.
+ * @param action The UserInputAction enum value determining which action to perform.
+ * @param buffer The raw user input buffer, used to build the JSON message for SEND actions.
+ * @return A TransactionResult enum value indicating the outcome of the operation.
+ */
+static transaction_result execute_client_action(int sockfd, UserInputAction action, char *buffer) {
+
+    transaction_result result = TRANSACTION_SUCCESS;
+    switch (action) {
+    case INPUT_ACTION_SEND: {
+        json_build_result json_build = build_json_from_input(buffer);
+        if (json_build.status == JSON_BUILD_ERROR_MEMORY) {
+            return TRANSACTION_ERROR;
+        }
+        if (json_build.status == JSON_BUILD_ERROR_SYNTAX) {
+            return TRANSACTION_SUCCESS; // Not sending anything, going back to loop for another user input
+        }
+
+        result = handle_server_transaction(sockfd, json_build.json_string);
+        free(json_build.json_string);
+        return result;
+    }
+
+    case INPUT_ACTION_QUIT:
+
+        result = handle_server_transaction(sockfd, "{\"command\":\"end\"}");
+        if (result == TRANSACTION_ERROR) {
+            return result;
+        }
+        return TRANSACTION_CLOSE;
+
+    case INPUT_ACTION_CONTINUE:
+        return TRANSACTION_SUCCESS;
+
+    case INPUT_ACTION_ERROR:
+    default:
+        fprintf(stderr, "Invalid input action.\n");
+        return TRANSACTION_SUCCESS;
+    }
 }
 
 int setup_and_connect(const char *host, const char *port) {
@@ -86,7 +137,6 @@ int setup_and_connect(const char *host, const char *port) {
 int start_communication(int sockfd) {
     ssize_t bytes_read;
     char buffer[BUFFER_SIZE];
-    transaction_result t_result = TRANSACTION_SUCCESS;
 
     // one read before while cicle to recieve welcome message from server.
     memset(buffer, '\0', BUFFER_SIZE);
@@ -105,55 +155,19 @@ int start_communication(int sockfd) {
         printf("Enter message to send(or 'end' to stop): ");
         if (fgets(buffer, BUFFER_SIZE, stdin) == NULL) {
 
-            return 0; // EoI
+            break; // EoI
         }
         UserInputAction action = process_user_input(buffer);
-        switch (action) {
-        case INPUT_ACTION_SEND:
-            // nothing to do here, just write
-            // build_message(buffer, BUFFER_SIZE, buffer);
-            t_result = handle_server_transaction(sockfd, buffer);
-            break;
+        transaction_result result = execute_client_action(sockfd, action, buffer);
 
-        case INPUT_ACTION_QUIT:
-            build_message(buffer, BUFFER_SIZE, buffer);
-            t_result = handle_server_transaction(sockfd, "end");
-            return 0;
-
-        case INPUT_ACTION_CONTINUE:
-            continue;
-        }
-
-        if (t_result == TRANSACTION_ERROR) {
+        if (result == TRANSACTION_ERROR) {
+            printf("Closing client...\n");
             return -1;
         }
-        if (t_result == TRANSACTION_SERVER_CLOSED) {
-            return 0;
+        if (result == TRANSACTION_SERVER_CLOSED || result == TRANSACTION_CLOSE) {
+            break;
         }
     }
     printf("Closing client...\n");
     return 0;
-}
-
-UserInputAction process_user_input(char *buffer) {
-
-    buffer[strcspn(buffer, "\n")] = 0;
-
-    if (strcmp("end", buffer) == 0) {
-        return INPUT_ACTION_QUIT;
-    }
-    if (strlen(buffer) == 0) {
-        return INPUT_ACTION_CONTINUE;
-    }
-    return INPUT_ACTION_SEND;
-}
-
-int build_message(char *dest_buffer, size_t size, const char *content) {
-
-    int written_bytes = snprintf(dest_buffer, size, "%s", content);
-    if (written_bytes < 0 || written_bytes >= size) {
-        // Handle error or truncation case, for now just report
-        fprintf(stderr, "Warning: message was truncated or an error occurred.\n");
-    }
-    return written_bytes;
 }
