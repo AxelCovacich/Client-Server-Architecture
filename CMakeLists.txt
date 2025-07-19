@@ -62,7 +62,11 @@ if(DOXYGEN_FOUND)
   )
 endif()
 
-
+option(ENABLE_TSAN "Enable ThreadSanitizer" OFF)
+if(ENABLE_TSAN)
+  add_compile_options(-fsanitize=thread)
+  add_link_options(-fsanitize=thread)
+endif()
 
 # --- [IMPORTANT] FHS Structure Definition ---
 # All executables will be placed in the 'bin' folder.
@@ -92,6 +96,9 @@ target_sources(ServerLib PRIVATE
     src/server/server.cpp
     src/server/commandProcessor.cpp
     src/server/argsParser.cpp
+    src/server/inventory.cpp
+    src/server/authenticator.cpp
+    src/server/clientSession.cpp
 )
 
 # Add the path to ServerLib's PUBLIC headers

@@ -1,6 +1,8 @@
 #ifndef SERVER_HPP
 #define SERVER_HPP
 
+#include "authenticator.hpp"
+#include "inventory.hpp"
 #include <string>
 #include <utility>
 #define BUFFER_SIZE 256
@@ -36,6 +38,9 @@ class Server {
   private:
     int port_;
     int server_fd_; // File descriptor for the listening socket
+
+    Inventory m_inventory;
+    Authenticator m_authenticator;
 
     /**
      * @brief Sets up the server's listening socket.

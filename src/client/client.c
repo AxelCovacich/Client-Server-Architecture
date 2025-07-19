@@ -150,6 +150,24 @@ int start_communication(int sockfd) {
     buffer[bytes_read] = '\0';
     printf("Server says: %s", buffer);
 
+    // auto login for now
+    char hostname[256];
+    if (gethostname(hostname, sizeof(hostname)) != 0) {
+        perror("Error at gethostname:");
+        return -1;
+    }
+
+    char login_json[512];
+    snprintf(login_json, sizeof(login_json), "{\"command\":\"login\",\"payload\":{\"hostname\":\"%s\"}}", hostname);
+
+    transaction_result result = handle_server_transaction(sockfd, login_json);
+
+    if (result == TRANSACTION_ERROR) {
+        fprintf(stderr, "Authentication failed.\n");
+        return -1;
+    }
+    // login is automatic for now
+
     while (true) {
 
         printf("Enter message to send(or 'end' to stop): ");

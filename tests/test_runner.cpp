@@ -37,13 +37,28 @@ void testProcessCommandUpdateStockAsJSON();
 void testProcessCommandSrvrInMaintenance();
 void testProcessCommandNoCommand();
 void testProcessCommandNoPayloadForUpload();
-void testProcessCommandInvalidStringFormat();
 void testParserInvalidPortNumber();
 void testParserZeroNumberPort();
 void testProcessCommandUpdateStockInvalidQuantityType();
 void testProcessCommandNoQuantityForUpload();
 void testProcessCommandNoCategoryForUpload();
 void testProcessCommandNoItemForUpload();
+void testUpdateStockAddsNewItem();
+void testUpdateStockModifiesExistingItem();
+void testGetInventorySummaryForUnknownClientReturnsEmptyJson();
+void testGetInventorySummaryReturnsCorrectJson();
+void testUpdateStockNegativeQuantity();
+void testAuthenticatorFailsWithUnknownUser();
+void testAuthenticatorFailsWithInvalidPassword();
+void testAuthenticatorSucceedsWithValidCredentials();
+void testSessionStartsUnauthenticated();
+void testSessionAuthenticatesWithValidLogin();
+void testSessionAuthenticatesWithInvalidLogin();
+void testSessionRejectsOtherCommandsWhenUnauthenticated();
+void testProcessMessageHandlesMalformedJson();
+void testProcessCommandgetInventory();
+void testProcessCommandgGetEmptyInventory();
+void testProcessMessageHandlesInvalidLoginRequest();
 
 /**
  * @brief Runs all the tests.
@@ -73,13 +88,29 @@ int main() {
     RUN_TEST(testProcessCommandSrvrInMaintenance);
     RUN_TEST(testProcessCommandNoCommand);
     RUN_TEST(testProcessCommandNoPayloadForUpload);
-    RUN_TEST(testProcessCommandInvalidStringFormat);
     RUN_TEST(testParserInvalidPortNumber);
     RUN_TEST(testParserZeroNumberPort);
     RUN_TEST(testProcessCommandUpdateStockInvalidQuantityType);
     RUN_TEST(testProcessCommandNoQuantityForUpload);
     RUN_TEST(testProcessCommandNoCategoryForUpload);
     RUN_TEST(testProcessCommandNoItemForUpload);
+    RUN_TEST(testUpdateStockAddsNewItem);
+    RUN_TEST(testUpdateStockModifiesExistingItem);
+    RUN_TEST(testGetInventorySummaryReturnsCorrectJson);
+    RUN_TEST(testGetInventorySummaryForUnknownClientReturnsEmptyJson);
+    RUN_TEST(testUpdateStockNegativeQuantity);
+    RUN_TEST(testAuthenticatorFailsWithUnknownUser);
+    RUN_TEST(testAuthenticatorFailsWithInvalidPassword);
+    RUN_TEST(testAuthenticatorSucceedsWithValidCredentials);
+    RUN_TEST(testSessionStartsUnauthenticated);
+    RUN_TEST(testSessionAuthenticatesWithValidLogin);
+    RUN_TEST(testSessionAuthenticatesWithInvalidLogin);
+    RUN_TEST(testSessionRejectsOtherCommandsWhenUnauthenticated);
+    RUN_TEST(testProcessMessageHandlesMalformedJson);
+    RUN_TEST(testProcessCommandgetInventory);
+    RUN_TEST(testProcessCommandgGetEmptyInventory);
+    RUN_TEST(testProcessMessageHandlesInvalidLoginRequest);
+
     // add more tests here;
     return UNITY_END();
 }

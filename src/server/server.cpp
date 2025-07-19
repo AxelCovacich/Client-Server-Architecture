@@ -1,9 +1,11 @@
 
 #include "server.hpp"
+#include "clientSession.hpp"
 #include <commandProcessor.hpp>
 #include <csignal> // For std::signal
 #include <cstring> // For memset()
 #include <iostream>
+#include <memory> //for make_shared
 #include <netinet/in.h>
 #include <stdexcept> // For std::runtime_error
 #include <string>
@@ -29,7 +31,9 @@ void signal_handler(int signum) {
     g_shutdown_flag = 1;
 }
 
-Server::Server(int port) : port_(port), server_fd_(-1) {
+Server::Server(int port)
+    : port_(port)
+    , server_fd_(-1) {
 
     setupServer();
 }
@@ -95,63 +99,17 @@ void Server::run() {
                 continue;
             }
 
-            jthread client_thread(&Server::handleClient, this, newsockfd);
+            // this creates a new clientSession object in dinamic memory (new). It wrappes it in a shared_ptr and
+            // returns no need to manually delete, local variable session finish and deletes its own ptr. copies of
+            // shared_ptr are used by threads independently of local variable session. When all instances(threads)
+            // complete their jobs and there is no more copies of the object clientSession via shared_ptr, memory will
+            // be freed automaticly.
+
+            auto session = std::make_shared<clientSession>(newsockfd, m_inventory, m_authenticator);
+            jthread client_thread(&clientSession::run, session);
             client_thread.detach();
         }
     }
     cout << "\nShutdown signal received. Server is closing.\n";
     return;
-}
-
-void Server::handleClient(int client_socket) {
-
-    cout << "New client connected. Handled by thread: " << this_thread::get_id() << '\n';
-
-    const char *welcome_msg = "Welcome to the C++ Server! Type 'end' to disconnect.\n";
-    const char *ack_msg = "ACK: Message received by server.\n";
-
-    if (write(client_socket, welcome_msg, strlen(welcome_msg)) < 0) {
-        perror("Writing to client socket");
-        close(client_socket);
-        return;
-    }
-
-    ssize_t bytes_read;
-    char buffer[BUFFER_SIZE];
-
-    while (true) {
-
-        memset(buffer, 0, BUFFER_SIZE);
-        bytes_read = read(client_socket, buffer, BUFFER_SIZE - 1);
-
-        if (bytes_read < 0) {
-            perror("Error reading from socket");
-            break;
-        }
-
-        if (bytes_read == 0) {
-            cout << "Client disconnected.\n";
-            break;
-        }
-        buffer[bytes_read] = '\0';
-
-        string client_message(buffer);
-        cout << "Thread " << this_thread::get_id() << " received: " << client_message << '\n';
-
-        commandProcessor::commandResult result = commandProcessor::processCommand(client_message, false);
-
-        if (write(client_socket, result.first.c_str(), result.first.length()) < 0) {
-
-            perror("Error writing response to socket");
-            break;
-        }
-
-        if (!result.second) {
-
-            cout << "Closing connection based on command.\n";
-            break;
-        }
-    }
-    cout << "Closing connection with client from thread: " << this_thread::get_id() << '\n';
-    close(client_socket);
 }
