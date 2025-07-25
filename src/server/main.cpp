@@ -1,8 +1,10 @@
 #include "argsParser.hpp"
 #include "server.hpp"
+#include "storage.hpp"
 #include <csignal>
 #include <cstdlib> // For atoi
 #include <iostream>
+#include <sqlite3.h>
 
 using namespace std;
 
@@ -22,8 +24,9 @@ void signal_handler(int signum);
 
 int main(int argc, char *argv[]) {
 
-    auto parsed_args = ArgsParser::parseArguments(argc, argv);
+    const std::vector<std::string> args(argv, argv + argc); // vector that contains all the elements of the command line
 
+    auto parsed_args = ArgsParser::parseArguments(args);
     if (!parsed_args) {
         return 1;
     }
@@ -35,12 +38,12 @@ int main(int argc, char *argv[]) {
     signal(SIGQUIT, signal_handler);
 
     try {
-        Server server(port);
+        Server server(port, "./var/lib/my_db.sqlite3");
         server.run();
     } catch (const exception &e) {
-        cerr << "Cannot start server: " << e.what() << endl;
+        cerr << "Cannot start server: " << e.what() << '\n';
         return 1;
     }
-
+    sqlite3_shutdown();
     return 0;
 }

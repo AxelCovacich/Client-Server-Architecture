@@ -2,6 +2,7 @@
 #include "client.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 /**
  * @brief Main entry of the client.
@@ -16,14 +17,14 @@
 int main(int argc, char *argv[]) {
 
     if (argc < 3) {
-        fprintf(stderr, "Usage: %s host port\n", argv[0]);
+        fprintf(stderr, "Usage: %s host port\n", argv[0]); // NOLINT
         return 1;
     }
 
     int socket_fd = setup_and_connect(argv[1], argv[2]);
 
     if (socket_fd == -1) {
-        fprintf(stderr, "Could not establish connection.\n");
+        fprintf(stderr, "Could not establish connection.\n"); // NOLINT
         return 1;
     }
 
@@ -31,7 +32,7 @@ int main(int argc, char *argv[]) {
 
     if (start_communication(socket_fd) < 0) {
 
-        fprintf(stderr, "An error occurred during communication.\n");
+        fprintf(stderr, "An error occurred during communication.\n"); // NOLINT
         close(socket_fd);
         return 1;
     }

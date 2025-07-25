@@ -2,10 +2,15 @@
 #define SERVER_HPP
 
 #include "authenticator.hpp"
+#include "clientSession.hpp"
+#include "clock.hpp"
 #include "inventory.hpp"
+#include "storage.hpp"
 #include <string>
 #include <utility>
+
 #define BUFFER_SIZE 256
+#define MAX_CLIENTS_PERMITTED 1000
 
 /**
  * @class Server
@@ -20,7 +25,7 @@ class Server {
      * * @param port The port number to listen on.
      * @throw std::runtime_error If socket creation, binding, or listening fails.
      */
-    Server(int port);
+    Server(int port, const std::string &dbPath);
 
     /**
      * @brief Destroys the Server object.
@@ -39,8 +44,10 @@ class Server {
     int port_;
     int server_fd_; // File descriptor for the listening socket
 
-    Inventory m_inventory;
+    SystemClock m_clock;
+    Storage m_storage;
     Authenticator m_authenticator;
+    Inventory m_inventory;
 
     /**
      * @brief Sets up the server's listening socket.

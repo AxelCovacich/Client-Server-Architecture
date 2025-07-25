@@ -14,8 +14,16 @@ runs:
       shell: bash
       run: |
         echo "📊 Generating coverage summary…"
-        # Falla si coverage < 20%
-        gcovr -r . --exclude 'external/.*' --exclude 'tests/.*' --txt-summary --fail-under-line 20 > coverage.txt
+        # Fails if coverage < 40%
+        gcovr -r . \
+        --filter 'src/.*' \
+        --filter 'include/.*' \
+        --exclude 'build/_deps/.*' \
+        --exclude 'external/.*' \
+        --exclude 'tests/.*' \
+        --txt-summary \
+        --fail-under-line 40 \
+        > coverage.txt
         cat coverage.txt
 
     - name: Upload coverage report

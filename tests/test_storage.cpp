@@ -1,0 +1,422 @@
+#include "storage.hpp"
+#include "unity.h"
+#include <ctime>
+#include <iostream>
+
+/**
+ * @brief Tests that saveStockUpdate correctly inserts a new record.
+ */
+void testSaveStockUpdate() {
+    std::string clientId = "warehouse-1";
+    std::string category = "food";
+    std::string item = "water";
+    int quantity = 500;
+
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    storage.createUser(clientId, "pass123");
+    storage.saveStockUpdate(clientId, category, item, quantity);
+
+    try {
+        SQLite::Statement query(storage.getDb(),
+                                "SELECT quantity FROM inventory WHERE client_id = ? AND category = ? AND item = ?");
+        query.bind(1, clientId);
+        query.bind(2, category);
+        query.bind(3, item);
+
+        // executeStep() true if there is a row to process
+        if (query.executeStep()) {
+            int fetched_quantity = query.getColumn("quantity");
+            TEST_ASSERT_EQUAL_INT(quantity, fetched_quantity);
+        } else {
+            TEST_FAIL_MESSAGE("No record found for the specified item after update.");
+        }
+    } catch (const std::exception &e) {
+        TEST_FAIL_MESSAGE(e.what());
+    }
+}
+
+/**
+ * @brief Tests that saveStockUpdate correctly updates an existing record.
+ */
+void testSaveStockUpdateModifiesExistingRow() {
+    std::string clientId = "warehouse-1";
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    storage.createUser(clientId, "pass123");
+    storage.saveStockUpdate("warehouse-1", "food", "water", 500);
+
+    storage.saveStockUpdate("warehouse-1", "food", "water", 999);
+
+    try {
+        SQLite::Statement query(storage.getDb(),
+                                "SELECT quantity FROM inventory WHERE client_id = 'warehouse-1' AND item = 'water'");
+        if (query.executeStep()) {
+            TEST_ASSERT_EQUAL_INT(999, query.getColumn("quantity").getInt());
+        } else {
+            TEST_FAIL_MESSAGE("Record not found after modification.");
+        }
+    } catch (const std::exception &e) {
+        TEST_FAIL_MESSAGE(e.what());
+    }
+}
+
+/**
+ * @brief Tests that initializeSchema correctly creates the 'inventory' table.
+ */
+void testInitializeSchemaCreatesTables() {
+
+    Storage storage(":memory:");
+    storage.initializeSchema();
+
+    try {
+        // sqlite_master contains all the tables created, ask for inventory table
+        SQLite::Statement query(storage.getDb(),
+                                "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='inventory'");
+
+        if (query.executeStep()) {
+            int table_count = query.getColumn(0); // getColumn(0) gets the first column of the result
+            TEST_ASSERT_EQUAL_INT(1, table_count);
+        } else {
+            TEST_FAIL_MESSAGE("Query to check table existence failed to execute.");
+        }
+    } catch (const std::exception &e) {
+        TEST_FAIL_MESSAGE(e.what());
+    }
+}
+
+/**
+ * @brief Tests that saveStockUpdate throws an exception when a NOT NULL constraint is violated.
+ */
+void testSaveStockUpdateThrowsOnConstraintViolation() {
+
+    Storage storage(":memory:");
+    storage.initializeSchema();
+
+    try {
+
+        storage.saveStockUpdate("", "food", "meat", 100);
+
+        TEST_FAIL_MESSAGE("Expected SQLite::Exception but no exception was thrown.");
+
+    } catch (const SQLite::Exception &e) {
+
+        TEST_PASS();
+
+    } catch (...) {
+
+        TEST_FAIL_MESSAGE("Expected SQLite::Exception but a different exception was thrown.");
+    }
+}
+
+/**
+ * @brief Tests that initializeSchema throws an exception if the DB connection is invalid.
+ */
+void testInitializeSchemaThrowsOnInvalidConnection() {
+    Storage storageRO(":memory:", SQLite::OPEN_READONLY);
+
+    try {
+        storageRO.initializeSchema();
+
+        TEST_FAIL_MESSAGE("Expected SQLite::Exception but none was thrown.");
+
+    } catch (const SQLite::Exception &e) {
+        TEST_ASSERT_NOT_NULL(strstr(e.what(), "readonly"));
+        TEST_PASS_MESSAGE("Correctly caught expected exception.");
+    } catch (...) {
+        TEST_FAIL_MESSAGE("Expected SQLite::Exception but a different exception was thrown.");
+    }
+}
+
+void testGetStockFromDataBase() {
+    Storage storage(":memory:");
+
+    try {
+        storage.initializeSchema();
+        storage.createUser("warehouse-1", "pass123");
+        storage.saveStockUpdate("warehouse-1", "food", "water", 500);
+
+        std::optional<int> result = storage.getStock("warehouse-1", "food", "water");
+        TEST_ASSERT_TRUE(result.has_value());
+        TEST_ASSERT_EQUAL_INT(500, *result);
+
+    } catch (const std::exception &e) {
+        TEST_FAIL_MESSAGE(e.what());
+    }
+}
+
+void testGetStockReturnsEmptyForNonExistentItem() {
+
+    Storage storage(":memory:");
+    try {
+        storage.initializeSchema();
+        storage.createUser("warehouse-1", "pass123");
+        std::optional<int> result = storage.getStock("warehouse-1", "food", "non_existent_item");
+
+        TEST_ASSERT_FALSE(result.has_value());
+
+    } catch (const std::exception &e) {
+        TEST_FAIL_MESSAGE(e.what());
+    }
+}
+
+void testGetStockThrowsIfSchemaNotInitialized() {
+
+    Storage storage(":memory:");
+    try {
+
+        storage.getStock("warehouse-1", "food", "meat");
+
+        TEST_FAIL_MESSAGE("Expected SQLite::Exception but no exception was thrown.");
+
+    } catch (const SQLite::Exception &e) {
+
+        TEST_ASSERT_NOT_NULL(strstr(e.what(), "no such table: inventory"));
+        TEST_PASS_MESSAGE("Correctly caught expected exception.");
+
+    } catch (...) {
+
+        TEST_FAIL_MESSAGE("Expected SQLite::Exception but a different exception was thrown.");
+    }
+}
+
+void testGetFullInventorySuccess() {
+    Storage storage(":memory:");
+
+    try {
+        storage.initializeSchema();
+        storage.createUser("warehouse-1", "pass123");
+        storage.saveStockUpdate("warehouse-1", "food", "water", 500);
+        storage.saveStockUpdate("warehouse-1", "medicine", "bandages", 1000);
+        storage.saveStockUpdate("warehouse-1", "food", "meat", 100);
+        std::optional<json> result = storage.getFullInventory("warehouse-1");
+
+        TEST_ASSERT_TRUE(result.has_value());
+        // get json out from optional to work with
+        json inventory_data = *result;
+        TEST_ASSERT_EQUAL_INT(500, inventory_data["food"]["water"].get<int>());
+        TEST_ASSERT_EQUAL_INT(100, inventory_data["food"]["meat"].get<int>());
+        TEST_ASSERT_EQUAL_INT(1000, inventory_data["medicine"]["bandages"].get<int>());
+
+    } catch (const std::exception &e) {
+        TEST_FAIL_MESSAGE(e.what());
+    }
+}
+
+void testGetFullInventoryNoClientFound() {
+    Storage storage(":memory:");
+
+    try {
+        storage.initializeSchema();
+        storage.createUser("warehouse-1", "pass123");
+
+        std::optional<json> result = storage.getFullInventory("warehouse-2");
+
+        TEST_ASSERT_FALSE(result.has_value());
+
+    } catch (const std::exception &e) {
+        TEST_FAIL_MESSAGE(e.what());
+    }
+}
+
+void testGetFullInventoryThrowsIfTableNotInitialized() {
+
+    Storage storage(":memory:");
+    try {
+
+        storage.getFullInventory("some_client");
+
+        TEST_FAIL_MESSAGE("Expected SQLite::Exception but no exception was thrown.");
+
+    } catch (const SQLite::Exception &e) {
+
+        TEST_ASSERT_NOT_NULL(strstr(e.what(), "no such table"));
+        TEST_PASS_MESSAGE("Correctly caught expected exception.");
+
+    } catch (...) {
+
+        TEST_FAIL_MESSAGE("Expected SQLite::Exception but a different exception was thrown.");
+    }
+}
+void testCreateUserSuccess() {
+    Storage storage(":memory:");
+    storage.initializeSchema();
+
+    storage.createUser("Warehouse-A", "pass123");
+    TEST_ASSERT_TRUE(storage.userExists("Warehouse-A"));
+}
+
+void testCreateUserThrows() {
+    Storage storage(":memory:");
+    storage.initializeSchema();
+
+    try {
+
+        storage.createUser("", "pass123"); // empty hostname should throw except
+        TEST_FAIL_MESSAGE("Expected SQLite::Exception but no exception was thrown.");
+
+    } catch (const SQLite::Exception &e) {
+
+        TEST_ASSERT_NOT_NULL(strstr(e.what(), "CHECK constraint failed: length(hostname) > 0"));
+        TEST_PASS_MESSAGE("Correctly caught expected exception.");
+
+    } catch (...) {
+
+        TEST_FAIL_MESSAGE("Expected SQLite::Exception but a different exception was thrown.");
+    }
+
+    TEST_ASSERT_TRUE(storage.userExists("Warehouse-A"));
+}
+
+void testCreateUserFailsOnDuplicate() {
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    storage.createUser("warehouse-A", "pass");
+
+    try {
+        storage.createUser("warehouse-A", "pass2");
+        TEST_FAIL_MESSAGE("Expected SQLite::Exception for duplicate hostname");
+
+    } catch (const SQLite::Exception &e) {
+
+        TEST_ASSERT_NOT_NULL(strstr(e.what(), "UNIQUE constraint failed"));
+        TEST_PASS_MESSAGE("Correctly caught expected exception.");
+
+    } catch (...) {
+        TEST_FAIL_MESSAGE("Expected SQLite::Exception but a different exception was thrown.");
+    }
+}
+
+void testUserNotInTable() {
+    Storage storage(":memory:");
+    storage.initializeSchema();
+
+    storage.createUser("Warehouse-A", "pass123");
+    TEST_ASSERT_FALSE(storage.userExists("Warehouse-B"));
+}
+
+void testUserExistsThrowsWithNoTable() {
+    Storage storage(":memory:");
+    try {
+        storage.userExists("anyhost");
+        TEST_FAIL_MESSAGE("Expected SQLite::Exception but no exception was thrown.");
+    } catch (const SQLite::Exception &e) {
+        TEST_ASSERT_NOT_NULL(strstr(e.what(), "no such table"));
+        TEST_PASS_MESSAGE("Correctly caught expected exception.");
+    } catch (...) {
+        TEST_FAIL_MESSAGE("Expected SQLite::Exception but a different exception was thrown.");
+    }
+}
+
+void testGetHostnamePasswordhash() {
+    Storage storage(":memory:");
+    storage.initializeSchema();
+
+    storage.createUser("Warehouse-A", "pass123");
+    std::optional<userAuthData> userData = storage.getUserLoginData("Warehouse-A");
+    std::cout << "el user.data passwordhash: " << userData->passwordHash << '\n' << std::flush;
+    TEST_ASSERT_TRUE(userData.has_value());
+    TEST_ASSERT_EQUAL_INT(0, userData->failedAttempts);
+}
+
+void testNoHostnameforGetHostnamePasswordhash() {
+    Storage storage(":memory:");
+    storage.initializeSchema();
+
+    storage.createUser("Warehouse-A", "pass123");
+    std::optional<userAuthData> userData = storage.getUserLoginData("some hostname");
+
+    TEST_ASSERT_FALSE(userData.has_value());
+}
+
+void testUpdateLoginAttempts() {
+    std::string hostname = "Warehouse-A";
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    storage.createUser(hostname, "pass123");
+    const std::time_t Time1 = 11111;
+    storage.updateLoginAttempts(hostname, false, Time1);
+
+    std::optional<userAuthData> result1 = storage.getUserLoginData(hostname);
+    TEST_ASSERT_TRUE(result1.has_value());
+    TEST_ASSERT_EQUAL_INT(1, result1->failedAttempts);
+    TEST_ASSERT_EQUAL_INT(static_cast<long>(Time1), result1->lastFailedTimestamp);
+
+    const std::time_t Time2 = 22222;
+    storage.updateLoginAttempts(hostname, false, Time2);
+
+    std::optional<userAuthData> result2 = storage.getUserLoginData(hostname);
+    TEST_ASSERT_TRUE(result2.has_value());
+    TEST_ASSERT_EQUAL_INT(2, result2->failedAttempts);
+    TEST_ASSERT_EQUAL_INT(static_cast<long>(Time2), result2->lastFailedTimestamp);
+
+    // success
+    storage.updateLoginAttempts(hostname, true, 0);
+    std::optional<userAuthData> result3 = storage.getUserLoginData(hostname);
+    TEST_ASSERT_TRUE(result3.has_value());
+    TEST_ASSERT_EQUAL_INT(0, result3->failedAttempts);
+
+    TEST_ASSERT_EQUAL_INT(static_cast<long>(Time2), result3->lastFailedTimestamp);
+}
+
+void testUpdateLoginAttemptsUpToFour() {
+    std::string hostname = "Warehouse-A";
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    storage.createUser(hostname, "pass123");
+    const std::time_t Time1 = 11111;
+
+    try {
+
+        storage.updateLoginAttempts(hostname, false, Time1);
+        storage.updateLoginAttempts(hostname, false, Time1 + 1);
+        storage.updateLoginAttempts(hostname, false, Time1 + 2);
+        storage.updateLoginAttempts(hostname, false, Time1 + 3);
+
+        TEST_FAIL_MESSAGE("Expected SQLite::Exception but no exception was thrown.");
+
+    } catch (const SQLite::Exception &e) {
+
+        TEST_ASSERT_NOT_NULL(strstr(e.what(), "CHECK constraint failed: failed_attempts <= 3"));
+        TEST_PASS_MESSAGE("Correctly caught expected exception.");
+
+    } catch (...) {
+
+        TEST_FAIL_MESSAGE("Expected SQLite::Exception but a different exception was thrown.");
+    }
+}
+
+void testUpdateLoginAttemptsResets() {
+    std::string hostname = "Warehouse-A";
+    Storage storage(":memory:");
+    storage.initializeSchema();
+
+    storage.createUser(hostname, "pass123");
+    storage.updateLoginAttempts(hostname, false, 1);
+    storage.updateLoginAttempts(hostname, false, 2);
+    storage.updateLoginAttempts(hostname, false, 3);
+    storage.updateLoginAttempts(hostname, true, 0);
+
+    std::optional<userAuthData> userData = storage.getUserLoginData(hostname);
+    TEST_ASSERT_TRUE(userData.has_value());
+    TEST_ASSERT_EQUAL_INT(0, userData->failedAttempts);
+}
+
+void testgetUserLoginThrows() {
+    Storage storage(":memory:");
+    try {
+        storage.getUserLoginData("somehost");
+        TEST_FAIL_MESSAGE("Expected SQLite::Exception but no exception was thrown.");
+    } catch (const SQLite::Exception &e) {
+        TEST_ASSERT_NOT_NULL(strstr(e.what(), "no such table"));
+        TEST_PASS_MESSAGE("Correctly caught expected exception.");
+    } catch (...) {
+        TEST_FAIL_MESSAGE("Expected SQLite::Exception but a different exception was thrown.");
+    }
+}
+
+void testUserDoesntExists() {
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    TEST_ASSERT_FALSE(storage.userExists("somehostname"));
+}

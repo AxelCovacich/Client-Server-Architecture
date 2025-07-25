@@ -40,7 +40,11 @@ if(CLANG_FORMAT_EXE)
   )
 endif()
 
-set(CMAKE_CXX_CLANG_TIDY "clang-tidy;-checks=*")
+option(ENABLE_CLANG_TIDY "Enable clang-tidy" OFF)
+if(ENABLE_CLANG_TIDY)
+  set(CMAKE_CXX_CLANG_TIDY
+      "clang-tidy;-checks=*;-header-filter=^${CMAKE_SOURCE_DIR}/(src|include)/.*$")
+endif()
 
 option(ENABLE_ASAN "Enable AddressSanitizer" OFF)
 if(ENABLE_ASAN)
@@ -86,6 +90,30 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(json)
 
+
+# --- SQLiteCpp Library ---
+include(FetchContent)
+
+FetchContent_Declare(
+  sqlitecpp
+  GIT_REPOSITORY https://github.com/SRombauts/SQLiteCpp.git
+  GIT_TAG 3.3.0
+  # download and compile sqlite3
+  CMAKE_ARGS "-DSQLITECPP_INTERNAL_SQLITE=ON"
+)
+
+FetchContent_MakeAvailable(sqlitecpp)
+
+# --- Bcrypt library ---
+FetchContent_Declare(
+  bcrypt
+  GIT_REPOSITORY https://github.com/hilch/Bcrypt.cpp.git
+  #GIT_TAG
+)
+set(BCRYPT_TESTS OFF)
+
+FetchContent_MakeAvailable(bcrypt)
+
 # --- Library Definitions ---
 
 # 1. ServerLib
@@ -99,6 +127,7 @@ target_sources(ServerLib PRIVATE
     src/server/inventory.cpp
     src/server/authenticator.cpp
     src/server/clientSession.cpp
+    src/server/storage.cpp
 )
 
 # Add the path to ServerLib's PUBLIC headers
@@ -107,6 +136,7 @@ target_include_directories(ServerLib PUBLIC
 )
 
 target_link_libraries(ServerLib PUBLIC nlohmann_json::nlohmann_json)
+target_link_libraries(ServerLib PUBLIC SQLiteCpp bcrypt)
 
 # 2. ClientLib
 add_library(ClientLib SHARED

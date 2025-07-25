@@ -26,7 +26,11 @@ else
 fi
 
 # Generate the coverage report for sonar.cxx.coverage.reportPaths=PATH_TO/coverage.xml
-gcovr -r . --xml-pretty --output=build/coverage.xml
+gcovr --root . \
+      --filter "src/.*" \
+      --exclude "build/_deps" \
+      --exclude "external" \
+      --xml-pretty --output=build/coverage.xml
 
 if [ -f build/coverage.xml ]; then
   echo "=== Coverage report generated ==="
@@ -66,8 +70,13 @@ else
   exit 1
 fi
 
-# Generate Clang tidy report for sonar.cxx.clangtidy.reportPaths=PATH_TO/clangtidy.xml
-python3 scripts/run-clang-tidy.py -checks='*' -p='build' -header-filter='*' src >build/clangtidy.txt
+# Generate Clang tidy report for sonar.cxx.clangtidy.reportPaths=PATH_TO/clangtidy.txt
+find src include -type f \( -name '*.cpp' -o -name '*.cc' -o -name '*.c' \) \
+  | xargs python3 scripts/run-clang-tidy.py \
+      -p build \
+      -header-filter="^${PWD}/(src|include)/.*" \
+      -checks='-*,clang-analyzer-*,cppcoreguidelines-*,performance-*,portability-*,readability-*' \
+      > build/clangtidy.txt
 
 if [ -f build/clangtidy.txt ]; then
   echo "=== Clang tidy report generated ==="

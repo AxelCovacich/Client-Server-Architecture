@@ -1,4 +1,5 @@
 #include "unity.h"
+#include <sqlite3.h>
 
 extern "C" {
 
@@ -59,6 +60,43 @@ void testProcessMessageHandlesMalformedJson();
 void testProcessCommandgetInventory();
 void testProcessCommandgGetEmptyInventory();
 void testProcessMessageHandlesInvalidLoginRequest();
+void testSaveStockUpdate();
+void testSaveStockUpdateModifiesExistingRow();
+void testInitializeSchemaCreatesTables();
+void testParserFailsWithExcessiveArgs();
+void testSaveStockUpdateThrowsOnConstraintViolation();
+void testInitializeSchemaThrowsOnInvalidConnection();
+void testGetStockFromDataBase();
+void testGetStockReturnsEmptyForNonExistentItem();
+void testProcessCommandGetStockSuccessfully();
+void testProcessCommandGetStockNoItemFound();
+void testProcessCommandInvalidPayloadForGetStock();
+void testGetStockThrowsIfSchemaNotInitialized();
+void testGetStockRetrievesFromDatabaseOnCacheMiss();
+void testGetFullInventorySuccess();
+void testGetFullInventoryNoClientFound();
+void testGetFullInventoryThrowsIfTableNotInitialized();
+void testCreateUserSuccess();
+void testUserNotInTable();
+void testGetHostnamePasswordhash();
+void testNoHostnameforGetHostnamePasswordhash();
+void testUpdateLoginAttempts();
+void testUpdateLoginAttemptsUpToFour();
+void testUpdateLoginAttemptsResets();
+void testAuthenticatorSucceedsWithValidCredentials();
+void testAuthenticatorFailsWithInvalidPassword();
+void testAuthenticatorFailsWithUnknownUser();
+void testAuthenticatorFailsWithFailedAttempts();
+void testAuthenticatorResetsFailedAttempts();
+void testProcessMessageAuthenticatedCommand();
+void testProcessMessageCatchExceptionFromAuthenticatedCommand();
+void testAuthenticatorPassAfterBlockedTime();
+void testCreateUserThrows();
+void testUserExistsThrowsWithNoTable();
+void testgetUserLoginThrows();
+void testCreateUserFailsOnDuplicate();
+void testgetInventorySummaryFromDataBase();
+void testUserDoesntExists();
 
 /**
  * @brief Runs all the tests.
@@ -110,7 +148,44 @@ int main() {
     RUN_TEST(testProcessCommandgetInventory);
     RUN_TEST(testProcessCommandgGetEmptyInventory);
     RUN_TEST(testProcessMessageHandlesInvalidLoginRequest);
+    RUN_TEST(testSaveStockUpdate);
+    RUN_TEST(testSaveStockUpdateModifiesExistingRow);
+    RUN_TEST(testInitializeSchemaCreatesTables);
+    RUN_TEST(testParserFailsWithExcessiveArgs);
+    RUN_TEST(testSaveStockUpdateThrowsOnConstraintViolation);
+    RUN_TEST(testInitializeSchemaThrowsOnInvalidConnection);
+    RUN_TEST(testGetStockFromDataBase);
+    RUN_TEST(testGetStockReturnsEmptyForNonExistentItem);
+    RUN_TEST(testProcessCommandGetStockSuccessfully);
+    RUN_TEST(testProcessCommandGetStockNoItemFound);
+    RUN_TEST(testProcessCommandInvalidPayloadForGetStock);
+    RUN_TEST(testGetStockThrowsIfSchemaNotInitialized);
+    RUN_TEST(testGetStockRetrievesFromDatabaseOnCacheMiss);
+    RUN_TEST(testGetFullInventorySuccess);
+    RUN_TEST(testGetFullInventoryNoClientFound);
+    RUN_TEST(testGetFullInventoryThrowsIfTableNotInitialized);
+    RUN_TEST(testCreateUserSuccess);
+    RUN_TEST(testUserNotInTable);
+    RUN_TEST(testGetHostnamePasswordhash);
+    RUN_TEST(testNoHostnameforGetHostnamePasswordhash);
+    RUN_TEST(testUpdateLoginAttempts);
+    RUN_TEST(testUpdateLoginAttemptsUpToFour);
+    RUN_TEST(testUpdateLoginAttemptsResets);
+    RUN_TEST(testAuthenticatorSucceedsWithValidCredentials);
+    RUN_TEST(testAuthenticatorFailsWithInvalidPassword);
+    RUN_TEST(testAuthenticatorFailsWithUnknownUser);
+    RUN_TEST(testAuthenticatorFailsWithFailedAttempts);
+    RUN_TEST(testAuthenticatorResetsFailedAttempts);
+    RUN_TEST(testProcessMessageAuthenticatedCommand);
+    RUN_TEST(testProcessMessageCatchExceptionFromAuthenticatedCommand);
+    RUN_TEST(testAuthenticatorPassAfterBlockedTime);
+    RUN_TEST(testCreateUserThrows);
+    RUN_TEST(testUserExistsThrowsWithNoTable);
+    RUN_TEST(testgetUserLoginThrows);
+    RUN_TEST(testCreateUserFailsOnDuplicate);
+    RUN_TEST(testgetInventorySummaryFromDataBase);
+    RUN_TEST(testUserDoesntExists);
 
-    // add more tests here;
+    sqlite3_shutdown();
     return UNITY_END();
 }

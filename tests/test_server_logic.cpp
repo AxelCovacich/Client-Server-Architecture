@@ -12,7 +12,7 @@ void testServerConstructorFailsOnPrivilegedPort() {
 
     try {
 
-        Server s(80);
+        Server s(80, ":memory:");
         TEST_FAIL_MESSAGE("Expected std::runtime_error, but no exception was thrown.");
 
     } catch (const std::runtime_error &e) {

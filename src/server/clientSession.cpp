@@ -2,6 +2,7 @@
 #include "authenticator.hpp"
 #include "commandProcessor.hpp"
 #include "server.hpp"
+#include <array>
 #include <cstring> // For memset()
 #include <iostream>
 #include <nlohmann/json.hpp>
@@ -13,11 +14,11 @@ using json = nlohmann::json;
 
 clientSession::clientSession(int clientSocket, Inventory &inventory, Authenticator &authenticator)
     : m_clientSocket(clientSocket)
-    , m_clientID("")
-    , // starts empty
-    m_isAuthenticated(false)
+    , m_isAuthenticated(false)
     , m_inventory(inventory)
-    , m_authenticator(authenticator) {
+    , m_authenticator(authenticator)
+// m_clientID("") starts empty already
+{
     // constructor actions here
 }
 
@@ -33,7 +34,6 @@ void clientSession::run() {
 
     const char *welcome_msg =
         "Welcome to the C++ Server! Please login to initiate operations or type 'end' to disconnect.\n";
-    const char *ack_msg = "ACK: Message received by server.\n";
 
     if (write(m_clientSocket, welcome_msg, strlen(welcome_msg)) < 0) {
         perror("Writing to client socket");
@@ -41,13 +41,13 @@ void clientSession::run() {
         return;
     }
 
-    ssize_t bytes_read;
-    char buffer[BUFFER_SIZE];
+    ssize_t bytes_read = -1;
+    std::array<char, BUFFER_SIZE> buffer{};
 
     while (true) {
 
-        memset(buffer, 0, BUFFER_SIZE);
-        bytes_read = read(m_clientSocket, buffer, BUFFER_SIZE - 1);
+        buffer.fill('\0'); // fill the buffer with 0 Just like memset
+        bytes_read = read(m_clientSocket, buffer.data(), buffer.size() - 1);
 
         if (bytes_read <= 0) {
             if (bytes_read < 0) {
@@ -57,9 +57,9 @@ void clientSession::run() {
             break;
         }
 
-        buffer[bytes_read] = '\0';
+        buffer.at(bytes_read) = '\0'; // to make it "c string friendly"
 
-        string client_message(buffer);
+        string client_message(buffer.data());
 
         processResult result = processMessage(client_message);
 
@@ -85,7 +85,8 @@ bool clientSession::isAuthenticated() const {
 
 clientSession::processResult clientSession::processMessage(const std::string &json_string) {
 
-    cout << "Thread " << this_thread::get_id() << " received: " << json_string << "from client " << m_clientID << '\n';
+    // cout << "Thread " << this_thread::get_id() << " received: " << json_string << "from client " << m_clientID <<
+    // '\n';
 
     json request = json::parse(json_string, nullptr, false); // don't throw exception, give back discarded if not valid
     if (request.is_discarded()) {
@@ -106,9 +107,10 @@ clientSession::processResult clientSession::processMessage(const std::string &js
                     m_isAuthenticated = true;
                     m_clientID = user;
                     return {"{\"status\":\"success\",\"message\":\"Login successful.\"}", true};
-                } else {
-                    return {"{\"status\":\"error\",\"message\":\"Login failed. Invalid credentials.\"}", true};
                 }
+
+                return {"{\"status\":\"error\",\"message\":\"Login failed. Invalid credentials.\"}", true};
+
             } catch (const json::exception &e) {
                 // for any missing item on the json input (payload, hostname or password)
                 std::cerr << "Invalid login request format: " << e.what() << '\n';
@@ -120,10 +122,20 @@ clientSession::processResult clientSession::processMessage(const std::string &js
         }
 
     } else {
-        // succesfully logged in here. Can do operations.
-        cout << "Thread " << this_thread::get_id() << " received: " << json_string << "from client " << m_clientID
-             << '\n';
 
-        return commandProcessor::processCommand(request, m_clientID, false, m_inventory);
+        try {
+
+            auto result = commandProcessor::processCommand(request, m_clientID, false, m_inventory);
+            return result;
+
+        } catch (const std::exception &e) {
+            std::cerr << "CRITICAL ERROR processing command for client " << m_clientID << ": " << e.what() << '\n';
+
+            json response;
+            response["status"] = "error";
+            response["message"] = "An internal server error occurred.";
+
+            return {response.dump(), true};
+        }
     }
 }

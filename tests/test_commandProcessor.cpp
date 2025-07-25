@@ -8,7 +8,9 @@ using json = nlohmann::json;
 void testProcessCommandStatusAsJSON() {
     std::string json_request = "{\"command\": \"status\"}";
     json request_object = json::parse(json_request);
-    Inventory inventory;
+    Storage storage(":memory:");
+
+    Inventory inventory(storage);
     std::string clientId = "warehouse-A";
 
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory);
@@ -23,7 +25,9 @@ void testProcessCommandStatusAsJSON() {
 void testProcessCommandEndAsJSON() {
     std::string json_request = "{\"command\": \"end\"}";
     json request_object = json::parse(json_request);
-    Inventory inventory;
+    Storage storage(":memory:");
+
+    Inventory inventory(storage);
     std::string clientId = "warehouse-A";
 
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory);
@@ -37,7 +41,9 @@ void testProcessCommandEndAsJSON() {
 void testProcessCommandUnknownAsJSON() {
     std::string json_request = "{\"command\": \"unknown\"}";
     json request_object = json::parse(json_request);
-    Inventory inventory;
+    Storage storage(":memory:");
+
+    Inventory inventory(storage);
     std::string clientId = "warehouse-A";
 
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory);
@@ -53,8 +59,12 @@ void testProcessCommandUpdateStockAsJSON() {
                                "\"water\", \"quantity\": 500}}";
 
     json request_object = json::parse(json_request);
-    Inventory inventory;
+    Storage storage(":memory:");
+    storage.initializeSchema();
+
+    Inventory inventory(storage);
     std::string clientId = "warehouse-A";
+    storage.createUser(clientId, "pass123");
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory);
     json response = json::parse(result.first);
 
@@ -69,7 +79,9 @@ void testProcessCommandSrvrInMaintenance() {
     std::string clientId = "warehouse-A";
     json request_object = json::parse(json_request);
 
-    Inventory inventory;
+    Storage storage(":memory:");
+
+    Inventory inventory(storage);
     auto result = commandProcessor::processCommand(request_object, clientId, true, inventory);
     json response = json::parse(result.first);
 
@@ -83,7 +95,9 @@ void testProcessCommandNoCommand() {
     json request_object = json::parse(json_request);
 
     std::string clientId = "warehouse-A";
-    Inventory inventory;
+    Storage storage(":memory:");
+
+    Inventory inventory(storage);
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory);
     json response = json::parse(result.first);
 
@@ -99,7 +113,10 @@ void testProcessCommandNoPayloadForUpload() {
     json request_object = json::parse(json_request);
 
     std::string clientId = "warehouse-A";
-    Inventory inventory;
+
+    Storage storage(":memory:");
+
+    Inventory inventory(storage);
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory);
     json response = json::parse(result.first);
 
@@ -115,7 +132,9 @@ void testProcessCommandNoQuantityForUpload() {
 
     json request_object = json::parse(json_request);
     std::string clientId = "warehouse-A";
-    Inventory inventory;
+    Storage storage(":memory:");
+
+    Inventory inventory(storage);
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory);
     json response = json::parse(result.first);
 
@@ -131,7 +150,9 @@ void testProcessCommandNoItemForUpload() {
 
     json request_object = json::parse(json_request);
     std::string clientId = "warehouse-A";
-    Inventory inventory;
+    Storage storage(":memory:");
+
+    Inventory inventory(storage);
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory);
     json response = json::parse(result.first);
 
@@ -146,7 +167,9 @@ void testProcessCommandNoCategoryForUpload() {
 
     json request_object = json::parse(json_request);
     std::string clientId = "warehouse-A";
-    Inventory inventory;
+    Storage storage(":memory:");
+
+    Inventory inventory(storage);
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory);
     json response = json::parse(result.first);
 
@@ -163,21 +186,31 @@ void testProcessCommandUpdateStockInvalidQuantityType() {
 
     json request_object = json::parse(request_str);
     std::string clientId = "warehouse-A";
-    Inventory inventory;
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    storage.createUser(clientId, "pass123");
+    Inventory inventory(storage);
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory);
     json response = json::parse(result.first);
 
     TEST_ASSERT_EQUAL_STRING("error", response["status"].get<std::string>().c_str());
     TEST_ASSERT_EQUAL_STRING("Invalid or missing field in update_stock payload.",
                              response["message"].get<std::string>().c_str());
+    TEST_ASSERT_TRUE(result.second);
 }
 
 void testProcessCommandgetInventory() {
 
     std::string clientId = "warehouse-A";
-    Inventory inventory;
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    storage.createUser(clientId, "pass123");
+
+    Inventory inventory(storage);
+
     inventory.updateStock(clientId, "food", "meat", 100);
     inventory.updateStock(clientId, "medicine", "bandages", 250);
+
     std::string request_str = "{\"command\":\"get_inventory\"}";
 
     json request_object = json::parse(request_str);
@@ -195,14 +228,18 @@ void testProcessCommandgetInventory() {
     json data = response["data"];
     TEST_ASSERT_EQUAL_INT(100, data["food"]["meat"].get<int>());
     TEST_ASSERT_EQUAL_INT(250, data["medicine"]["bandages"].get<int>());
+    TEST_ASSERT_TRUE(result.second);
 }
 
 void testProcessCommandgGetEmptyInventory() {
 
     std::string clientId = "warehouse-A";
-    Inventory inventory;
-    std::string request_str = "{\"command\":\"get_inventory\"}";
+    Storage storage(":memory:");
+    storage.initializeSchema();
 
+    Inventory inventory(storage);
+    std::string request_str = "{\"command\":\"get_inventory\"}";
+    storage.createUser(clientId, "pass123");
     json request_object = json::parse(request_str);
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory);
 
@@ -216,4 +253,65 @@ void testProcessCommandgGetEmptyInventory() {
     TEST_ASSERT_TRUE(response.contains("data"));
 
     TEST_ASSERT_TRUE(response["data"].empty());
+    TEST_ASSERT_TRUE(result.second);
+}
+
+void testProcessCommandGetStockSuccessfully() {
+    std::string clientId = "warehouse-A";
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    storage.createUser(clientId, "pass123");
+    Inventory inventory(storage);
+
+    inventory.updateStock(clientId, "food", "meat", 100);
+    std::string request_str = "{\"command\":\"get_stock\",\"payload\":{\"category\":\"food\",\"item\":\"meat\"}}";
+    json request_object = json::parse(request_str);
+    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory);
+    json response = json::parse(result.first);
+
+    TEST_ASSERT_EQUAL_STRING("success", response["status"].get<std::string>().c_str());
+    TEST_ASSERT_EQUAL_STRING("Stock data retrieved successfully.", response["message"].get<std::string>().c_str());
+
+    TEST_ASSERT_TRUE(response.contains("data"));
+    TEST_ASSERT_EQUAL_INT(100, response["data"]["quantity"].get<int>());
+    TEST_ASSERT_EQUAL_STRING("food", response["data"]["category"].get<std::string>().c_str());
+    TEST_ASSERT_EQUAL_STRING("meat", response["data"]["item"].get<std::string>().c_str());
+    TEST_ASSERT_TRUE(result.second);
+}
+
+void testProcessCommandGetStockNoItemFound() {
+    std::string clientId = "warehouse-A";
+    Storage storage(":memory:");
+    storage.initializeSchema();
+
+    Inventory inventory(storage);
+    storage.createUser(clientId, "pass123");
+    // inventory.updateStock(clientId, "food", "water", 100);
+    std::string request_str = "{\"command\":\"get_stock\",\"payload\":{\"category\":\"food\",\"item\":\"meat\"}}";
+    json request_object = json::parse(request_str);
+    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory);
+    json response = json::parse(result.first);
+
+    TEST_ASSERT_EQUAL_STRING("error", response["status"].get<std::string>().c_str());
+    TEST_ASSERT_EQUAL_STRING("Item not found for the specified client/category.",
+                             response["message"].get<std::string>().c_str());
+    TEST_ASSERT_TRUE(result.second);
+}
+
+void testProcessCommandInvalidPayloadForGetStock() {
+    std::string json_request = "{\"command\": \"get_stock\", \"payload\": {\"item\": \"water\"}}";
+
+    json request_object = json::parse(json_request);
+    std::string clientId = "warehouse-A";
+    Storage storage(":memory:");
+    storage.initializeSchema();
+
+    Inventory inventory(storage);
+    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory);
+    json response = json::parse(result.first);
+
+    TEST_ASSERT_EQUAL_STRING("error", response["status"].get<std::string>().c_str());
+    TEST_ASSERT_EQUAL_STRING("Invalid or missing field in get_stock payload.",
+                             response["message"].get<std::string>().c_str());
+    TEST_ASSERT_TRUE(result.second);
 }

@@ -39,5 +39,11 @@ postgresql/
 postgresql_data/
 .scannerwork/
 
+#sql db
+*.sqlite3
+
 #vscode
 .vscode
+
+#valgrind ignore issues
+sqlvalgrind.supp

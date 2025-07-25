@@ -1,5 +1,6 @@
 
 #include "server.hpp"
+#include "authenticator.hpp"
 #include "clientSession.hpp"
 #include <commandProcessor.hpp>
 #include <csignal> // For std::signal
@@ -7,6 +8,7 @@
 #include <iostream>
 #include <memory> //for make_shared
 #include <netinet/in.h>
+#include <sqlite3.h>
 #include <stdexcept> // For std::runtime_error
 #include <string>
 #include <sys/socket.h>
@@ -21,6 +23,7 @@ using namespace std;
  * * This variable is volatile and sig_atomic_t to ensure it is safe to access
  * from a signal handler.
  */
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 volatile sig_atomic_t g_shutdown_flag = 0;
 
 /**
@@ -31,16 +34,22 @@ void signal_handler(int signum) {
     g_shutdown_flag = 1;
 }
 
-Server::Server(int port)
+Server::Server(int port, const std::string &dbPath)
     : port_(port)
-    , server_fd_(-1) {
+    , server_fd_(-1)
+    , m_clock()
+    , m_storage(dbPath)
+    , m_inventory(m_storage)
+    , m_authenticator(m_storage, m_clock) {
 
     setupServer();
+    m_storage.initializeSchema();
 }
 
 Server::~Server() {
     if (server_fd_ != -1) {
         cout << "Closing server socket.\n";
+        sqlite3_shutdown();
         close(server_fd_);
     }
 }
@@ -51,17 +60,19 @@ void Server::setupServer() {
         throw runtime_error("Failed to create socket");
     }
 
-    struct sockaddr_in serv_addr;
+    struct sockaddr_in serv_addr {};
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = INADDR_ANY;
     serv_addr.sin_port = htons(port_);
 
-    if (bind(server_fd_, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+    // Necessary to interact with the old C Socket API
+    //  NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+    if (bind(server_fd_, reinterpret_cast<struct sockaddr *>(&serv_addr), sizeof(serv_addr)) < 0) {
         throw runtime_error("Failed to bind to port");
     }
 
-    if (listen(server_fd_, 5) < 0) {
+    if (listen(server_fd_, MAX_CLIENTS_PERMITTED) < 0) {
         throw runtime_error("Failed to listen on socket");
     }
 
@@ -70,29 +81,30 @@ void Server::setupServer() {
 
 void Server::run() {
     fd_set read_fds;
-    struct timeval tv;
+    struct timeval timevalue {};
 
-    struct sockaddr_in cli_addr;
+    struct sockaddr_in cli_addr {};
     socklen_t clilen = sizeof(cli_addr);
 
-    while (!g_shutdown_flag) {
+    while (g_shutdown_flag == 0) {
         FD_ZERO(&read_fds);
         FD_SET(server_fd_, &read_fds);
 
-        tv.tv_sec = 1;
-        tv.tv_usec = 0;
+        timevalue.tv_sec = 1;
+        timevalue.tv_usec = 0;
 
         // use selecto to wait for 1 sec or a clients connects and then go for another iteration
-        int activity = select(server_fd_ + 1, &read_fds, NULL, NULL, &tv);
+        int activity = select(server_fd_ + 1, &read_fds, NULL, NULL, &timevalue);
 
         if ((activity < 0) && (errno != EINTR)) {
             perror("select error");
         }
 
         if (activity > 0 && FD_ISSET(server_fd_, &read_fds)) {
-            struct sockaddr_in cli_addr;
             socklen_t clilen = sizeof(cli_addr);
-            int newsockfd = accept(server_fd_, (struct sockaddr *)&cli_addr, &clilen);
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+            int newsockfd = accept(server_fd_, reinterpret_cast<struct sockaddr *>(&cli_addr),
+                                   &clilen); // Necessary to interact with API sockets of C
 
             if (newsockfd < 0) {
                 perror("Error on accept");
@@ -111,5 +123,4 @@ void Server::run() {
         }
     }
     cout << "\nShutdown signal received. Server is closing.\n";
-    return;
 }

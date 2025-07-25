@@ -28,7 +28,7 @@ static transaction_result handle_server_transaction(int sockfd, const char *mess
     }
 
     char buffer[BUFFER_SIZE];
-    memset(buffer, '\0', BUFFER_SIZE);
+    memset(buffer, '\0', BUFFER_SIZE); // NOLINT
     ssize_t bytes_read = read(sockfd, buffer, BUFFER_SIZE - 1);
     if (bytes_read < 0) {
         perror("Error reading from socket");
@@ -86,39 +86,40 @@ static transaction_result execute_client_action(int sockfd, UserInputAction acti
 
     case INPUT_ACTION_ERROR:
     default:
-        fprintf(stderr, "Invalid input action.\n");
+        fprintf(stderr, "Invalid input action.\n"); // NOLINT
         return TRANSACTION_SUCCESS;
     }
 }
 
 int setup_and_connect(const char *host, const char *port) {
     struct addrinfo hints;
-    struct addrinfo *result_list, *p;
+    struct addrinfo *result_list = NULL;
+    struct addrinfo *current_addr = NULL;
     int sockfd = -1;
-    int getaddrinfo_status;
+    int getaddrinfo_status = 1;
 
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_UNSPEC;     // IPv4 or IPv6
-    hints.ai_socktype = SOCK_STREAM; // TCP
+    memset(&hints, 0, sizeof(hints)); // NOLINT
+    hints.ai_family = AF_UNSPEC;      // IPv4 or IPv6
+    hints.ai_socktype = SOCK_STREAM;  // TCP
 
     // we use getaddrinfo(thread safe and supports Ipv4 and Ipv6) instead of
     // gethostbyname (obsolet)
     getaddrinfo_status = getaddrinfo(host, port, &hints, &result_list);
     if (getaddrinfo_status != 0) {
-        fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(getaddrinfo_status));
+        fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(getaddrinfo_status)); // NOLINT
         return -1;
     }
 
-    for (p = result_list; p != NULL; p = p->ai_next) {
+    for (current_addr = result_list; current_addr != NULL; current_addr = current_addr->ai_next) {
 
-        sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
+        sockfd = socket(current_addr->ai_family, current_addr->ai_socktype, current_addr->ai_protocol);
         if (sockfd == -1) {
 
             perror("client: socket");
             continue;
         }
 
-        if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+        if (connect(sockfd, current_addr->ai_addr, current_addr->ai_addrlen) == -1) {
 
             perror("client: connect");
             close(sockfd);
@@ -131,15 +132,15 @@ int setup_and_connect(const char *host, const char *port) {
 
     freeaddrinfo(result_list);
 
-    return (p == NULL) ? -1 : sockfd;
+    return (current_addr == NULL) ? -1 : sockfd;
 }
 
 int start_communication(int sockfd) {
-    ssize_t bytes_read;
+    ssize_t bytes_read = 0;
     char buffer[BUFFER_SIZE];
 
     // one read before while cicle to recieve welcome message from server.
-    memset(buffer, '\0', BUFFER_SIZE);
+    memset(buffer, '\0', BUFFER_SIZE); // NOLINT
     bytes_read = read(sockfd, buffer, BUFFER_SIZE - 1);
 
     if (bytes_read <= 0) {
@@ -151,19 +152,20 @@ int start_communication(int sockfd) {
     printf("Server says: %s", buffer);
 
     // auto login for now
-    char hostname[256];
+    char hostname[HOSTNAME_BUFFER_SIZE];
     if (gethostname(hostname, sizeof(hostname)) != 0) {
         perror("Error at gethostname:");
         return -1;
     }
 
-    char login_json[512];
-    snprintf(login_json, sizeof(login_json), "{\"command\":\"login\",\"payload\":{\"hostname\":\"%s\"}}", hostname);
+    char login_json[LOGIN_JSON_SIZE];
+    snprintf(login_json, sizeof(login_json), "{\"command\":\"login\",\"payload\":{\"hostname\":\"%s\"}}", // NOLINT
+             hostname);
 
     transaction_result result = handle_server_transaction(sockfd, login_json);
 
     if (result == TRANSACTION_ERROR) {
-        fprintf(stderr, "Authentication failed.\n");
+        fprintf(stderr, "Authentication failed.\n"); // NOLINT
         return -1;
     }
     // login is automatic for now

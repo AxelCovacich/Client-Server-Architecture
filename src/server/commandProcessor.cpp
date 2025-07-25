@@ -2,6 +2,7 @@
 #include "inventory.hpp"
 #include <iostream>
 #include <nlohmann/json.hpp>
+#include <optional>
 
 using json = nlohmann::json;
 using namespace std;
@@ -67,7 +68,6 @@ commandResult processCommand(const json &request, const std::string &clientId, b
             const int quantity = payload.at("quantity");
 
             // 2. All good to upload
-            // CALL RESPONSABLE FOR UPDATING STOCK HERE
             inventory.updateStock(clientId, category, item, quantity);
 
             // 3. Success response.
@@ -85,6 +85,41 @@ commandResult processCommand(const json &request, const std::string &clientId, b
             cerr << "Invalid payload for update_stock: " << e.what() << '\n';
             response["status"] = "error";
             response["message"] = "Invalid or missing field in update_stock payload.";
+            return {response.dump(), true};
+        }
+    }
+
+    if (cmd == "get_stock") {
+        try {
+
+            const json &payload = request.at("payload");
+            const std::string category = payload.at("category");
+            const std::string item = payload.at("item");
+
+            std::optional<int> result = inventory.getStock(clientId, category, item);
+
+            if (result.has_value()) {
+                response["status"] = "success";
+                std::string message = "Stock data retrieved successfully.";
+                response["message"] = message;
+
+                json data_payload;
+                data_payload["category"] = category;
+                data_payload["item"] = item;
+                data_payload["quantity"] = result.value();
+
+                response["data"] = data_payload;
+                return {response.dump(), true};
+            }
+            response["status"] = "error";
+            response["message"] = "Item not found for the specified client/category.";
+            return {response.dump(), true};
+
+        } catch (const json::exception &e) {
+
+            cerr << "Invalid payload for get_stock: " << e.what() << '\n';
+            response["status"] = "error";
+            response["message"] = "Invalid or missing field in get_stock payload.";
             return {response.dump(), true};
         }
     }

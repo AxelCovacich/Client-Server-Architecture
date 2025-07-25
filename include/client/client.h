@@ -6,6 +6,8 @@
 
 // The buffer size is part of the module's public contract
 #define BUFFER_SIZE 256
+#define HOSTNAME_BUFFER_SIZE 256
+#define LOGIN_JSON_SIZE 512
 
 /**
  * @brief Defines the set of possible results of a single transaction (wirte-read) with the server.

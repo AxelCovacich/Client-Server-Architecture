@@ -32,7 +32,7 @@ set(CTEST_USE_LAUNCHERS YES)
 
 #Memcheck via valgrind
 find_program(CTEST_MEMORYCHECK_COMMAND valgrind)
-set(CTEST_MEMORYCHECK_COMMAND_OPTIONS "--trace-children=yes --leak-check=full --error-exitcode=1 --xml=yes --xml-file=${CTEST_BINARY_DIRECTORY}/valgrind_report.xml")
+set(CTEST_MEMORYCHECK_COMMAND_OPTIONS "--trace-children=yes --leak-check=full --suppressions=sqlvalgrind.supp --error-exitcode=1 --xml=yes --xml-file=${CTEST_BINARY_DIRECTORY}/valgrind_report.xml")
 
 # Step 1 - Clean previous pipeline run
 ctest_empty_binary_directory(${CTEST_BINARY_DIRECTORY})
@@ -55,5 +55,41 @@ ctest_memcheck()
 ctest_submit(PARTS Memcheck)
 
 # Step 5 - Collect coverage information
-ctest_coverage()
-ctest_submit(PARTS Coverage Done)
+find_program(GCOVR_EXECUTABLE gcovr)
+if(NOT GCOVR_EXECUTABLE)
+  message(WARNING "gcovr no encontrado, saltando resumen de cobertura")
+else()
+  execute_process(
+    COMMAND ${GCOVR_EXECUTABLE}
+            -r ${CTEST_SOURCE_DIRECTORY}
+            --filter ${CTEST_SOURCE_DIRECTORY}/src
+            --filter ${CTEST_SOURCE_DIRECTORY}/include
+            --exclude build/_deps
+            --exclude external
+            --html --html-details -o coverage.html
+    WORKING_DIRECTORY ${CTEST_BINARY_DIRECTORY}
+  )
+
+  message(STATUS ">>> Coverage summary:")
+  execute_process(
+    COMMAND ${GCOVR_EXECUTABLE}
+            -r ${CTEST_SOURCE_DIRECTORY}
+            --filter ${CTEST_SOURCE_DIRECTORY}/src
+            --filter ${CTEST_SOURCE_DIRECTORY}/include
+            --exclude build/_deps
+            --exclude external
+            --txt-summary
+            --fail-under-line 40
+    WORKING_DIRECTORY ${CTEST_BINARY_DIRECTORY}
+    OUTPUT_VARIABLE GCV_SUMMARY
+    ERROR_VARIABLE GCV_ERROR
+    RESULT_VARIABLE GCV_RC
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+  message(STATUS "${GCV_SUMMARY}")
+  if(NOT GCV_RC EQUAL 0)
+    message(FATAL_ERROR "Coverage is under limits: ${GCV_ERROR}")
+  endif()
+
+  ctest_submit(PARTS Coverage Done)
+endif()

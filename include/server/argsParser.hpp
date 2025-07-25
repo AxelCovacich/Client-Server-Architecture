@@ -2,7 +2,9 @@
 #define ARGS_PARSER_HPP
 
 #include <optional>
-
+#include <string>
+#include <vector>
+#define UPPER_PORT_LIMIT 65535
 namespace ArgsParser {
 
 using ParseResult = std::optional<int>;
@@ -13,7 +15,7 @@ using ParseResult = std::optional<int>;
  * @param argv The argument vector from main.
  * @return An optional containing the port number on success, or an empty optional on failure.
  */
-ParseResult parseArguments(int argc, char *argv[]);
+ParseResult parseArguments(const std::vector<std::string> &args);
 
 } // namespace ArgsParser
 
