@@ -128,6 +128,7 @@ target_sources(ServerLib PRIVATE
     src/server/authenticator.cpp
     src/server/clientSession.cpp
     src/server/storage.cpp
+    src/server/logger.cpp
 )
 
 # Add the path to ServerLib's PUBLIC headers

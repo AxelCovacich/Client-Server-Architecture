@@ -1,7 +1,9 @@
 #include "authenticator.hpp"
 #include "clock.hpp"
+#include "logger.hpp"
 #include "storage.hpp"
 #include "unity.h"
+#include <iostream>
 
 /**
  * @brief Mock clock for testing. Allows setting a specific time.
@@ -23,60 +25,70 @@ void testAuthenticatorSucceedsWithValidCredentials() {
     Storage storage(":memory:");
     storage.initializeSchema();
     MockClock clock;
-    Authenticator authenticator(storage, clock);
+    Logger logger(storage, clock, std::cerr);
+    Authenticator authenticator(storage, clock, logger);
 
     storage.createUser("warehouse-A", "pass123");
 
-    TEST_ASSERT_TRUE(authenticator.authenticate("warehouse-A", "pass123"));
+    AuthResult result = authenticator.authenticate("warehouse-A", "pass123");
+    TEST_ASSERT_EQUAL_INT(AuthResult::SUCCESS, result);
 }
 
 void testAuthenticatorFailsWithInvalidPassword() {
     Storage storage(":memory:");
     storage.initializeSchema();
     MockClock clock;
-    Authenticator authenticator(storage, clock);
+    Logger logger(storage, clock, std::cerr);
+    Authenticator authenticator(storage, clock, logger);
 
     storage.createUser("warehouse-A", "pass123");
 
-    TEST_ASSERT_FALSE(authenticator.authenticate("warehouse-A", "invalid_password"));
+    AuthResult result = authenticator.authenticate("warehouse-A", "pass126");
+    TEST_ASSERT_EQUAL_INT(AuthResult::FAILED_BAD_CREDENTIALS, result);
 }
 
 void testAuthenticatorFailsWithUnknownUser() {
     Storage storage(":memory:");
     storage.initializeSchema();
     MockClock clock;
-    Authenticator authenticator(storage, clock);
+    Logger logger(storage, clock, std::cerr);
+    Authenticator authenticator(storage, clock, logger);
 
     storage.createUser("warehouse-A", "pass123");
 
-    TEST_ASSERT_FALSE(authenticator.authenticate("somehostname", "pass123"));
+    AuthResult result = authenticator.authenticate("some_user", "pass123");
+    TEST_ASSERT_EQUAL_INT(AuthResult::FAILED_USER_NOT_FOUND, result);
 }
 
 void testAuthenticatorFailsWithFailedAttempts() {
     Storage storage(":memory:");
     storage.initializeSchema();
     MockClock clock;
-    Authenticator authenticator(storage, clock);
+    Logger logger(storage, clock, std::cerr);
+    Authenticator authenticator(storage, clock, logger);
 
     storage.createUser("warehouse-A", "pass123");
     authenticator.authenticate("warehouse-A", "pass122");
     authenticator.authenticate("warehouse-A", "pass125");
     authenticator.authenticate("warehouse-A", "pass124");
 
-    TEST_ASSERT_FALSE(authenticator.authenticate("warehouse-A", "pass123"));
+    AuthResult result = authenticator.authenticate("warehouse-A", "pass123");
+    TEST_ASSERT_EQUAL_INT(AuthResult::FAILED_ACCOUNT_LOCKED, result);
 }
 void testAuthenticatorResetsFailedAttempts() {
     Storage storage(":memory:");
     storage.initializeSchema();
     MockClock clock;
-    Authenticator authenticator(storage, clock);
+    Logger logger(storage, clock, std::cerr);
+    Authenticator authenticator(storage, clock, logger);
     std::string hostname = "warehouse-A";
 
     storage.createUser(hostname, "pass123");
     authenticator.authenticate(hostname, "pass122");
     authenticator.authenticate(hostname, "pass125");
 
-    TEST_ASSERT_TRUE(authenticator.authenticate(hostname, "pass123"));
+    AuthResult result = authenticator.authenticate("warehouse-A", "pass123");
+    TEST_ASSERT_EQUAL_INT(AuthResult::SUCCESS, result);
 
     std::optional<userAuthData> userData = storage.getUserLoginData(hostname);
     TEST_ASSERT_TRUE(userData.has_value());
@@ -87,7 +99,8 @@ void testAuthenticatorPassAfterBlockedTime() {
     Storage storage(":memory:");
     storage.initializeSchema();
     MockClock clock;
-    Authenticator authenticator(storage, clock);
+    Logger logger(storage, clock, std::cerr);
+    Authenticator authenticator(storage, clock, logger);
     std::string hostname = "warehouse-A";
 
     storage.createUser(hostname, "pass123");
@@ -99,7 +112,8 @@ void testAuthenticatorPassAfterBlockedTime() {
     const long BLOCK_DURATION_SECONDS = 15 * 60;
     clock.set_time(1000000000 + BLOCK_DURATION_SECONDS + 1); // 15 min pass simulation
 
-    TEST_ASSERT_TRUE(authenticator.authenticate(hostname, "pass123"));
+    AuthResult result = authenticator.authenticate("warehouse-A", "pass123");
+    TEST_ASSERT_EQUAL_INT(AuthResult::SUCCESS, result);
 
     std::optional<userAuthData> userData = storage.getUserLoginData(hostname);
     TEST_ASSERT_TRUE(userData.has_value());

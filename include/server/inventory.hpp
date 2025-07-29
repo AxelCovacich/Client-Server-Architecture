@@ -1,6 +1,7 @@
 #ifndef INVENTORY_HPP
 #define INVENTORY_HPP
 
+#include "logger.hpp"
 #include "storage.hpp"
 #include <map>
 #include <mutex>
@@ -19,7 +20,7 @@
 class Inventory {
 
   public:
-    Inventory(Storage &storage);
+    Inventory(Storage &storage, Logger &logger);
 
     /**
      * @brief Updates the stock quantity for a specific item and client.
@@ -56,25 +57,26 @@ class Inventory {
      */
     std::optional<int> getStockonCache(const std::string &clientId, const std::string &category,
                                        const std::string &item) const;
+
+    using ClientInventoryMap = std::map<std::string, std::map<std::string, int>>;
     /**
-     * @brief Gets the entire inventory for a specific client as a JSON string.
+     * @brief Gets the entire inventory for a specific client as a map
      * @param clientId The ID of the client whose inventory is being requested.
-     * @return A string containing the inventory in JSON format. Returns an
-     * empty JSON object "{}" if the client is not found.
+     * @return A map containing the inventory. Returns an empty option std::nullopt if the client is not found.
      */
-    std::string getInventorySummaryJson(const std::string &clientId);
+    std::optional<ClientInventoryMap> getInventorySummary(const std::string &clientId);
 
     /**
-     * @brief Gets the entire inventory for a specific client as a JSON string from the cache.
+     * @brief Gets the entire inventory for a specific client as a map from the cache.
      * @param clientId The ID of the client whose inventory is being requested.
-     * @return A string containing the inventory in JSON format. Returns an
-     * empty JSON object "{}" if the client is not found.
+     * @return A map containing the inventory. Returns an empty option if the client is not found.
      */
-    json getInventorySummaryJsonFromCache(const std::string &clientId) const;
+    std::optional<ClientInventoryMap> getInventorySummaryFromCache(const std::string &clientId) const;
 
   private:
     mutable std::mutex m_mutex;
     Storage &m_storage;
+    Logger &m_logger;
     // This map holds the inventory for all clients.
     // Key: clientId, Value: Map of categories for that client.
     std::map<std::string, std::map<std::string, std::map<std::string, int>>> m_inventories;

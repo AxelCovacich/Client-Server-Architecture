@@ -3,7 +3,11 @@
 
 #include "authenticator.hpp"
 #include "inventory.hpp"
+#include "logger.hpp"
+#include <nlohmann/json.hpp>
 #include <string>
+
+using json = nlohmann::json;
 
 /**
  * @class ClientSession
@@ -18,10 +22,13 @@ class clientSession {
     int m_clientSocket;
     std::string m_clientID;
     bool m_isAuthenticated;
+    std::string m_clientIP;
 
     // need to be by reference for mutex use. Can't be copies of the object
     Inventory &m_inventory;
     Authenticator &m_authenticator;
+    Logger &m_logger;
+    Storage &m_storage;
 
   public:
     /**
@@ -29,8 +36,11 @@ class clientSession {
      * @param client_socket The file descriptor for the connected client's socket.
      * @param inventory A reference to the shared server inventory.
      * @param authenticator A reference to the shared authenticator.
+     * @param logger A reference to the shared system logger.
+     * @param clientIP The IP from the connected client.
      */
-    clientSession(int clientSocket, Inventory &inventory, Authenticator &autenthicator);
+    clientSession(int clientSocket, Inventory &inventory, Authenticator &autenthicator, Logger &logger,
+                  Storage &storage, const std::string &clientIP);
 
     ~clientSession();
 
@@ -53,6 +63,8 @@ class clientSession {
     // return the pair <string answer, bool continue?>
     using processResult = std::pair<std::string, bool>;
     processResult processMessage(const std::string &json_string);
+
+    static json createLoggableRequest(json request);
 };
 
 #endif // CLIENT_SESSION_HPP

@@ -46,12 +46,9 @@ void testProcessCommandNoCategoryForUpload();
 void testProcessCommandNoItemForUpload();
 void testUpdateStockAddsNewItem();
 void testUpdateStockModifiesExistingItem();
-void testGetInventorySummaryForUnknownClientReturnsEmptyJson();
-void testGetInventorySummaryReturnsCorrectJson();
+void testGetInventorySummaryForUnknownClientReturnsEmpty();
+void testGetInventorySummaryReturnsCorrectMap();
 void testUpdateStockNegativeQuantity();
-void testAuthenticatorFailsWithUnknownUser();
-void testAuthenticatorFailsWithInvalidPassword();
-void testAuthenticatorSucceedsWithValidCredentials();
 void testSessionStartsUnauthenticated();
 void testSessionAuthenticatesWithValidLogin();
 void testSessionAuthenticatesWithInvalidLogin();
@@ -97,7 +94,22 @@ void testgetUserLoginThrows();
 void testCreateUserFailsOnDuplicate();
 void testgetInventorySummaryFromDataBase();
 void testUserDoesntExists();
-
+void testSaveLogEntrySuccess();
+void testSaveLogEntryThrowsWithInvalidUser();
+void testSystemLog();
+void testComponentLogWithClientID();
+void testGetStockEmptyForNoUser();
+void testLogFailsGracefullyWithInvalidClientId();
+void testLogLevel();
+void testCreateLoggableRequestMasksPassword();
+void testProcessMessageUserReachLimitFailedAttemps();
+void testProcessCommandUpdateStockNegativeQuantity();
+void testgetInventoryHistoryTransactionSuccessfull();
+void testgetInventoryHistoryTransactionEmptyForNoLogs();
+void testgetInventoryHistoryTransactionEmptyForNoUser();
+void testGetFullInventoryIsEmpty();
+void testCommnadGetHistoryNoLogsEmptyData();
+void testCommnadGetHistory();
 /**
  * @brief Runs all the tests.
  *
@@ -134,11 +146,9 @@ int main() {
     RUN_TEST(testProcessCommandNoItemForUpload);
     RUN_TEST(testUpdateStockAddsNewItem);
     RUN_TEST(testUpdateStockModifiesExistingItem);
-    RUN_TEST(testGetInventorySummaryReturnsCorrectJson);
-    RUN_TEST(testGetInventorySummaryForUnknownClientReturnsEmptyJson);
+    RUN_TEST(testGetInventorySummaryReturnsCorrectMap);
+    RUN_TEST(testGetInventorySummaryForUnknownClientReturnsEmpty);
     RUN_TEST(testUpdateStockNegativeQuantity);
-    RUN_TEST(testAuthenticatorFailsWithUnknownUser);
-    RUN_TEST(testAuthenticatorFailsWithInvalidPassword);
     RUN_TEST(testAuthenticatorSucceedsWithValidCredentials);
     RUN_TEST(testSessionStartsUnauthenticated);
     RUN_TEST(testSessionAuthenticatesWithValidLogin);
@@ -155,6 +165,7 @@ int main() {
     RUN_TEST(testSaveStockUpdateThrowsOnConstraintViolation);
     RUN_TEST(testInitializeSchemaThrowsOnInvalidConnection);
     RUN_TEST(testGetStockFromDataBase);
+    RUN_TEST(testGetStockEmptyForNoUser);
     RUN_TEST(testGetStockReturnsEmptyForNonExistentItem);
     RUN_TEST(testProcessCommandGetStockSuccessfully);
     RUN_TEST(testProcessCommandGetStockNoItemFound);
@@ -171,7 +182,6 @@ int main() {
     RUN_TEST(testUpdateLoginAttempts);
     RUN_TEST(testUpdateLoginAttemptsUpToFour);
     RUN_TEST(testUpdateLoginAttemptsResets);
-    RUN_TEST(testAuthenticatorSucceedsWithValidCredentials);
     RUN_TEST(testAuthenticatorFailsWithInvalidPassword);
     RUN_TEST(testAuthenticatorFailsWithUnknownUser);
     RUN_TEST(testAuthenticatorFailsWithFailedAttempts);
@@ -185,6 +195,21 @@ int main() {
     RUN_TEST(testCreateUserFailsOnDuplicate);
     RUN_TEST(testgetInventorySummaryFromDataBase);
     RUN_TEST(testUserDoesntExists);
+    RUN_TEST(testSaveLogEntrySuccess);
+    RUN_TEST(testSaveLogEntryThrowsWithInvalidUser);
+    RUN_TEST(testSystemLog);
+    RUN_TEST(testComponentLogWithClientID);
+    RUN_TEST(testLogFailsGracefullyWithInvalidClientId);
+    RUN_TEST(testLogLevel);
+    RUN_TEST(testCreateLoggableRequestMasksPassword);
+    RUN_TEST(testProcessMessageUserReachLimitFailedAttemps);
+    RUN_TEST(testProcessCommandUpdateStockNegativeQuantity);
+    RUN_TEST(testgetInventoryHistoryTransactionSuccessfull);
+    RUN_TEST(testgetInventoryHistoryTransactionEmptyForNoLogs);
+    RUN_TEST(testgetInventoryHistoryTransactionEmptyForNoUser);
+    RUN_TEST(testGetFullInventoryIsEmpty);
+    RUN_TEST(testCommnadGetHistoryNoLogsEmptyData);
+    RUN_TEST(testCommnadGetHistory);
 
     sqlite3_shutdown();
     return UNITY_END();

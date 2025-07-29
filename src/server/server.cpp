@@ -1,14 +1,12 @@
 
 #include "server.hpp"
-#include "authenticator.hpp"
-#include "clientSession.hpp"
+#include <arpa/inet.h>
 #include <commandProcessor.hpp>
 #include <csignal> // For std::signal
 #include <cstring> // For memset()
 #include <iostream>
 #include <memory> //for make_shared
 #include <netinet/in.h>
-#include <sqlite3.h>
 #include <stdexcept> // For std::runtime_error
 #include <string>
 #include <sys/socket.h>
@@ -34,29 +32,27 @@ void signal_handler(int signum) {
     g_shutdown_flag = 1;
 }
 
-Server::Server(int port, const std::string &dbPath)
-    : port_(port)
-    , server_fd_(-1)
-    , m_clock()
-    , m_storage(dbPath)
-    , m_inventory(m_storage)
-    , m_authenticator(m_storage, m_clock) {
+Server::Server(int port, Inventory &inventory, Authenticator &authenticator, Logger &logger, Storage &storage)
+    : m_port(port)
+    , m_storage(storage)
+    , m_serverFD(-1)
+    , m_logger(logger)
+    , m_authenticator(authenticator)
+    , m_inventory(inventory) {
 
     setupServer();
-    m_storage.initializeSchema();
 }
 
 Server::~Server() {
-    if (server_fd_ != -1) {
-        cout << "Closing server socket.\n";
-        sqlite3_shutdown();
-        close(server_fd_);
+    if (m_serverFD != -1) {
+        close(m_serverFD);
     }
 }
 
 void Server::setupServer() {
-    server_fd_ = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_fd_ < 0) {
+    m_serverFD = socket(AF_INET, SOCK_STREAM, 0);
+    if (m_serverFD < 0) {
+        m_logger.log(LogLevel::ERROR, "Server", "Error while trying to create socket...");
         throw runtime_error("Failed to create socket");
     }
 
@@ -64,19 +60,21 @@ void Server::setupServer() {
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(port_);
+    serv_addr.sin_port = htons(m_port);
 
     // Necessary to interact with the old C Socket API
     //  NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-    if (bind(server_fd_, reinterpret_cast<struct sockaddr *>(&serv_addr), sizeof(serv_addr)) < 0) {
+    if (bind(m_serverFD, reinterpret_cast<struct sockaddr *>(&serv_addr), sizeof(serv_addr)) < 0) {
+        m_logger.log(LogLevel::ERROR, "Server", "Error while trying to bind socket.");
         throw runtime_error("Failed to bind to port");
     }
 
-    if (listen(server_fd_, MAX_CLIENTS_PERMITTED) < 0) {
+    if (listen(m_serverFD, MAX_CLIENTS_PERMITTED) < 0) {
+        m_logger.log(LogLevel::ERROR, "Server", "Error while trying to listen on socket.");
         throw runtime_error("Failed to listen on socket");
     }
-
-    cout << "Server listening on port: " << port_ << '\n';
+    m_logger.log(LogLevel::INFO, "Server", "Server listenig on port " + std::to_string(m_port));
+    // cout << "Server listening on port: " << port_ << '\n';
 }
 
 void Server::run() {
@@ -88,39 +86,50 @@ void Server::run() {
 
     while (g_shutdown_flag == 0) {
         FD_ZERO(&read_fds);
-        FD_SET(server_fd_, &read_fds);
+        FD_SET(m_serverFD, &read_fds);
 
         timevalue.tv_sec = 1;
         timevalue.tv_usec = 0;
 
-        // use selecto to wait for 1 sec or a clients connects and then go for another iteration
-        int activity = select(server_fd_ + 1, &read_fds, NULL, NULL, &timevalue);
+        // use select to wait for 1 sec or a clients connects and then go for another iteration
+
+        int activity = select(m_serverFD + 1, &read_fds, NULL, NULL, &timevalue);
 
         if ((activity < 0) && (errno != EINTR)) {
-            perror("select error");
+            m_logger.log(LogLevel::ERROR, "Server", "Error while trying to select.");
+            // perror("select error");
         }
 
-        if (activity > 0 && FD_ISSET(server_fd_, &read_fds)) {
+        if (activity > 0 && FD_ISSET(m_serverFD, &read_fds)) {
             socklen_t clilen = sizeof(cli_addr);
             // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-            int newsockfd = accept(server_fd_, reinterpret_cast<struct sockaddr *>(&cli_addr),
+            int newsockfd = accept(m_serverFD, reinterpret_cast<struct sockaddr *>(&cli_addr),
                                    &clilen); // Necessary to interact with API sockets of C
 
             if (newsockfd < 0) {
-                perror("Error on accept");
+                m_logger.log(LogLevel::ERROR, "Server", "Error while trying to accept.");
+                // perror("Error on accept");
                 continue;
             }
 
+            std::array<char, INET_ADDRSTRLEN> clientIPArray{};
+
+            // Convert binary IP to text
+            if (inet_ntop(AF_INET, &cli_addr.sin_addr, clientIPArray.data(), clientIPArray.size()) == nullptr) {
+                m_logger.log(LogLevel::ERROR, "Server", "Error while trying to convert client IP.");
+                throw std::system_error(errno, std::system_category(), "inet_ntop failed converting client IP");
+            }
             // this creates a new clientSession object in dinamic memory (new). It wrappes it in a shared_ptr and
             // returns no need to manually delete, local variable session finish and deletes its own ptr. copies of
             // shared_ptr are used by threads independently of local variable session. When all instances(threads)
             // complete their jobs and there is no more copies of the object clientSession via shared_ptr, memory will
             // be freed automaticly.
-
-            auto session = std::make_shared<clientSession>(newsockfd, m_inventory, m_authenticator);
+            auto session = std::make_shared<clientSession>(newsockfd, m_inventory, m_authenticator, m_logger, m_storage,
+                                                           std::string(clientIPArray.data()));
             jthread client_thread(&clientSession::run, session);
             client_thread.detach();
         }
     }
-    cout << "\nShutdown signal received. Server is closing.\n";
+    // cout << "\nShutdown signal received. Server is closing.\n";
+    m_logger.log(LogLevel::INFO, "Server", "Shutdown signal received. Server is now closing.");
 }

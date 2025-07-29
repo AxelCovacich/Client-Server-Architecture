@@ -12,7 +12,14 @@ void testServerConstructorFailsOnPrivilegedPort() {
 
     try {
 
-        Server s(80, ":memory:");
+        SystemClock clock;
+        Storage storage(":memory:");
+        storage.initializeSchema();
+        Logger logger(storage, clock, std::cerr);
+        Authenticator authenticator(storage, clock, logger);
+        Inventory inventory(storage, logger);
+        Server s(80, inventory, authenticator, logger, storage);
+
         TEST_FAIL_MESSAGE("Expected std::runtime_error, but no exception was thrown.");
 
     } catch (const std::runtime_error &e) {

@@ -7,7 +7,12 @@
 #define UPPER_PORT_LIMIT 65535
 namespace ArgsParser {
 
-using ParseResult = std::optional<int>;
+struct appConfig {
+    int port;
+    std::string dbPath;
+};
+
+using ParseResult = std::optional<appConfig>;
 
 /**
  * @brief Parses command-line arguments for the server.

@@ -2,6 +2,7 @@
 #include "unity.h"
 #include <ctime>
 #include <iostream>
+#include <vector>
 
 /**
  * @brief Tests that saveStockUpdate correctly inserts a new record.
@@ -144,6 +145,21 @@ void testGetStockFromDataBase() {
         TEST_FAIL_MESSAGE(e.what());
     }
 }
+void testGetStockEmptyForNoUser() {
+    Storage storage(":memory:");
+
+    try {
+        storage.initializeSchema();
+        storage.createUser("warehouse-1", "pass123");
+        storage.saveStockUpdate("warehouse-1", "food", "water", 500);
+
+        std::optional<int> result = storage.getStock("some_user", "food", "water");
+        TEST_ASSERT_FALSE(result.has_value());
+
+    } catch (const std::exception &e) {
+        TEST_FAIL_MESSAGE(e.what());
+    }
+}
 
 void testGetStockReturnsEmptyForNonExistentItem() {
 
@@ -189,14 +205,14 @@ void testGetFullInventorySuccess() {
         storage.saveStockUpdate("warehouse-1", "food", "water", 500);
         storage.saveStockUpdate("warehouse-1", "medicine", "bandages", 1000);
         storage.saveStockUpdate("warehouse-1", "food", "meat", 100);
-        std::optional<json> result = storage.getFullInventory("warehouse-1");
+        auto result = storage.getFullInventory("warehouse-1");
 
         TEST_ASSERT_TRUE(result.has_value());
         // get json out from optional to work with
-        json inventory_data = *result;
-        TEST_ASSERT_EQUAL_INT(500, inventory_data["food"]["water"].get<int>());
-        TEST_ASSERT_EQUAL_INT(100, inventory_data["food"]["meat"].get<int>());
-        TEST_ASSERT_EQUAL_INT(1000, inventory_data["medicine"]["bandages"].get<int>());
+        Storage::ClientInventoryMap inventoryMap = *result;
+        TEST_ASSERT_EQUAL_INT(500, inventoryMap["food"]["water"]);
+        TEST_ASSERT_EQUAL_INT(1000, inventoryMap["medicine"]["bandages"]);
+        TEST_ASSERT_EQUAL_INT(100, inventoryMap["food"]["meat"]);
 
     } catch (const std::exception &e) {
         TEST_FAIL_MESSAGE(e.what());
@@ -210,7 +226,23 @@ void testGetFullInventoryNoClientFound() {
         storage.initializeSchema();
         storage.createUser("warehouse-1", "pass123");
 
-        std::optional<json> result = storage.getFullInventory("warehouse-2");
+        auto result = storage.getFullInventory("warehouse-2");
+
+        TEST_ASSERT_FALSE(result.has_value());
+
+    } catch (const std::exception &e) {
+        TEST_FAIL_MESSAGE(e.what());
+    }
+}
+
+void testGetFullInventoryIsEmpty() {
+    Storage storage(":memory:");
+
+    try {
+        storage.initializeSchema();
+        storage.createUser("warehouse-1", "pass123");
+
+        auto result = storage.getFullInventory("warehouse-1");
 
         TEST_ASSERT_FALSE(result.has_value());
 
@@ -419,4 +451,74 @@ void testUserDoesntExists() {
     Storage storage(":memory:");
     storage.initializeSchema();
     TEST_ASSERT_FALSE(storage.userExists("somehostname"));
+}
+
+void testSaveLogEntrySuccess() {
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    storage.createUser("Warehouse-1", "pass123");
+    storage.saveLogEntry(5000, "INFO", "Authenticator", "User login successful", "Warehouse-1");
+    SQLite::Statement query(storage.getDb(),
+                            "SELECT timestamp, level, component, message FROM logs WHERE client_id = ?");
+    query.bind(1, "Warehouse-1");
+
+    TEST_ASSERT_TRUE(query.executeStep());
+    TEST_ASSERT_EQUAL_INT(5000, query.getColumn(0));
+    TEST_ASSERT_EQUAL_STRING("INFO", query.getColumn(1));
+    TEST_ASSERT_EQUAL_STRING("Authenticator", query.getColumn(2));
+    TEST_ASSERT_EQUAL_STRING("User login successful", query.getColumn(3));
+}
+
+void testSaveLogEntryThrowsWithInvalidUser() {
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    try {
+
+        storage.saveLogEntry(5000, "INFO", "Authenticator", "User login successful", "some_user");
+
+        TEST_FAIL_MESSAGE("Expected SQLite::Exception but no exception was thrown.");
+    } catch (const SQLite::Exception &e) {
+        TEST_ASSERT_NOT_NULL(strstr(e.what(), "FOREIGN KEY constraint failed"));
+        TEST_PASS_MESSAGE("Correctly caught expected exception.");
+    } catch (...) {
+        TEST_FAIL_MESSAGE("Expected SQLite::Exception but a different exception was thrown.");
+    }
+}
+
+void testgetInventoryHistoryTransactionSuccessfull() {
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    storage.createUser("Warehouse-1", "pass123");
+    storage.saveLogEntry(5000, "INFO", "Inventory", "Stock updated for meat to 50", "Warehouse-1");
+    storage.saveLogEntry(5001, "INFO", "Inventory", "Stock updated for water to 300", "Warehouse-1");
+
+    std::vector<LogEntry> history = storage.getInventoryHistoryTransaction("Warehouse-1");
+
+    TEST_ASSERT_EQUAL_INT(2, history.size());
+    TEST_ASSERT_EQUAL_INT(5000, history[1].timestamp);
+    TEST_ASSERT_EQUAL_STRING("INFO", history[1].level.c_str());
+    TEST_ASSERT_EQUAL_STRING("Inventory", history[1].component.c_str());
+    TEST_ASSERT_EQUAL_STRING("Stock updated for meat to 50", history[1].message.c_str());
+
+    TEST_ASSERT_EQUAL_INT(5001, history[0].timestamp);
+    TEST_ASSERT_EQUAL_STRING("INFO", history[0].level.c_str());
+    TEST_ASSERT_EQUAL_STRING("Inventory", history[0].component.c_str());
+    TEST_ASSERT_EQUAL_STRING("Stock updated for water to 300", history[0].message.c_str());
+}
+
+void testgetInventoryHistoryTransactionEmptyForNoLogs() {
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    storage.createUser("Warehouse-1", "pass123");
+
+    std::vector<LogEntry> history = storage.getInventoryHistoryTransaction("Warehouse-1");
+    TEST_ASSERT_EQUAL_INT(0, history.size());
+}
+
+void testgetInventoryHistoryTransactionEmptyForNoUser() {
+    Storage storage(":memory:");
+    storage.initializeSchema();
+
+    std::vector<LogEntry> history = storage.getInventoryHistoryTransaction("Warehouse-1");
+    TEST_ASSERT_EQUAL_INT(0, history.size());
 }

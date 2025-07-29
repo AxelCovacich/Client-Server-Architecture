@@ -2,16 +2,23 @@
 #define STORAGE_HPP
 
 #include <SQLiteCpp/Database.h>
-#include <nlohmann/json.hpp>
+#include <map>
 #include <optional>
 #include <string>
-
-using json = nlohmann::json;
+#include <vector>
 
 struct userAuthData {
     std::string passwordHash;
     int failedAttempts;
     time_t lastFailedTimestamp;
+};
+
+struct LogEntry {
+    std::time_t timestamp;
+    std::string level;
+    std::string component;
+    std::string message;
+    std::optional<std::string> clientId;
 };
 
 /**
@@ -23,8 +30,10 @@ struct userAuthData {
  */
 class Storage {
   public:
+    using ClientInventoryMap = std::map<std::string, std::map<std::string, int>>;
+
     /**
-     * @brief Constructs a Storage object and opens the database connection.
+     * @brief Constructs a Storage object and opens the database connection on read-write by default.
      * @param dbPath The file path to the SQLite database.
      * @throw SQLite::Exception if the database cannot be opened.
      */
@@ -71,15 +80,11 @@ class Storage {
     /**
      * @brief Retrieves the entire inventory for a specific client.
      * @param clientId The client's unique identifier.
-     * @return An optional containing a JSON object of the client's full inventory
+     * @return An optional containing a map object of the client's full inventory
      * if found, otherwise an empty optional.
      * @throw SQLite::Exception if an error ocurrs trying to read.
      */
-    std::optional<json> getFullInventory(const std::string &clientId);
-
-    // logEvent();
-
-    // searchUserTable();
+    std::optional<ClientInventoryMap> getFullInventory(const std::string &clientId);
 
     /**
      * @brief Creates a new user record with a hashed password in the database.
@@ -110,6 +115,11 @@ class Storage {
      * @param timeStamp Time of the last failed attempt.
      */
     void updateLoginAttempts(const std::string &hostname, bool loginSuccess, time_t timeStamp);
+
+    void saveLogEntry(std::time_t timestamp, const std::string &level, const std::string &component,
+                      const std::string &message, const std::optional<std::string> &clientId = std::nullopt);
+
+    std::vector<LogEntry> getInventoryHistoryTransaction(const std::string &clientId);
 
   private:
     // Library SQLiteCpp wrappes the connection to the data base with SQLite::Database. We use the object of the

@@ -1,10 +1,11 @@
 #include "argsParser.hpp"
+#include "authenticator.hpp"
+#include "inventory.hpp"
 #include "server.hpp"
 #include "storage.hpp"
 #include <csignal>
 #include <cstdlib> // For atoi
 #include <iostream>
-#include <sqlite3.h>
 
 using namespace std;
 
@@ -25,25 +26,48 @@ void signal_handler(int signum);
 int main(int argc, char *argv[]) {
 
     const std::vector<std::string> args(argv, argv + argc); // vector that contains all the elements of the command line
+    std::unique_ptr<Server> server = nullptr; // smart pointer to server lives in the stack to controll the server
+                                              // object
 
-    auto parsed_args = ArgsParser::parseArguments(args);
-    if (!parsed_args) {
+    auto parsedArgs = ArgsParser::parseArguments(args);
+    if (!parsedArgs) {
         return 1;
     }
 
-    int port = *parsed_args;
+    int port = parsedArgs->port;
+    std::string dbPath = parsedArgs->dbPath;
 
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
     signal(SIGQUIT, signal_handler);
 
     try {
-        Server server(port, "./var/lib/my_db.sqlite3");
-        server.run();
+
+        SystemClock clock;
+        Storage storage(dbPath);
+        storage.initializeSchema();
+        Logger logger(storage, clock, std::cerr);
+        Authenticator authenticator(storage, clock, logger);
+        Inventory inventory(storage, logger);
+
+        logger.log(LogLevel::INFO, "Main", "Core services initialized.");
+
+        // making a server object on the heap, controlled by smart pointer server
+        server = std::make_unique<Server>(port, inventory, authenticator, logger, storage);
+        logger.log(LogLevel::INFO, "Main", "Server successfully started. Running loop...");
+
     } catch (const exception &e) {
-        cerr << "Cannot start server: " << e.what() << '\n';
+        std::cerr << "CRITICAL STARTUP FAILURE: \n" << e.what();
         return 1;
     }
-    sqlite3_shutdown();
+
+    try {
+        // std::cout << "Starting server run loop...\n";
+        server->run();
+
+    } catch (const std::exception &e) {
+        std::cerr << "FATAL RUNTIME ERROR: Unhandled exception in run(): \n" << e.what();
+        return 1;
+    }
     return 0;
 }

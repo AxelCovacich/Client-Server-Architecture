@@ -1,6 +1,9 @@
+#include "clock.hpp"
 #include "inventory.hpp"
+#include "logger.hpp"
 #include "storage.hpp"
 #include "unity.h"
+#include <iostream>
 #include <optional>
 
 /**
@@ -11,7 +14,9 @@ void testUpdateStockAddsNewItem() {
     Storage storage(":memory:");
     storage.initializeSchema();
     std::string clientId = "warehouse-A";
-    Inventory inventory(storage);
+    SystemClock clock;
+    Logger logger(storage, clock, std::cerr);
+    Inventory inventory(storage, logger);
     storage.createUser(clientId, "pass123");
     // Check inicial stock is empty
     std::optional<int> initial_stock = inventory.getStock("warehouse-A", "food", "meat");
@@ -40,7 +45,9 @@ void testUpdateStockModifiesExistingItem() {
     Storage storage(":memory:");
     storage.initializeSchema();
     std::string clientId = "warehouse-A";
-    Inventory inventory(storage);
+    SystemClock clock;
+    Logger logger(storage, clock, std::cerr);
+    Inventory inventory(storage, logger);
     storage.createUser(clientId, "pass123");
     //  inicial stock
     inventory.updateStock("warehouse-A", "food", "meat", 150);
@@ -53,37 +60,47 @@ void testUpdateStockModifiesExistingItem() {
     TEST_ASSERT_EQUAL_INT(99, final_stock.value());
 }
 
-void testGetInventorySummaryReturnsCorrectJson() {
+void testGetInventorySummaryReturnsCorrectMap() {
     Storage storage(":memory:");
     storage.initializeSchema();
     std::string clientId = "warehouse-A";
-    Inventory inventory(storage);
+    SystemClock clock;
+    Logger logger(storage, clock, std::cerr);
+    Inventory inventory(storage, logger);
     storage.createUser(clientId, "pass123");
     // first we add items to inventory
     inventory.updateStock("warehouse-A", "food", "meat", 150);
     inventory.updateStock("warehouse-A", "medicine", "bandages", 300);
 
-    std::string result_str = inventory.getInventorySummaryJson("warehouse-A");
+    auto result = inventory.getInventorySummary("warehouse-A");
 
-    const char *expected_str = "{\"food\":{\"meat\":150},\"medicine\":{\"bandages\":300}}";
-    TEST_ASSERT_EQUAL_STRING(expected_str, result_str.c_str());
+    TEST_ASSERT_TRUE(result.has_value());
+
+    Inventory::ClientInventoryMap inventoryMap = *result;
+
+    TEST_ASSERT_EQUAL_INT(150, inventoryMap["food"]["meat"]);
+    TEST_ASSERT_EQUAL_INT(300, inventoryMap["medicine"]["bandages"]);
 }
 
-void testGetInventorySummaryForUnknownClientReturnsEmptyJson() {
+void testGetInventorySummaryForUnknownClientReturnsEmpty() {
     Storage storage(":memory:");
     storage.initializeSchema();
     std::string clientId = "warehouse-A";
-    Inventory inventory(storage);
+    SystemClock clock;
+    Logger logger(storage, clock, std::cerr);
+    Inventory inventory(storage, logger);
     storage.createUser(clientId, "pass123");
-    std::string result_str = inventory.getInventorySummaryJson("warehouse-B");
-    TEST_ASSERT_EQUAL_STRING("{}", result_str.c_str());
+    auto result = inventory.getInventorySummary("warehouse-B");
+    TEST_ASSERT_FALSE(result.has_value());
 }
 
 void testUpdateStockNegativeQuantity() {
     Storage storage(":memory:");
     storage.initializeSchema();
     std::string clientId = "warehouse-A";
-    Inventory inventory(storage);
+    SystemClock clock;
+    Logger logger(storage, clock, std::cerr);
+    Inventory inventory(storage, logger);
     storage.createUser(clientId, "pass123");
     inventory.updateStock("warehouse-A", "food", "meat", 0);
     bool result = inventory.updateStock("warehouse-A", "food", "meat", -50);
@@ -104,7 +121,9 @@ void testGetStockRetrievesFromDatabaseOnCacheMiss() {
 
     Storage storage(":memory:");
     storage.initializeSchema();
-    Inventory inventory(storage);
+    SystemClock clock;
+    Logger logger(storage, clock, std::cerr);
+    Inventory inventory(storage, logger);
     std::string clientId = "warehouse-A";
     storage.createUser(clientId, "pass123");
     storage.saveStockUpdate("warehouse-A", "medicine", "bandages", 777);
@@ -118,13 +137,20 @@ void testGetStockRetrievesFromDatabaseOnCacheMiss() {
 void testgetInventorySummaryFromDataBase() {
     Storage storage(":memory:");
     storage.initializeSchema();
-    Inventory inventory(storage);
+    SystemClock clock;
+    Logger logger(storage, clock, std::cerr);
+    Inventory inventory(storage, logger);
     std::string clientId = "warehouse-A";
     storage.createUser(clientId, "pass123");
     storage.saveStockUpdate(clientId, "medicine", "bandages", 300);
     storage.saveStockUpdate(clientId, "food", "meat", 150);
 
-    std::string result_str = inventory.getInventorySummaryJson(clientId);
-    const char *expected_str = "{\"food\":{\"meat\":150},\"medicine\":{\"bandages\":300}}";
-    TEST_ASSERT_EQUAL_STRING(expected_str, result_str.c_str());
+    auto result = inventory.getInventorySummary("warehouse-A");
+
+    TEST_ASSERT_TRUE(result.has_value());
+
+    Inventory::ClientInventoryMap inventoryMap = *result;
+
+    TEST_ASSERT_EQUAL_INT(150, inventoryMap["food"]["meat"]);
+    TEST_ASSERT_EQUAL_INT(300, inventoryMap["medicine"]["bandages"]);
 }

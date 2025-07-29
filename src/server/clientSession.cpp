@@ -5,18 +5,22 @@
 #include <array>
 #include <cstring> // For memset()
 #include <iostream>
-#include <nlohmann/json.hpp>
+
 #include <thread>
 #include <unistd.h>
 
 using namespace std;
 using json = nlohmann::json;
 
-clientSession::clientSession(int clientSocket, Inventory &inventory, Authenticator &authenticator)
+clientSession::clientSession(int clientSocket, Inventory &inventory, Authenticator &authenticator, Logger &logger,
+                             Storage &storage, const std::string &clientIP)
     : m_clientSocket(clientSocket)
     , m_isAuthenticated(false)
     , m_inventory(inventory)
     , m_authenticator(authenticator)
+    , m_logger(logger)
+    , m_clientIP(clientIP)
+    , m_storage(storage)
 // m_clientID("") starts empty already
 {
     // constructor actions here
@@ -30,10 +34,10 @@ clientSession::~clientSession() {
 }
 
 void clientSession::run() {
-    cout << "New client connected. Handled by thread: " << this_thread::get_id() << '\n';
+    m_logger.log(LogLevel::INFO, "ClientSession", "New connection accepted from IP " + m_clientIP);
 
     const char *welcome_msg =
-        "Welcome to the C++ Server! Please login to initiate operations or type 'end' to disconnect.\n";
+        "Welcome to the C++ Server! Please login to start operating or type 'end' to disconnect.\n";
 
     if (write(m_clientSocket, welcome_msg, strlen(welcome_msg)) < 0) {
         perror("Writing to client socket");
@@ -53,7 +57,9 @@ void clientSession::run() {
             if (bytes_read < 0) {
                 perror("Error reading from socket");
             }
-            cout << "Client disconnected. Thread " << this_thread::get_id() << " finishing.\n";
+            m_logger.log(LogLevel::WARNING, "ClientSession",
+                         "Client connection from IP: " + m_clientIP + "has been disconnected.");
+            // cout << "Client disconnected. Thread " << this_thread::get_id() << " finishing.\n";
             break;
         }
 
@@ -70,12 +76,13 @@ void clientSession::run() {
         }
 
         if (!result.second) {
-
-            cout << "Closing connection based on command.\n";
+            // close connection
             break;
         }
     }
-    cout << "Closing connection with client from thread: " << this_thread::get_id() << '\n';
+    // cout << "Closing connection with client from thread: " << this_thread::get_id() << '\n';
+    m_logger.log(LogLevel::INFO, "ClientSession",
+                 "Closing connection with client: " + m_clientID + " from IP: " + m_clientIP);
     close(m_clientSocket);
 }
 
@@ -91,8 +98,13 @@ clientSession::processResult clientSession::processMessage(const std::string &js
     json request = json::parse(json_string, nullptr, false); // don't throw exception, give back discarded if not valid
     if (request.is_discarded()) {
 
+        m_logger.log(LogLevel::WARNING, "ClientSession", "Invalid JSON format from clientIP: " + m_clientIP);
+
         return {"{\"status\":\"error\",\"message\":\"Invalid JSON format.\"}", true};
     }
+
+    // log call with masked password for safety
+    m_logger.log(LogLevel::DEBUG, "ClientSession", "Received message: " + createLoggableRequest(request).dump());
 
     if (!m_isAuthenticated) {
         // Not authenticated, can only log in
@@ -103,17 +115,35 @@ clientSession::processResult clientSession::processMessage(const std::string &js
                 const std::string user = request.at("payload").at("hostname");
                 const std::string pass = request.at("payload").at("password");
 
-                if (m_authenticator.authenticate(user, pass)) {
+                AuthResult result = m_authenticator.authenticate(user, pass);
+                json response;
+
+                switch (result) {
+                case AuthResult::SUCCESS:
                     m_isAuthenticated = true;
                     m_clientID = user;
-                    return {"{\"status\":\"success\",\"message\":\"Login successful.\"}", true};
+                    response["status"] = "success";
+                    response["message"] = "Login successful.";
+                    break;
+                case AuthResult::FAILED_ACCOUNT_LOCKED:
+                    response["status"] = "error";
+                    response["message"] = "Account is temporarily locked due to too many failed attempts.";
+                    break;
+                case AuthResult::FAILED_USER_NOT_FOUND:
+                case AuthResult::FAILED_BAD_CREDENTIALS:
+                    response["status"] = "error";
+                    response["message"] = "Login failed. Invalid hostname or password.";
+                    break;
                 }
 
-                return {"{\"status\":\"error\",\"message\":\"Login failed. Invalid credentials.\"}", true};
+                return {response.dump(), true};
 
             } catch (const json::exception &e) {
                 // for any missing item on the json input (payload, hostname or password)
-                std::cerr << "Invalid login request format: " << e.what() << '\n';
+
+                // std::cerr << "Invalid login request format: " << e.what() << '\n';
+                m_logger.log(LogLevel::WARNING, "ClientSession",
+                             "Malformed login request from ClientIP: " + m_clientIP);
                 return {"{\"status\":\"error\",\"message\":\"Malformed login request.\"}", true};
             }
         } else {
@@ -125,17 +155,29 @@ clientSession::processResult clientSession::processMessage(const std::string &js
 
         try {
 
-            auto result = commandProcessor::processCommand(request, m_clientID, false, m_inventory);
+            auto result =
+                commandProcessor::processCommand(request, m_clientID, false, m_inventory, m_logger, m_storage);
             return result;
 
         } catch (const std::exception &e) {
-            std::cerr << "CRITICAL ERROR processing command for client " << m_clientID << ": " << e.what() << '\n';
+            // std::cerr << "CRITICAL ERROR processing command for client " << m_clientID << ": " << e.what() << '\n';
+            m_logger.log(LogLevel::ERROR, "ClientSession",
+                         "CRITICAL: Unhandled exception for client " + m_clientID + ". Error: " + e.what());
 
             json response;
             response["status"] = "error";
-            response["message"] = "An internal server error occurred.";
+            response["message"] = "An internal server error occurred. Please reconnect";
 
-            return {response.dump(), true};
+            return {response.dump(), false};
         }
     }
+}
+
+json clientSession::createLoggableRequest(json request) {
+    if (request.contains("payload")) {
+        if (request["payload"].contains("password")) {
+            request["payload"]["password"] = "[REDACTED]";
+        }
+    }
+    return request;
 }

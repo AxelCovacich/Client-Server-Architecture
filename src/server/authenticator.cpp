@@ -6,19 +6,21 @@
 
 using namespace std;
 
-Authenticator::Authenticator(Storage &storage, const IClock &clock)
+Authenticator::Authenticator(Storage &storage, const IClock &clock, Logger &logger)
     : m_storage(storage)
-    , m_clock(clock) {
+    , m_clock(clock)
+    , m_logger(logger) {
 }
 
-bool Authenticator::authenticate(const std::string &hostname, const std::string &password) const {
+AuthResult Authenticator::authenticate(const std::string &hostname, const std::string &password) const {
 
     std::lock_guard<std::mutex> lock(m_mutex); // mutex here to make the secuence of select--> update atomic
 
     std::optional<userAuthData> authData = m_storage.getUserLoginData(hostname);
     if (!authData.has_value()) {
-        cerr << "No user registered for the given hostname: " << hostname << '\n';
-        return false;
+        // cerr << "No user registered for the given hostname: " << hostname << '\n';
+        m_logger.log(LogLevel::WARNING, "Authenticator", "No user found for the given hostname: '" + hostname + "'.");
+        return AuthResult::FAILED_USER_NOT_FOUND;
     }
 
     const long BLOCK_DURATION_SECONDS = 15 * 60; // 15 minutos
@@ -26,8 +28,10 @@ bool Authenticator::authenticate(const std::string &hostname, const std::string 
 
     if (authData->failedAttempts >= 3 && (currentTime - authData->lastFailedTimestamp) < BLOCK_DURATION_SECONDS) {
 
-        cerr << "Login temporally blocked for " << hostname << ". Try again later.\n";
-        return false;
+        // cerr << "Login temporally blocked for " << hostname << ". Try again later.\n";
+        m_logger.log(LogLevel::WARNING, "Authenticator",
+                     "User by hostname: '" + hostname + "' is trying to login but is blocked.");
+        return AuthResult::FAILED_ACCOUNT_LOCKED;
     }
 
     if (authData->failedAttempts >= 3) {
@@ -36,10 +40,18 @@ bool Authenticator::authenticate(const std::string &hostname, const std::string 
     }
     if (bcrypt::validatePassword(password, authData->passwordHash)) {
         // successfull login,reset the login attempts
+        m_logger.log(LogLevel::INFO, "Authenticator", "Login successful for user '" + hostname + "'.");
         m_storage.updateLoginAttempts(hostname, true, currentTime);
-        return true;
+
+        return AuthResult::SUCCESS;
     }
 
     m_storage.updateLoginAttempts(hostname, false, currentTime); // Failed, +1 attempt, save time
-    return false;
+    if (authData->failedAttempts == 2) {
+        m_logger.log(LogLevel::WARNING, "Authenticator",
+                     "Failed login attempts limit reached for user '" + hostname + "'. Login is disabled for 15 min.");
+        return AuthResult::FAILED_ACCOUNT_LOCKED;
+    }
+    m_logger.log(LogLevel::WARNING, "Authenticator", "Failed login attempt for user '" + hostname + "'.");
+    return AuthResult::FAILED_BAD_CREDENTIALS;
 }

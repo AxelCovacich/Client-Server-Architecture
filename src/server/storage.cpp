@@ -8,7 +8,7 @@
 using namespace std;
 
 Storage::Storage(const std::string &dbPath, int openFlags)
-    : // constructor call of the db object, path to file and flags given
+    : // constructor call of the db object, path to file and flags given. Read and write by default
     m_db(dbPath, openFlags) {
 }
 
@@ -49,6 +49,18 @@ void Storage::initializeSchema() {
         )");
 
         cout << "Inventory table initialized successfully.\n";
+
+        m_db.exec(R"(
+            CREATE TABLE IF NOT EXISTS logs (
+                log_id    INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp INTEGER NOT NULL,
+                level     TEXT NOT NULL,
+                component TEXT NOT NULL,
+                message   TEXT NOT NULL,
+                client_id TEXT,
+                FOREIGN KEY (client_id) REFERENCES users(hostname)
+            );
+        )");
 
     } catch (const SQLite::Exception &e) {
         std::cerr << "Error initializing schema: " << e.what() << '\n';
@@ -109,12 +121,13 @@ std::optional<int> Storage::getStock(const std::string &clientId, const std::str
     }
 }
 
-std::optional<json> Storage::getFullInventory(const std::string &clientId) {
+std::optional<Storage::ClientInventoryMap> Storage::getFullInventory(const std::string &clientId) {
+
     try {
         SQLite::Statement query(m_db, "SELECT category, item, quantity FROM inventory WHERE client_id = ?");
         query.bind(1, clientId);
 
-        json inventory_data = json::object();
+        ClientInventoryMap inventoryMap;
         bool client_found = false;
 
         // Must iterate over all the rows found for client
@@ -126,14 +139,14 @@ std::optional<json> Storage::getFullInventory(const std::string &clientId) {
             int quantity = query.getColumn("quantity");
 
             // save the data row by row
-            inventory_data[category][item] = quantity;
+            inventoryMap[category][item] = quantity;
         }
         if (!client_found) {
             // Client doesn't exist or has empty values
             return std::nullopt;
         }
 
-        return inventory_data;
+        return inventoryMap;
 
     } catch (const std::exception &e) {
         std::cerr << "Error getting full inventory from database: " << e.what() << '\n';
@@ -169,15 +182,13 @@ bool Storage::userExists(const std::string &hostname) {
         SQLite::Statement query(m_db, "SELECT COUNT(*) FROM users WHERE hostname = ?");
         query.bind(1, hostname);
 
-        if (query.executeStep()) {
-            int count = query.getColumn(0);
-            return (count == 1);
-        }
+        query.executeStep();
+        return (query.getColumn(0).getInt() == 1); // if user not found, count will be 0
+
     } catch (const std::exception &e) {
         std::cerr << "Error checking if user exists: " << e.what() << '\n';
         throw;
     }
-    return false;
 }
 
 std::optional<userAuthData> Storage::getUserLoginData(const std::string &hostname) {
@@ -223,4 +234,52 @@ void Storage::updateLoginAttempts(const std::string &hostname, bool loginSuccess
         std::cerr << "Error updating login attempts for user '" << hostname << "': " << e.what() << '\n';
         throw;
     }
+}
+
+void Storage::saveLogEntry(std::time_t timestamp, const std::string &level, const std::string &component,
+                           const std::string &message, const std::optional<std::string> &clientId) {
+    try {
+
+        SQLite::Statement query(m_db, R"(
+                                            INSERT INTO logs (timestamp, level, component, message,client_id)
+                                            VALUES (?, ?, ?, ?, ?);)");
+        query.bind(1, static_cast<int64_t>(timestamp));
+        query.bind(2, level);
+        query.bind(3, component);
+        query.bind(4, message);
+        if (clientId.has_value()) {
+            query.bind(5, clientId.value()); // NOLINT
+        }
+        query.exec();
+    } catch (const std::exception &e) {
+        throw; // logger function will attend the excep
+    }
+}
+
+std::vector<LogEntry> Storage::getInventoryHistoryTransaction(const std::string &clientId) {
+    std::vector<LogEntry> history;
+    try {
+        SQLite::Statement query(m_db, R"(
+                                        SELECT timestamp, level, component, message 
+                                        FROM logs
+                                        WHERE client_id = ? AND component = 'Inventory'
+                                        ORDER BY timestamp DESC
+                                        )");
+
+        query.bind(1, clientId);
+        bool client_found = false;
+
+        // Must iterate over all the rows found for client, pushback will add the logentry object with all elements at
+        // the end of the vector history.
+        while (query.executeStep()) {
+            history.push_back({.timestamp = query.getColumn("timestamp").getInt64(),
+                               .level = query.getColumn("level").getString(),
+                               .component = query.getColumn("component").getString(),
+                               .message = query.getColumn("message").getString()});
+        }
+    } catch (const std::exception &e) {
+        std::cerr << "Error getting full history for inventory from database: " << e.what() << '\n';
+        throw;
+    }
+    return history;
 }

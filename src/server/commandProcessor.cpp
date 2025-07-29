@@ -1,6 +1,8 @@
 #include "commandProcessor.hpp"
 #include "inventory.hpp"
+#include "storage.hpp"
 #include <iostream>
+#include <map>
 #include <nlohmann/json.hpp>
 #include <optional>
 
@@ -10,12 +12,14 @@ using namespace std;
 namespace commandProcessor {
 
 commandResult processCommand(const json &request, const std::string &clientId, bool is_in_maintenance,
-                             Inventory &inventory) {
+                             Inventory &inventory, Logger &logger, Storage &storage) {
 
     json response;
 
     //  Validate command exists
     if (!request.contains("command")) {
+        logger.log(LogLevel::WARNING, "CommandProcessor",
+                   "Request from client " + clientId + " is missing 'command' field.", clientId);
         response["status"] = "error";
         response["message"] = "Missing 'command' field in request.";
         return {response.dump(), true}; // Keep waiting for valid command
@@ -23,6 +27,10 @@ commandResult processCommand(const json &request, const std::string &clientId, b
 
     //  Extract the command
     std::string cmd = request["command"];
+
+    // Log the command to process
+    // logger.log(LogLevel::DEBUG, "CommandProcessor", "Processing '" + cmd + "' command for client " + clientId,
+    // clientId);
 
     //  Process the command
     if (cmd == "status") {
@@ -40,20 +48,24 @@ commandResult processCommand(const json &request, const std::string &clientId, b
     if (cmd == "end") {
         response["status"] = "success";
         response["message"] = "Goodbye!";
+        logger.log(LogLevel::INFO, "CommandProcessor", "Requested disconnection via end command for client " + clientId,
+                   clientId);
         return {response.dump(), false}; // To finish
     }
 
     if (cmd == "get_inventory") {
 
-        std::string inventoryDataStr = inventory.getInventorySummaryJson(clientId);
+        auto inventoryMap = inventory.getInventorySummary(clientId);
 
-        // parse again to correct nesting
-        json inventoryData = json::parse(inventoryDataStr);
-
-        response["status"] = "success";
-        response["message"] = "Inventory data for client " + clientId + " retrieved.";
-        response["data"] = inventoryData;
-
+        if (inventoryMap.has_value()) {
+            json inventoryData = *inventoryMap;
+            response["status"] = "success";
+            response["message"] = "Inventory data for client " + clientId + " retrieved.";
+            response["data"] = inventoryData;
+        } else {
+            response["status"] = "warning";
+            response["message"] = "Inventory data for client " + clientId + " is empty.";
+        }
         return {response.dump(), true};
     }
 
@@ -67,24 +79,31 @@ commandResult processCommand(const json &request, const std::string &clientId, b
             const std::string item = payload.at("item");
             const int quantity = payload.at("quantity");
 
-            // 2. All good to upload
-            inventory.updateStock(clientId, category, item, quantity);
+            bool success = inventory.updateStock(clientId, category, item, quantity);
 
-            // 3. Success response.
-            response["status"] = "success";
-            std::string message = "Stock for '";
-            message += category + ":" + item;
-            message += "' successfully updated to " + std::to_string(quantity) + ".";
+            if (success) {
 
-            response["message"] = message;
+                response["status"] = "success";
+                std::string message = "Stock for '";
+                message += category + ":" + item;
+                message += "' successfully updated to " + std::to_string(quantity) + ".";
+                response["message"] = message;
+            } else {
+
+                response["status"] = "error";
+                response["message"] = "Invalid stock update: quantity cannot be negative.";
+            }
             return {response.dump(), true};
 
         } catch (const json::exception &e) {
-            // 4. If any key is missing, or wrong type this will treat it
+            // If any key is missing, or wrong type this will treat it
             //    (ej: "quantity": "abc")
-            cerr << "Invalid payload for update_stock: " << e.what() << '\n';
+            // cerr << "Invalid payload for update_stock: " << e.what() << '\n';
             response["status"] = "error";
             response["message"] = "Invalid or missing field in update_stock payload.";
+            logger.log(LogLevel::WARNING, "CommandProcessor", "Invalid or missing field in update_stock payload.",
+                       clientId);
+
             return {response.dump(), true};
         }
     }
@@ -117,16 +136,42 @@ commandResult processCommand(const json &request, const std::string &clientId, b
 
         } catch (const json::exception &e) {
 
-            cerr << "Invalid payload for get_stock: " << e.what() << '\n';
+            // cerr << "Invalid payload for get_stock: " << e.what() << '\n';
             response["status"] = "error";
             response["message"] = "Invalid or missing field in get_stock payload.";
+            logger.log(LogLevel::WARNING, "CommandProcessor", "Invalid or missing field in get_stock payload.",
+                       clientId);
             return {response.dump(), true};
         }
+    }
+
+    if (cmd == "get_history") {
+        std::vector<LogEntry> history = storage.getInventoryHistoryTransaction(clientId);
+
+        response["status"] = "success";
+        response["message"] = "Inventory history retrieved.";
+
+        json historyArray = json::array(); // create an empty json array to store temporarly store the logs
+        for (const auto &entry : history) {
+            json logEntry;
+            logEntry["timestamp"] = entry.timestamp;
+            logEntry["message"] = entry.message;
+            logEntry["component"] = entry.component;
+            logEntry["level"] = entry.level;
+            historyArray.push_back(logEntry); // add the json object logentry with the contents of the log to the array
+        }
+
+        response["data"] = historyArray; // now add to the data field the entire array with all the logs captured in the
+                                         // loop if empty(no logs found), it just returns an empty field []
+
+        return {response.dump(), true};
     }
 
     // for unknown command
     response["status"] = "success"; // Is not an error, its just unknown
     response["message"] = "ACK: Unknown command received.";
+    logger.log(LogLevel::WARNING, "CommandProcessor", "Received unknown command '" + cmd + "' from client " + clientId,
+               clientId);
     return {response.dump(), true};
 }
 } // namespace commandProcessor

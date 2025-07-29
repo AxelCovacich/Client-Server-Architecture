@@ -3,9 +3,8 @@
 
 #include "authenticator.hpp"
 #include "clientSession.hpp"
-#include "clock.hpp"
 #include "inventory.hpp"
-#include "storage.hpp"
+#include "logger.hpp"
 #include <string>
 #include <utility>
 
@@ -25,7 +24,7 @@ class Server {
      * * @param port The port number to listen on.
      * @throw std::runtime_error If socket creation, binding, or listening fails.
      */
-    Server(int port, const std::string &dbPath);
+    Server(int port, Inventory &inventory, Authenticator &authenticator, Logger &logger, Storage &storage);
 
     /**
      * @brief Destroys the Server object.
@@ -41,13 +40,13 @@ class Server {
     void run();
 
   private:
-    int port_;
-    int server_fd_; // File descriptor for the listening socket
+    int m_port;
+    int m_serverFD; // File descriptor for the listening socket
 
-    SystemClock m_clock;
-    Storage m_storage;
-    Authenticator m_authenticator;
-    Inventory m_inventory;
+    Logger &m_logger;
+    Authenticator &m_authenticator;
+    Inventory &m_inventory;
+    Storage &m_storage;
 
     /**
      * @brief Sets up the server's listening socket.
