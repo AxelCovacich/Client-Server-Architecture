@@ -34,6 +34,7 @@ clientSession::~clientSession() {
 }
 
 void clientSession::run() {
+
     m_logger.log(LogLevel::INFO, "ClientSession", "New connection accepted from IP " + m_clientIP);
 
     const char *welcome_msg =

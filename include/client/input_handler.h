@@ -1,6 +1,7 @@
 #ifndef INPUT_HANDLER_H
 #define INPUT_HANDLER_H
 
+#include <stdbool.h>
 #include <stddef.h>
 
 /**
@@ -53,5 +54,21 @@ typedef struct {
  * MUST free this string. Returns NULL on error or for non-sending actions.
  */
 json_build_result build_json_from_input(char *raw_input);
+
+typedef struct {
+    const char *host;
+    const char *port_tcp;
+    char port_udp[16];
+    const char *protocol;
+} client_config;
+
+/**
+ * @brief Parses command-line arguments for the client.
+ * @param argc The argument count from main.
+ * @param argv The argument vector from main.
+ * @param out_config A pointer to a ClientConfig struct to be filled.
+ * @return True on successful parsing, false otherwise.
+ */
+bool parse_arguments(int argc, const char *argv[], client_config *out_config);
 
 #endif // INPUT_HANDLER_H

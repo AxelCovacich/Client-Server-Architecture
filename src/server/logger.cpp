@@ -9,6 +9,7 @@ Logger::Logger(Storage &storage, const IClock &clock, std::ostream &errorStream)
 
 void Logger::log(LogLevel level, const std::string &component, const std::string &message,
                  const std::optional<std::string> &clientId) noexcept {
+
     std::time_t now = m_clock.now();
     std::string level_str = levelToString(level);
 

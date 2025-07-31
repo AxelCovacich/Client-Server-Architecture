@@ -87,3 +87,36 @@ void test_build_json_fails_on_missing_arguments() {
     TEST_ASSERT_EQUAL_INT(JSON_BUILD_ERROR_SYNTAX, result.status);
     TEST_ASSERT_NULL(result.json_string);
 }
+
+void test_input_arguments_succeess() {
+    client_config config;
+    const char *argv[] = {"./client", "localhost", "7000"};
+    int argc = 3;
+
+    TEST_ASSERT_TRUE(parse_arguments(argc, argv, &config));
+}
+
+void test_parse_arguments_fails_on_insufficient_args() {
+
+    const char *argv[] = {"./client", "localhost"};
+    int argc = 2;
+    client_config config;
+
+    bool result = parse_arguments(argc, argv, &config);
+
+    TEST_ASSERT_FALSE(result);
+}
+
+/**
+ * @brief Tests that argument parsing fails with an invalid port number.
+ */
+void test_parse_arguments_fails_on_invalid_port() {
+
+    const char *argv[] = {"./client", "localhost", "not_a_port"};
+    int argc = 3;
+    client_config config;
+
+    bool result = parse_arguments(argc, argv, &config);
+
+    TEST_ASSERT_FALSE(result);
+}

@@ -9,6 +9,7 @@
 #include <utility>
 
 #define BUFFER_SIZE 256
+#define BUFFER_SIZE_UDP 256
 #define MAX_CLIENTS_PERMITTED 1000
 
 /**
@@ -41,7 +42,8 @@ class Server {
 
   private:
     int m_port;
-    int m_serverFD; // File descriptor for the listening socket
+    int m_serverTCPFD; // File descriptor for the listening socket TCP
+    int m_serverUDPFD;
 
     Logger &m_logger;
     Authenticator &m_authenticator;
@@ -62,6 +64,10 @@ class Server {
      * socket.
      */
     void handleClient(int client_socket);
+
+    void setTCPConfig();
+    void setUDPConfig();
+    void handleUdpMessage();
 };
 
 #endif // SERVER_HPP

@@ -66,6 +66,9 @@ if(DOXYGEN_FOUND)
   )
 endif()
 
+# for client thread
+find_package(Threads REQUIRED)
+
 option(ENABLE_TSAN "Enable ThreadSanitizer" OFF)
 if(ENABLE_TSAN)
   add_compile_options(-fsanitize=thread)
@@ -144,6 +147,8 @@ add_library(ClientLib SHARED
     src/client/client.c
     src/client/input_handler.c
     external/cJSON/cJSON.c
+    src/client/transport.c
+    src/client/session_handler.c
 )
 target_include_directories(ClientLib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include/client
@@ -160,7 +165,7 @@ target_link_libraries(server PRIVATE ServerLib)
 
 # 2. Client Executable
 add_executable(client src/client/main.c)
-target_link_libraries(client PRIVATE ClientLib)
+target_link_libraries(client PRIVATE ClientLib Threads::Threads)
 # ---------------------------------------------------------
 #  tests
 # ---------------------------------------------------------

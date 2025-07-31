@@ -24,6 +24,9 @@ void test_setup_and_connect_fails_with_invalid_port_string();
 void test_build_json_for_simple_command();
 void test_build_json_for_command_with_args();
 void test_build_json_fails_on_missing_arguments();
+void test_input_arguments_succeess();
+void test_parse_arguments_fails_on_insufficient_args();
+void test_parse_arguments_fails_on_invalid_port();
 
 } // extern "C"
 
@@ -210,6 +213,9 @@ int main() {
     RUN_TEST(testGetFullInventoryIsEmpty);
     RUN_TEST(testCommnadGetHistoryNoLogsEmptyData);
     RUN_TEST(testCommnadGetHistory);
+    RUN_TEST(test_input_arguments_succeess);
+    RUN_TEST(test_parse_arguments_fails_on_insufficient_args);
+    RUN_TEST(test_parse_arguments_fails_on_invalid_port);
 
     sqlite3_shutdown();
     return UNITY_END();

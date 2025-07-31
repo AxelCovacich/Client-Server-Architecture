@@ -65,3 +65,23 @@ UserInputAction process_user_input(char *buffer) {
     }
     return INPUT_ACTION_SEND;
 }
+
+bool parse_arguments(int argc, const char *argv[], client_config *out_config) {
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s <host> <port>\n", argv[0]); // NOLINT
+        return false;
+    }
+
+    int port_num = atoi(argv[2]);
+    if (port_num <= 0 || port_num > 65535) {
+        fprintf(stderr, "Error: Port must be a number between 1 and 65535.\n"); // NOLINT
+        return false;
+    }
+
+    out_config->host = argv[1];
+    out_config->port_tcp = argv[2];
+
+    snprintf(out_config->port_udp, sizeof(out_config->port_udp), "%d", port_num + 1);
+
+    return true;
+}

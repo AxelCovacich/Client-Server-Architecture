@@ -56,18 +56,12 @@ int main(int argc, char *argv[]) {
         server = std::make_unique<Server>(port, inventory, authenticator, logger, storage);
         logger.log(LogLevel::INFO, "Main", "Server successfully started. Running loop...");
 
-    } catch (const exception &e) {
-        std::cerr << "CRITICAL STARTUP FAILURE: \n" << e.what();
-        return 1;
-    }
-
-    try {
-        // std::cout << "Starting server run loop...\n";
         server->run();
 
-    } catch (const std::exception &e) {
-        std::cerr << "FATAL RUNTIME ERROR: Unhandled exception in run(): \n" << e.what();
+    } catch (const exception &e) {
+        std::cerr << "CRITICAL SERVER FAILURE: \n" << e.what();
         return 1;
     }
+
     return 0;
 }
