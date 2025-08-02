@@ -149,6 +149,7 @@ add_library(ClientLib SHARED
     external/cJSON/cJSON.c
     src/client/transport.c
     src/client/session_handler.c
+    src/client/output_handler.c
 )
 target_include_directories(ClientLib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include/client

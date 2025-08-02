@@ -19,11 +19,16 @@
 class Server {
   public:
     /**
-     * @brief Constructs a new Server object.
-     * * Initializes the server to listen on the specified port. Throws an
-     * exception if the setup fails (e.g., port is already in use).
-     * * @param port The port number to listen on.
-     * @throw std::runtime_error If socket creation, binding, or listening fails.
+     * @brief Constructs a new Server object and its core service modules.
+     *
+     * Initializes all dependencies (Storage, Logger, etc.) and sets up the
+     * network listeners. Throws an exception if critical setup fails.
+     * @param port The base TCP port number to listen on.
+     * @param dbPath The file path for the SQLite database.
+     * @param inventory A reference to the application's inventory management module.
+     * @param authenticator A reference to the authentication module.
+     * @param logger A reference to the logging module.
+     * @throw std::exception if a critical setup step fails (e.g., socket bind, DB open).
      */
     Server(int port, Inventory &inventory, Authenticator &authenticator, Logger &logger, Storage &storage);
 
@@ -65,8 +70,28 @@ class Server {
      */
     void handleClient(int client_socket);
 
+    /**
+     * @brief Sets up the dual-stack (IPv4/IPv6) TCP listening socket.
+     *
+     * This function creates, configures (with SO_REUSEADDR and IPV6_V6ONLY=off),
+     * binds, and listens on the main TCP socket.
+     */
     void setTCPConfig();
+
+    /**
+     * @brief Sets up the dual-stack (IPv4/IPv6) UDP listening socket.
+     *
+     * This function creates and binds the secondary UDP socket for connectionless
+     * communication (e.g., keepalives).
+     */
     void setUDPConfig();
+
+    /**
+     * @brief Handles an incoming UDP datagram.
+     *
+     * This method is called by the main run loop when 'select()' detects activity
+     * on the UDP socket. It receives the packet and logs its content.
+     */
     void handleUdpMessage();
 };
 

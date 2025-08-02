@@ -1,8 +1,24 @@
+/**
+ * @file input_handler.h
+ * @brief Handles parsing of user command-line input and building of JSON messages.
+ *
+ * This module is responsible for interpreting the raw strings entered by the user,
+ * validating their syntax, and constructing the appropriate JSON payload to be
+
+ * sent to the server.
+ * @author Axel Covacich
+ * @copyright Copyright (c) 2025 Axel Covacich. All rights reserved.
+ * @project Operating Systems II - FCEFYN UNC
+ */
+
 #ifndef INPUT_HANDLER_H
 #define INPUT_HANDLER_H
 
 #include <stdbool.h>
 #include <stddef.h>
+
+#define MAX_PORT_NUMBER 65535
+#define BASE 10
 
 /**
  * @brief Defines the set of possible actions for the client's main loop.
@@ -70,5 +86,33 @@ typedef struct {
  * @return True on successful parsing, false otherwise.
  */
 bool parse_arguments(int argc, const char *argv[], client_config *out_config);
+
+/**
+ * @brief Builds a JSON message for an 'update_stock' command.
+ * @param command The full command string from the user (e.g., "update_stock food meat 100").
+ * @return A json_build_result struct containing the JSON string and a status code.
+ */
+json_build_result build_json_for_update_stock(char *command);
+
+/**
+ * @brief Builds a JSON message for a 'get_stock' command.
+ * @param command The full command string from the user (e.g., "get_stock food meat").
+ * @return A json_build_result struct containing the JSON string and a status code.
+ */
+json_build_result build_json_for_get_stock(char *command);
+
+/**
+ * @brief Builds a JSON message for a 'login' command.
+ * @param command The full command string from the user (e.g., "login user pass").
+ * @return A json_build_result struct containing the JSON string and a status code.
+ */
+json_build_result build_json_for_login(char *command);
+
+/**
+ * @brief Builds a JSON message for a simple, single-word command (e.g., "status", "get_history").
+ * @param command The single-word command string from the user.
+ * @return A json_build_result struct containing the JSON string and a status code.
+ */
+json_build_result build_json_for_single_command(char *command);
 
 #endif // INPUT_HANDLER_H

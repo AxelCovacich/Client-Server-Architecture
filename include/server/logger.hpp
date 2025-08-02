@@ -29,7 +29,14 @@ class Logger {
     void log(LogLevel level, const std::string &component, const std::string &message,
              const std::optional<std::string> &clientId = std::nullopt) noexcept;
 
-    // Helper to convert enum to string
+    /**
+     * @brief Converts a LogLevel enum to its string representation.
+     *
+     * This is a static helper function used for formatting log messages.
+     * @param level The LogLevel enum value to convert.
+     * @return A string representing the log level (e.g., "INFO", "ERROR").
+     * @throw std::logic_error if an unhandled LogLevel value is provided.
+     */
     static std::string levelToString(LogLevel level);
 
   private:

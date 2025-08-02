@@ -63,7 +63,7 @@ commandResult processCommand(const json &request, const std::string &clientId, b
             response["message"] = "Inventory data for client " + clientId + " retrieved.";
             response["data"] = inventoryData;
         } else {
-            response["status"] = "warning";
+            response["status"] = "error";
             response["message"] = "Inventory data for client " + clientId + " is empty.";
         }
         return {response.dump(), true};
@@ -79,20 +79,16 @@ commandResult processCommand(const json &request, const std::string &clientId, b
             const std::string item = payload.at("item");
             const int quantity = payload.at("quantity");
 
-            bool success = inventory.updateStock(clientId, category, item, quantity);
+            auto result = inventory.updateStock(clientId, category, item, quantity);
 
-            if (success) {
+            if (result.success) {
 
                 response["status"] = "success";
-                std::string message = "Stock for '";
-                message += category + ":" + item;
-                message += "' successfully updated to " + std::to_string(quantity) + ".";
-                response["message"] = message;
             } else {
 
                 response["status"] = "error";
-                response["message"] = "Invalid stock update: quantity cannot be negative.";
             }
+            response["message"] = result.message;
             return {response.dump(), true};
 
         } catch (const json::exception &e) {

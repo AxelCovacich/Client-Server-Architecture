@@ -62,8 +62,29 @@ class clientSession {
     // private bc its implemented inside run() method
     // return the pair <string answer, bool continue?>
     using processResult = std::pair<std::string, bool>;
+
+    /**
+     * @brief Processes a single raw JSON message from the client.
+     *
+     * This method acts as the central state machine for the session. It handles
+     * the authentication logic for unauthenticated clients and dispatches commands
+     * to the CommandProcessor for authenticated clients. It also contains the
+     * top-level exception handler for critical server errors.
+     *
+     * @param json_string The raw message received from the client's socket.
+     * @return A ProcessResult pair containing the JSON string response and a boolean
+     * indicating if the connection should be kept alive.
+     */
     processResult processMessage(const std::string &json_string);
 
+    /**
+     * @brief Creates a sanitized version of a request for safe logging.
+     *
+     * This static utility function takes a JSON request object and redacts any
+     * sensitive fields (e.g., "password") before it is logged.
+     * @param request The original JSON request object.
+     * @return A new JSON object with sensitive data masked.
+     */
     static json createLoggableRequest(json request);
 };
 

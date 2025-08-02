@@ -254,7 +254,7 @@ void testProcessCommandUpdateStockNegativeQuantity() {
     json response = json::parse(result.first);
 
     TEST_ASSERT_EQUAL_STRING("error", response["status"].get<std::string>().c_str());
-    TEST_ASSERT_EQUAL_STRING("Invalid stock update: quantity cannot be negative.",
+    TEST_ASSERT_EQUAL_STRING("Update rejected: Quantity cannot be negative.",
                              response["message"].get<std::string>().c_str());
     TEST_ASSERT_TRUE(result.second);
 }
@@ -309,7 +309,7 @@ void testProcessCommandgGetEmptyInventory() {
 
     json response = json::parse(result.first);
 
-    TEST_ASSERT_EQUAL_STRING("warning", response["status"].get<std::string>().c_str());
+    TEST_ASSERT_EQUAL_STRING("error", response["status"].get<std::string>().c_str());
     TEST_ASSERT_EQUAL_STRING("Inventory data for client warehouse-A is empty.",
                              response["message"].get<std::string>().c_str());
 

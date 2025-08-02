@@ -10,47 +10,22 @@ json_build_result build_json_from_input(char *raw_input) {
 
     // --- Logic of parsing arguments ---
     if (strcmp(command, "update_stock") == 0) {
-        // obtainging arguments
-        char *category = strtok(NULL, " ");
-        char *item = strtok(NULL, " ");
-        char *quantity_str = strtok(NULL, " ");
 
-        if (item == NULL || quantity_str == NULL || category == NULL) {
-            fprintf(stderr, "Error: update_stock requires <category>, <item> and <quantity>.\n"); // NOLINT
-            return (json_build_result){.json_string = NULL, .status = JSON_BUILD_ERROR_SYNTAX};
-        }
-
-        cJSON *root = cJSON_CreateObject();
-        if (root == NULL) {
-            printf("Error creating the cJSON object...\n");
-            return (json_build_result){.json_string = NULL, .status = JSON_BUILD_ERROR_MEMORY};
-        }
-
-        // building the json objects with the arguments obtained
-        cJSON_AddStringToObject(root, "command", command);
-
-        cJSON *payload = cJSON_CreateObject();
-        cJSON_AddStringToObject(payload, "category", category);
-        cJSON_AddStringToObject(payload, "item", item);
-        cJSON_AddNumberToObject(payload, "quantity", atoi(quantity_str));
-        cJSON_AddItemToObject(root, "payload", payload);
-
-        char *json_string = cJSON_PrintUnformatted(root);
-        cJSON_Delete(root);
-        return (json_build_result){.json_string = json_string, .status = JSON_BUILD_SUCCESS};
+        return build_json_for_update_stock(command);
     }
 
-    cJSON *root = cJSON_CreateObject();
+    if (strcmp(command, "get_stock") == 0) {
 
-    if (root == NULL) {
-        printf("Error creating the cJSON object...\n");
-        return (json_build_result){.json_string = NULL, .status = JSON_BUILD_ERROR_MEMORY};
+        return build_json_for_get_stock(command);
     }
-    // for simple commands like status
-    cJSON_AddStringToObject(root, "command", command);
-    char *json_string = cJSON_PrintUnformatted(root);
-    cJSON_Delete(root);
-    return (json_build_result){.json_string = json_string, .status = JSON_BUILD_SUCCESS};
+
+    if (strcmp(command, "login") == 0) {
+
+        return build_json_for_login(command);
+    }
+
+    // get_history, status, get_inventory fall here because its only one command to send
+    return build_json_for_single_command(command);
 }
 
 UserInputAction process_user_input(char *buffer) {
@@ -73,7 +48,7 @@ bool parse_arguments(int argc, const char *argv[], client_config *out_config) {
     }
 
     int port_num = atoi(argv[2]);
-    if (port_num <= 0 || port_num > 65535) {
+    if (port_num <= 0 || port_num > MAX_PORT_NUMBER) {
         fprintf(stderr, "Error: Port must be a number between 1 and 65535.\n"); // NOLINT
         return false;
     }
@@ -81,7 +56,121 @@ bool parse_arguments(int argc, const char *argv[], client_config *out_config) {
     out_config->host = argv[1];
     out_config->port_tcp = argv[2];
 
-    snprintf(out_config->port_udp, sizeof(out_config->port_udp), "%d", port_num + 1);
+    snprintf(out_config->port_udp, sizeof(out_config->port_udp), "%d", port_num + 1); // NOLINT
 
     return true;
+}
+
+json_build_result build_json_for_get_stock(char *command) {
+
+    // obtainging arguments
+    char *category = strtok(NULL, " ");
+    char *item = strtok(NULL, " ");
+
+    if (item == NULL || category == NULL) {
+        fprintf(stderr, "Error: get_stock requires <category> and <item>.\n"); // NOLINT
+        return (json_build_result){.json_string = NULL, .status = JSON_BUILD_ERROR_SYNTAX};
+    }
+
+    cJSON *root = cJSON_CreateObject();
+    if (root == NULL) {
+        printf("Error creating the cJSON object...\n");
+        return (json_build_result){.json_string = NULL, .status = JSON_BUILD_ERROR_MEMORY};
+    }
+
+    // building the json objects with the arguments obtained
+    cJSON_AddStringToObject(root, "command", command);
+
+    cJSON *payload = cJSON_CreateObject();
+    cJSON_AddStringToObject(payload, "category", category);
+    cJSON_AddStringToObject(payload, "item", item);
+    cJSON_AddItemToObject(root, "payload", payload);
+
+    char *json_string = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    return (json_build_result){.json_string = json_string, .status = JSON_BUILD_SUCCESS};
+}
+
+json_build_result build_json_for_update_stock(char *command) {
+
+    // obtainging arguments
+    char *category = strtok(NULL, " ");
+    char *item = strtok(NULL, " ");
+    char *quantity_str = strtok(NULL, " ");
+
+    if (item == NULL || quantity_str == NULL || category == NULL) {
+        fprintf(stderr, "Error: update_stock requires <category>, <item> and <quantity>.\n"); // NOLINT
+        return (json_build_result){.json_string = NULL, .status = JSON_BUILD_ERROR_SYNTAX};
+    }
+
+    cJSON *root = cJSON_CreateObject();
+    if (root == NULL) {
+        printf("Error creating the cJSON object...\n");
+        return (json_build_result){.json_string = NULL, .status = JSON_BUILD_ERROR_MEMORY};
+    }
+
+    char *endptr = NULL;
+    long quantity = strtol(quantity_str, &endptr, BASE);
+
+    if (*endptr != '\0' || endptr == quantity_str) {
+
+        fprintf(stderr, "Error: quantity must be a valid number.\n"); // NOLINT
+        return (json_build_result){.json_string = NULL, .status = JSON_BUILD_ERROR_SYNTAX};
+    }
+
+    // building the json objects with the arguments obtained
+    cJSON_AddStringToObject(root, "command", command);
+
+    cJSON *payload = cJSON_CreateObject();
+    cJSON_AddStringToObject(payload, "category", category);
+    cJSON_AddStringToObject(payload, "item", item);
+    cJSON_AddNumberToObject(payload, "quantity", (double)quantity);
+    cJSON_AddItemToObject(root, "payload", payload);
+
+    char *json_string = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    return (json_build_result){.json_string = json_string, .status = JSON_BUILD_SUCCESS};
+}
+
+json_build_result build_json_for_login(char *command) {
+
+    char *username = strtok(NULL, " ");
+    char *password = strtok(NULL, " ");
+
+    if (username == NULL || password == NULL) {
+        fprintf(stderr, "Error: login requires <username> and <password>.\n"); // NOLINT
+        return (json_build_result){.json_string = NULL, .status = JSON_BUILD_ERROR_SYNTAX};
+    }
+
+    cJSON *root = cJSON_CreateObject();
+    if (root == NULL) {
+        printf("Error creating the cJSON object...\n");
+        return (json_build_result){.json_string = NULL, .status = JSON_BUILD_ERROR_MEMORY};
+    }
+
+    // building the json objects with the arguments obtained
+    cJSON_AddStringToObject(root, "command", command);
+
+    cJSON *payload = cJSON_CreateObject();
+    cJSON_AddStringToObject(payload, "hostname", username);
+    cJSON_AddStringToObject(payload, "password", password);
+    cJSON_AddItemToObject(root, "payload", payload);
+    char *json_string = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    return (json_build_result){.json_string = json_string, .status = JSON_BUILD_SUCCESS};
+}
+
+json_build_result build_json_for_single_command(char *command) {
+
+    cJSON *root = cJSON_CreateObject();
+
+    if (root == NULL) {
+        printf("Error creating the cJSON object...\n");
+        return (json_build_result){.json_string = NULL, .status = JSON_BUILD_ERROR_MEMORY};
+    }
+    // for simple commands like status
+    cJSON_AddStringToObject(root, "command", command);
+    char *json_string = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    return (json_build_result){.json_string = json_string, .status = JSON_BUILD_SUCCESS};
 }

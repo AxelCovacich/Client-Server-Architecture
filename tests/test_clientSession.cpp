@@ -42,7 +42,7 @@ void testSessionAuthenticatesWithValidLogin() {
     json response = json::parse(result.first);
 
     TEST_ASSERT_EQUAL_STRING("success", response["status"].get<std::string>().c_str());
-    TEST_ASSERT_EQUAL_STRING("Login successful.", response["message"].get<std::string>().c_str());
+    TEST_ASSERT_EQUAL_STRING("Login successful! Welcome warehouse-A.", response["message"].get<std::string>().c_str());
 
     TEST_ASSERT_TRUE(result.second);
     TEST_ASSERT_TRUE(session.isAuthenticated());
@@ -159,7 +159,7 @@ void testProcessMessageAuthenticatedCommand() {
     json response = json::parse(result.first);
 
     TEST_ASSERT_EQUAL_STRING("success", response["status"].get<std::string>().c_str());
-    TEST_ASSERT_EQUAL_STRING("Login successful.", response["message"].get<std::string>().c_str());
+    TEST_ASSERT_EQUAL_STRING("Login successful! Welcome warehouse-A.", response["message"].get<std::string>().c_str());
     TEST_ASSERT_TRUE(result.second);
     TEST_ASSERT_TRUE(session.isAuthenticated());
 
@@ -190,7 +190,7 @@ void testProcessMessageCatchExceptionFromAuthenticatedCommand() {
     json response = json::parse(result.first);
 
     TEST_ASSERT_EQUAL_STRING("success", response["status"].get<std::string>().c_str());
-    TEST_ASSERT_EQUAL_STRING("Login successful.", response["message"].get<std::string>().c_str());
+    TEST_ASSERT_EQUAL_STRING("Login successful! Welcome warehouse-A.", response["message"].get<std::string>().c_str());
     TEST_ASSERT_TRUE(result.second);
     TEST_ASSERT_TRUE(session.isAuthenticated());
     TEST_ASSERT_TRUE(storage.userExists("warehouse-A"));

@@ -120,3 +120,64 @@ void test_parse_arguments_fails_on_invalid_port() {
 
     TEST_ASSERT_FALSE(result);
 }
+
+void test_build_json_get_stock_success() {
+    char input[] = "get_stock medicine bandages";
+    // The order is not garantized but 99.9% it is
+    const char *expected_json =
+        "{\"command\":\"get_stock\",\"payload\":{\"category\":\"medicine\",\"item\":\"bandages\"}}";
+
+    json_build_result result = build_json_from_input(input);
+
+    TEST_ASSERT_EQUAL_INT(JSON_BUILD_SUCCESS, result.status);
+    TEST_ASSERT_NOT_NULL(result.json_string);
+    TEST_ASSERT_EQUAL_STRING(expected_json, result.json_string);
+
+    free(result.json_string);
+}
+
+void test_build_json_get_stock_fails_on_missing_arguments() {
+    char input[] = "get_stock food";
+
+    json_build_result result = build_json_from_input(input);
+
+    TEST_ASSERT_EQUAL_INT(JSON_BUILD_ERROR_SYNTAX, result.status);
+    TEST_ASSERT_NULL(result.json_string);
+}
+
+void test_build_json_login_success() {
+    char input[] = "login username password";
+
+    const char *expected_json =
+        "{\"command\":\"login\",\"payload\":{\"hostname\":\"username\",\"password\":\"password\"}}";
+
+    json_build_result result = build_json_from_input(input);
+
+    TEST_ASSERT_EQUAL_INT(JSON_BUILD_SUCCESS, result.status);
+    TEST_ASSERT_NOT_NULL(result.json_string);
+    TEST_ASSERT_EQUAL_STRING(expected_json, result.json_string);
+
+    free(result.json_string);
+}
+
+void test_build_json_login_missing_field() {
+    char input[] = "login  password";
+
+    json_build_result result = build_json_from_input(input);
+
+    TEST_ASSERT_EQUAL_INT(JSON_BUILD_ERROR_SYNTAX, result.status);
+    TEST_ASSERT_NULL(result.json_string);
+
+    free(result.json_string);
+}
+
+void test_build_json_update_stock_fails_invalid_quantity() {
+    char input[] = "update_stock medicine bandages not_a_number";
+
+    json_build_result result = build_json_from_input(input);
+
+    TEST_ASSERT_EQUAL_INT(JSON_BUILD_ERROR_SYNTAX, result.status);
+    TEST_ASSERT_NULL(result.json_string);
+
+    free(result.json_string);
+}

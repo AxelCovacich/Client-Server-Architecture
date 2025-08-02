@@ -27,6 +27,19 @@ void test_build_json_fails_on_missing_arguments();
 void test_input_arguments_succeess();
 void test_parse_arguments_fails_on_insufficient_args();
 void test_parse_arguments_fails_on_invalid_port();
+void test_build_json_get_stock_success();
+void test_build_json_get_stock_fails_on_missing_arguments();
+void test_build_json_login_success();
+void test_build_json_login_missing_field();
+void test_initialize_udp_peer_address_copies_data();
+void test_build_json_update_stock_fails_invalid_quantity();
+void test_print_simple_response_formats_success();
+void test_print_get_inventory_response_formats_success();
+void test_print_get_inventory_response_formats_error();
+void test_print_get_history_response_formats_success();
+void test_print_get_history_response_formats_empty();
+void test_print_get_stock_response_formats_success();
+void test_print_get_stock_response_formats_error();
 
 } // extern "C"
 
@@ -113,6 +126,9 @@ void testgetInventoryHistoryTransactionEmptyForNoUser();
 void testGetFullInventoryIsEmpty();
 void testCommnadGetHistoryNoLogsEmptyData();
 void testCommnadGetHistory();
+void testUpdateStockInvalidItem();
+void testUpdateStockInvalidCategory();
+
 /**
  * @brief Runs all the tests.
  *
@@ -216,7 +232,21 @@ int main() {
     RUN_TEST(test_input_arguments_succeess);
     RUN_TEST(test_parse_arguments_fails_on_insufficient_args);
     RUN_TEST(test_parse_arguments_fails_on_invalid_port);
+    RUN_TEST(test_build_json_get_stock_success);
+    RUN_TEST(test_build_json_get_stock_fails_on_missing_arguments);
+    RUN_TEST(test_build_json_login_success);
+    RUN_TEST(test_build_json_login_missing_field);
+    RUN_TEST(test_build_json_update_stock_fails_invalid_quantity);
+    RUN_TEST(test_initialize_udp_peer_address_copies_data);
+    RUN_TEST(testUpdateStockInvalidItem);
+    RUN_TEST(testUpdateStockInvalidCategory);
+    RUN_TEST(test_print_simple_response_formats_success);
+    RUN_TEST(test_print_get_inventory_response_formats_success);
+    RUN_TEST(test_print_get_inventory_response_formats_error);
+    RUN_TEST(test_print_get_history_response_formats_success);
+    RUN_TEST(test_print_get_history_response_formats_empty);
+    RUN_TEST(test_print_get_stock_response_formats_success);
+    RUN_TEST(test_print_get_stock_response_formats_error);
 
-    sqlite3_shutdown();
     return UNITY_END();
 }

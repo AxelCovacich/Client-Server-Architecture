@@ -91,6 +91,7 @@ void Server::run() {
         if (activity > 0 && FD_ISSET(m_serverTCPFD, &read_fds)) {
 
             socklen_t clilen = sizeof(cli_addr);
+
             // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
             int newsockfd = accept(m_serverTCPFD, reinterpret_cast<struct sockaddr *>(&cli_addr),
                                    &clilen); // Necessary to interact with API sockets of C
@@ -106,6 +107,8 @@ void Server::run() {
 
             // Convert binary IP to text depending on if its ipv4 or ipv6
             if (cli_addr.ss_family == AF_INET) {
+
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
                 auto *castedClientAddrIPv4 = reinterpret_cast<struct sockaddr_in *>(&cli_addr);
 
                 if (inet_ntop(AF_INET, &castedClientAddrIPv4->sin_addr, clientIPArray.data(), sizeof(clientIPArray)) ==
@@ -116,6 +119,7 @@ void Server::run() {
                 m_logger.log(LogLevel::ERROR, "Server", "Error while trying to convert client IP.");
             } else {
 
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
                 auto *castedClientAddrIPv6 = reinterpret_cast<struct sockaddr_in6 *>(&cli_addr);
 
                 if (inet_ntop(AF_INET6, &castedClientAddrIPv6->sin6_addr, clientIPArray.data(),
@@ -250,18 +254,19 @@ void Server::setUDPConfig() {
 
 void Server::handleUdpMessage() {
 
-    struct sockaddr_storage client_addr;
+    struct sockaddr_storage client_addr {};
     socklen_t addr_len = sizeof(client_addr);
     std::array<char, BUFFER_SIZE_UDP> buffer{}; // Buffer for message
 
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     ssize_t bytes_read = recvfrom(m_serverUDPFD, buffer.data(), buffer.size() - 1, 0,
-                                  reinterpret_cast<struct sockaddr *>(&client_addr), &addr_len);
+                                  reinterpret_cast<struct sockaddr *>(&client_addr), &addr_len); // NOLINT
 
     if (bytes_read < 0) {
         m_logger.log(LogLevel::ERROR, "Server", "UDP recvfrom error");
         return;
     }
-    buffer[bytes_read] = '\0';
+    buffer[bytes_read] = '\0'; // NOLINT bytes_read will always be at max buffer.size - 1
 
     cout << "Received UDP message: " + std::string(buffer.data()) << '\n';
     m_logger.log(LogLevel::INFO, "Server", "Received UDP message: " + std::string(buffer.data()));

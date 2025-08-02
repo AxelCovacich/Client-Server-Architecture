@@ -41,7 +41,7 @@ int main(int argc, const char *argv[]) {
     }
     printf("Connection successful to %s! UDP Socket FD is %d\n", argv[1], socket_udp_fd);
 
-    pthread_t keepalive_thread;
+    pthread_t keepalive_thread = 0;
     if (pthread_create(&keepalive_thread, NULL, keepalive_thread_func, &socket_udp_fd) != 0) {
         close(socket_udp_fd);
         perror("Failed to create keepalive thread");

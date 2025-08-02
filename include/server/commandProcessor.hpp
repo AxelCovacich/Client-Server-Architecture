@@ -21,11 +21,19 @@ namespace commandProcessor {
 using commandResult = std::pair<std::string, bool>;
 
 /**
- * @brief Processes a raw command string from a client.
- * @param command The command string received from the client.
- * @param maintenance Boolean informing if the server is in maintenance.
- * @param clientId The client id performing the request.
- * @return A commandResult pair containing the response string and a boolean
+ * @brief Processes a validated JSON request from an authenticated client.
+ *
+ * This function acts as the central dispatcher for all application-level commands.
+ * It takes a parsed JSON object, validates its command and payload, and calls the
+ * appropriate business logic modules (Inventory, etc.) to execute the request.
+ *
+ * @param request The parsed and syntactically valid JSON request object.
+ * @param clientId The unique identifier of the authenticated client making the request.
+ * @param is_in_maintenance A boolean indicating if the server is in maintenance mode.
+ * @param inventory A reference to the server's shared Inventory module.
+ * @param logger A reference to the server's shared Logger module.
+ * @param storage A reference to the server's shared Storage module.
+ * @return A CommandResult pair containing the JSON string response and a boolean
  * indicating if the session should continue.
  */
 commandResult processCommand(const json &request, const std::string &clientId, bool is_in_maintenance,

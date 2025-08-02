@@ -3,6 +3,7 @@
 #include <iostream>
 #include <map>
 #include <optional>
+#include <set>
 #include <string>
 
 using namespace std;
@@ -12,14 +13,19 @@ Inventory::Inventory(Storage &storage, Logger &logger)
     , m_logger(logger) {
 }
 
-bool Inventory::updateStock(const std::string &clientId, const std::string &category, const std::string &item,
-                            int quantity) {
+UpdateStockResult Inventory::updateStock(const std::string &clientId, const std::string &category,
+                                         const std::string &item, int quantity) {
 
     if (quantity < 0) { // this check is for the cache, db table has his own check
         m_logger.log(LogLevel::WARNING, "Inventory",
                      "Client " + clientId + " trying to update negative quantity for item '" + item + "'.");
 
-        return false;
+        return {false, "Update rejected: Quantity cannot be negative."};
+    }
+
+    auto result = validateInventory(category, item);
+    if (!result.success) {
+        return result;
     }
 
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -31,7 +37,8 @@ bool Inventory::updateStock(const std::string &clientId, const std::string &cate
                  "Stock succesfully updated for " + category + ":" + item + " to " + std::to_string(quantity) +
                      " for client " + clientId,
                  clientId);
-    return true;
+    return {true,
+            "Stock for '" + category + ":" + item + "' successfully updated to " + std::to_string(quantity) + "."};
 }
 
 std::optional<int> Inventory::getStock(const std::string &clientId, const std::string &category,
@@ -85,13 +92,12 @@ std::optional<Inventory::ClientInventoryMap> Inventory::getInventorySummary(cons
 
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    auto inventoryData = getInventorySummaryFromCache(clientId);
     m_logger.log(LogLevel::INFO, "Inventory", "Full inventory summary requested for client " + clientId + ".",
                  clientId);
 
-    if (inventoryData.has_value()) {
-        // Cache hit!
-        return inventoryData;
+    if (m_fullyCachedClients.contains(clientId)) {
+        // Cache Hit!
+        return getInventorySummaryFromCache(clientId);
     }
 
     auto result = m_storage.getFullInventory(clientId);
@@ -102,6 +108,7 @@ std::optional<Inventory::ClientInventoryMap> Inventory::getInventorySummary(cons
 
     // update the cache!
     m_inventories[clientId] = *result;
+    m_fullyCachedClients.insert(clientId);
     return result;
 }
 
@@ -116,4 +123,30 @@ Inventory::getInventorySummaryFromCache(const std::string &clientId) const {
     }
 
     return client_it->second;
+}
+
+// map of valid inventory categories with a set of valid items each.
+const std::map<std::string, std::set<std::string>> Inventory::s_validItems = {
+    {"food", {"meat", "vegetables", "fruits", "water", "bread"}},
+    {"medicine", {"antibiotics", "analgesics", "bandages"}},
+    {"ammo", {"pistol_rounds", "shotgun_shells", "grenades"}}};
+
+UpdateStockResult Inventory::validateInventory(const std::string &category, const std::string &item) {
+
+    auto categoryPtr = s_validItems.find(category);
+
+    if (categoryPtr == s_validItems.end()) {
+        // category not found
+        // m_logger.log(LogLevel::WARNING, "Inventory", "Update rejected: Invalid category '" + category + "'",
+        // clientId);
+        return {false, "Update rejected: Invalid category '" + category + "'."};
+    }
+
+    if (categoryPtr->second.find(item) == categoryPtr->second.end()) {
+        // item not found
+        // m_logger.log(LogLevel::WARNING, "Inventory", "Update rejected: Invalid category '" + category + "'",
+        // clientId);
+        return {false, "Update rejected: Invalid item '" + item + "'."};
+    }
+    return {true, "valid ok"};
 }

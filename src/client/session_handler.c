@@ -1,6 +1,7 @@
 #include "session_handler.h"
 #include "client.h"
 #include "input_handler.h"
+#include "output_handler.h"
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -13,17 +14,18 @@
  * `TRANSACTION_SERVER_CLOSED` if the server closes the connection, `TRANSACTION_CLOSE` if client closes connection with
  * end command.
  */
-static transaction_result handle_server_transaction(int sockfd, const char *message, recv_fn rx, send_fn tx) {
+static transaction_result handle_server_transaction(int sockfd, const char *message, recv_fn recieve, send_fn send,
+                                                    const char *input_buffer_copy) {
 
-    if (tx(sockfd, message, strlen(message), 0) < 0) {
+    if (send(sockfd, message, strlen(message), 0) < 0) {
         perror("Error writing to socket");
         return TRANSACTION_ERROR;
     }
 
-    char buffer[BUFFER_SIZE];
-    memset(buffer, '\0', BUFFER_SIZE); // NOLINT
+    char server_response[BUFFER_SIZE];
+    memset(server_response, '\0', BUFFER_SIZE); // NOLINT
 
-    ssize_t bytes_read = rx(sockfd, buffer, BUFFER_SIZE - 1, 0);
+    ssize_t bytes_read = recieve(sockfd, server_response, BUFFER_SIZE - 1, 0);
     if (bytes_read < 0) {
         perror("Error reading from socket");
         return TRANSACTION_ERROR;
@@ -32,8 +34,10 @@ static transaction_result handle_server_transaction(int sockfd, const char *mess
         printf("\nServer closed the connection.\n");
         return TRANSACTION_SERVER_CLOSED;
     }
-    buffer[bytes_read] = '\0';
-    printf("Answer from server: %s\n", buffer);
+    server_response[bytes_read] = '\0';
+
+    print_readable_response(server_response, input_buffer_copy, stdout);
+    // printf("Answer from server: %s\n", buffer);
     return TRANSACTION_SUCCESS;
 }
 
@@ -49,12 +53,13 @@ static transaction_result handle_server_transaction(int sockfd, const char *mess
  * @param buffer The raw user input buffer, used to build the JSON message for SEND actions.
  * @return A TransactionResult enum value indicating the outcome of the operation.
  */
-static transaction_result execute_client_action(int sockfd, UserInputAction action, char *buffer, recv_fn rx,
-                                                send_fn tx) {
+static transaction_result execute_client_action(int sockfd, UserInputAction action, char *buffer, recv_fn recieve,
+                                                send_fn send) {
 
     transaction_result result = TRANSACTION_SUCCESS;
     switch (action) {
     case INPUT_ACTION_SEND: {
+        const char *input_buffer_copy = buffer;
         json_build_result json_build = build_json_from_input(buffer);
         if (json_build.status == JSON_BUILD_ERROR_MEMORY) {
             return TRANSACTION_ERROR;
@@ -63,14 +68,14 @@ static transaction_result execute_client_action(int sockfd, UserInputAction acti
             return TRANSACTION_SUCCESS; // Not sending anything, going back to loop for another user input
         }
 
-        result = handle_server_transaction(sockfd, json_build.json_string, rx, tx);
+        result = handle_server_transaction(sockfd, json_build.json_string, recieve, send, input_buffer_copy);
         free(json_build.json_string);
         return result;
     }
 
     case INPUT_ACTION_QUIT:
 
-        result = handle_server_transaction(sockfd, "{\"command\":\"end\"}", rx, tx);
+        result = handle_server_transaction(sockfd, "{\"command\":\"end\"}", recieve, send, "end");
         if (result == TRANSACTION_ERROR) {
             return result;
         }
@@ -86,14 +91,14 @@ static transaction_result execute_client_action(int sockfd, UserInputAction acti
     }
 }
 
-int start_communication(int sockfd, recv_fn rx, send_fn tx) {
+int start_communication(int sockfd, recv_fn recieve, send_fn send) {
     ssize_t bytes_read = 0;
     char buffer[BUFFER_SIZE];
 
     // one read before while cicle to recieve welcome message from server.
     memset(buffer, '\0', BUFFER_SIZE); // NOLINT
 
-    bytes_read = rx(sockfd, buffer, BUFFER_SIZE - 1, 0);
+    bytes_read = recieve(sockfd, buffer, BUFFER_SIZE - 1, 0);
 
     if (bytes_read <= 0) {
         perror("Failed to receive welcome message or server closed connection");
@@ -103,12 +108,11 @@ int start_communication(int sockfd, recv_fn rx, send_fn tx) {
     buffer[bytes_read] = '\0';
     printf("Server says: %s", buffer);
 
-    // auto login for now
-    char hostname[HOSTNAME_BUFFER_SIZE];
+    /*char hostname[HOSTNAME_BUFFER_SIZE];
     if (gethostname(hostname, sizeof(hostname)) != 0) {
         perror("Error at gethostname:");
         return -1;
-    }
+    }*/
 
     while (true) {
 
@@ -118,7 +122,7 @@ int start_communication(int sockfd, recv_fn rx, send_fn tx) {
             break; // EoI
         }
         UserInputAction action = process_user_input(buffer);
-        transaction_result result = execute_client_action(sockfd, action, buffer, rx, tx);
+        transaction_result result = execute_client_action(sockfd, action, buffer, recieve, send);
 
         if (result == TRANSACTION_ERROR) {
             printf("Closing client...\n");
@@ -137,7 +141,7 @@ void *keepalive_thread_func(void *arg) {
     const char *keepalive_msg = "{\"command\":\"keepalive\"}";
 
     while (1) {
-        sleep(60);
+        sleep(SLEEP_KEEPALIVE_TIME);
 
         printf("\n[Keepalive] Sending heartbeat...\n");
         udp_send(udp_sock, keepalive_msg, strlen(keepalive_msg), 0);

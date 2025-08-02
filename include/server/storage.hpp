@@ -116,9 +116,30 @@ class Storage {
      */
     void updateLoginAttempts(const std::string &hostname, bool loginSuccess, time_t timeStamp);
 
+    /**
+     * @brief Saves a single log entry to the database.
+     *
+     * This function is the persistence mechanism for the Logger module.
+     * @param timestamp The Unix timestamp of the event.
+     * @param level The log level string (e.g., "INFO").
+     * @param component The component originating the log (e.g., "Authenticator").
+     * @param message The descriptive log message.
+     * @param clientId (Optional) The client associated with the event.
+     * @throw SQLite::Exception if a database error occurs.
+     */
     void saveLogEntry(std::time_t timestamp, const std::string &level, const std::string &component,
                       const std::string &message, const std::optional<std::string> &clientId = std::nullopt);
 
+    /**
+     * @brief Retrieves the inventory transaction history for a specific client.
+     *
+     * Queries the logs table for all entries where the component is 'Inventory'
+     * for the given client.
+     * @param clientId The unique identifier for the client.
+     * @return A vector of LogEntry structs, ordered from newest to oldest. The vector
+     * will be empty if no history is found.
+     * @throw SQLite::Exception if a database error occurs.
+     */
     std::vector<LogEntry> getInventoryHistoryTransaction(const std::string &clientId);
 
   private:

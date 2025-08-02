@@ -93,8 +93,8 @@ bool clientSession::isAuthenticated() const {
 
 clientSession::processResult clientSession::processMessage(const std::string &json_string) {
 
-    // cout << "Thread " << this_thread::get_id() << " received: " << json_string << "from client " << m_clientID <<
-    // '\n';
+    cout << "Thread " << this_thread::get_id() << " received: " << json_string << " from clientIP: " << m_clientIP
+         << '\n';
 
     json request = json::parse(json_string, nullptr, false); // don't throw exception, give back discarded if not valid
     if (request.is_discarded()) {
@@ -124,7 +124,7 @@ clientSession::processResult clientSession::processMessage(const std::string &js
                     m_isAuthenticated = true;
                     m_clientID = user;
                     response["status"] = "success";
-                    response["message"] = "Login successful.";
+                    response["message"] = "Login successful! Welcome " + m_clientID + '.';
                     break;
                 case AuthResult::FAILED_ACCOUNT_LOCKED:
                     response["status"] = "error";

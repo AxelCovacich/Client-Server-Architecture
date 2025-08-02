@@ -5,6 +5,7 @@
 #include "unity.h"
 #include <iostream>
 #include <optional>
+#include <string>
 
 /**
  * @brief Tests that updateStock correctly adds a new item to the inventory.
@@ -103,8 +104,10 @@ void testUpdateStockNegativeQuantity() {
     Inventory inventory(storage, logger);
     storage.createUser(clientId, "pass123");
     inventory.updateStock("warehouse-A", "food", "meat", 0);
-    bool result = inventory.updateStock("warehouse-A", "food", "meat", -50);
-    TEST_ASSERT_FALSE(result);
+    auto result = inventory.updateStock("warehouse-A", "food", "meat", -50);
+    TEST_ASSERT_FALSE(result.success);
+    std::string expectedResult = "Update rejected: Quantity cannot be negative.";
+    TEST_ASSERT_EQUAL_STRING(expectedResult.c_str(), result.message.c_str());
 
     // test the actual stock didn't change
     std::optional<int> final_stock = inventory.getStock("warehouse-A", "food", "meat");
@@ -144,6 +147,7 @@ void testgetInventorySummaryFromDataBase() {
     storage.createUser(clientId, "pass123");
     storage.saveStockUpdate(clientId, "medicine", "bandages", 300);
     storage.saveStockUpdate(clientId, "food", "meat", 150);
+    storage.saveStockUpdate(clientId, "food", "vegetables", 400);
 
     auto result = inventory.getInventorySummary("warehouse-A");
 
@@ -153,4 +157,33 @@ void testgetInventorySummaryFromDataBase() {
 
     TEST_ASSERT_EQUAL_INT(150, inventoryMap["food"]["meat"]);
     TEST_ASSERT_EQUAL_INT(300, inventoryMap["medicine"]["bandages"]);
+    TEST_ASSERT_EQUAL_INT(400, inventoryMap["food"]["vegetables"]);
+}
+
+void testUpdateStockInvalidCategory() {
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    std::string clientId = "warehouse-A";
+    SystemClock clock;
+    Logger logger(storage, clock, std::cerr);
+    Inventory inventory(storage, logger);
+    storage.createUser(clientId, "pass123");
+    auto result = inventory.updateStock("warehouse-A", "something", "meat", 50);
+    TEST_ASSERT_FALSE(result.success);
+    std::string expectedResult = "Update rejected: Invalid category 'something'.";
+    TEST_ASSERT_EQUAL_STRING(expectedResult.c_str(), result.message.c_str());
+}
+
+void testUpdateStockInvalidItem() {
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    std::string clientId = "warehouse-A";
+    SystemClock clock;
+    Logger logger(storage, clock, std::cerr);
+    Inventory inventory(storage, logger);
+    storage.createUser(clientId, "pass123");
+    auto result = inventory.updateStock("warehouse-A", "food", "something", 50);
+    TEST_ASSERT_FALSE(result.success);
+    std::string expectedResult = "Update rejected: Invalid item 'something'.";
+    TEST_ASSERT_EQUAL_STRING(expectedResult.c_str(), result.message.c_str());
 }

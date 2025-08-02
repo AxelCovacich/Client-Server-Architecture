@@ -6,7 +6,13 @@
 #include <map>
 #include <mutex>
 #include <optional>
+#include <set>
 #include <string>
+
+struct UpdateStockResult {
+    bool success;
+    std::string message;
+};
 
 /**
  * @class Inventory
@@ -31,8 +37,11 @@ class Inventory {
      * @param category The item category (e.g., "food", "medicine").
      * @param item The specific item name (e.g., "meat", "bandages").
      * @param quantity The new quantity to set for the item.
+     * @return A UpdateStockResult struct containing the state of the update (`True` or `False`) and a `message`
+     * detailing the result of the operation.
      */
-    bool updateStock(const std::string &clientId, const std::string &category, const std::string &item, int quantity);
+    UpdateStockResult updateStock(const std::string &clientId, const std::string &category, const std::string &item,
+                                  int quantity);
 
     /**
      * @brief Retrieves the stock quantity of a specific item for a client.
@@ -73,6 +82,18 @@ class Inventory {
      */
     std::optional<ClientInventoryMap> getInventorySummaryFromCache(const std::string &clientId) const;
 
+    /**
+     * @brief Validates if a given category and item exist in the official item catalog.
+     *
+     * This is a static helper function used to check business logic rules before
+     * performing a stock update.
+     * @param category The category to validate.
+     * @param item The item to validate.
+     * @return An UpdateStockResult struct. `success` will be true if validation
+     * passes, or false with a descriptive error message if it fails.
+     */
+    static UpdateStockResult validateInventory(const std::string &category, const std::string &item);
+
   private:
     mutable std::mutex m_mutex;
     Storage &m_storage;
@@ -80,6 +101,9 @@ class Inventory {
     // This map holds the inventory for all clients.
     // Key: clientId, Value: Map of categories for that client.
     std::map<std::string, std::map<std::string, std::map<std::string, int>>> m_inventories;
+
+    static const std::map<std::string, std::set<std::string>> s_validItems;
+    std::set<std::string> m_fullyCachedClients;
 };
 
 #endif // INVENTORY_HPP
