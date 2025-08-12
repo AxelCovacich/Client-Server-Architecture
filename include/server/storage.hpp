@@ -11,6 +11,7 @@ struct userAuthData {
     std::string passwordHash;
     int failedAttempts;
     time_t lastFailedTimestamp;
+    bool is_locked;
 };
 
 struct LogEntry {
@@ -141,6 +142,9 @@ class Storage {
      * @throw SQLite::Exception if a database error occurs.
      */
     std::vector<LogEntry> getInventoryHistoryTransaction(const std::string &clientId);
+
+    bool setClientLockStatus(const std::string &hostname, bool isLocked);
+    bool isClientLocked(const std::string &hostname);
 
   private:
     // Library SQLiteCpp wrappes the connection to the data base with SQLite::Database. We use the object of the

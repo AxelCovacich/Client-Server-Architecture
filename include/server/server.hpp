@@ -1,16 +1,21 @@
 #ifndef SERVER_HPP
 #define SERVER_HPP
 
+#include "alertManager.hpp"
 #include "authenticator.hpp"
 #include "clientSession.hpp"
+#include "config.hpp"
 #include "inventory.hpp"
+#include "ipcHandler.hpp"
 #include "logger.hpp"
+#include "sessionManager.hpp"
+#include "udpHandler.hpp"
 #include <string>
 #include <utility>
 
 #define BUFFER_SIZE 256
-#define BUFFER_SIZE_UDP 256
 #define MAX_CLIENTS_PERMITTED 1000
+#define MAX_UNIX_CLIENTS 100
 
 /**
  * @class Server
@@ -30,7 +35,7 @@ class Server {
      * @param logger A reference to the logging module.
      * @throw std::exception if a critical setup step fails (e.g., socket bind, DB open).
      */
-    Server(int port, Inventory &inventory, Authenticator &authenticator, Logger &logger, Storage &storage);
+    Server(const Config &config, const IClock &clock, Storage &storage, Logger &logger);
 
     /**
      * @brief Destroys the Server object.
@@ -45,16 +50,25 @@ class Server {
      */
     void run();
 
+    static std::string getClientIP(const struct sockaddr_storage &clientAddress);
+
   private:
     int m_port;
-    int m_serverTCPFD; // File descriptor for the listening socket TCP
+    int m_serverTCPFD;
     int m_serverUDPFD;
+    int m_serverUnixFD;
 
-    Logger &m_logger;
-    Authenticator &m_authenticator;
-    Inventory &m_inventory;
+    const Config &m_config;
+    const IClock &m_clock;
     Storage &m_storage;
+    Logger &m_logger;
 
+    Inventory m_inventory;
+    Authenticator m_authenticator;
+    AlertManager m_alert;
+    SessionManager m_sessionManager;
+    UdpHandler m_udpHandler;
+    IpcHandler m_ipcHandler;
     /**
      * @brief Sets up the server's listening socket.
      * * Performs the socket(), bind(), and listen() sequence.
@@ -93,6 +107,12 @@ class Server {
      * on the UDP socket. It receives the packet and logs its content.
      */
     void handleUdpMessage();
+
+    void handleTcpConnection();
+
+    void setUNIXconfig();
+
+    void handleUNIXConnection();
 };
 
 #endif // SERVER_HPP

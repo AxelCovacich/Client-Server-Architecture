@@ -12,6 +12,7 @@
 #include <string>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/un.h>
 #include <thread>   // For jthread
 #include <unistd.h> // For close()
 #include <utility>
@@ -34,21 +35,40 @@ void signal_handler(int signum) {
     g_shutdown_flag = 1;
 }
 
-Server::Server(int port, Inventory &inventory, Authenticator &authenticator, Logger &logger, Storage &storage)
-    : m_port(port)
+Server::Server(const Config &config, const IClock &clock, Storage &storage, Logger &logger)
+    : m_config(config)
+    , m_port(config.getPort())
+    , m_clock(clock)
     , m_storage(storage)
+    , m_logger(logger)
+    , m_inventory(m_storage, m_logger)
+    , m_authenticator(m_storage, m_clock, m_logger)
+    , m_sessionManager(m_storage, m_logger)
     , m_serverTCPFD(-1)
     , m_serverUDPFD(-1)
-    , m_logger(logger)
-    , m_authenticator(authenticator)
-    , m_inventory(inventory) {
+    , m_serverUnixFD(-1)
+    , m_udpHandler(m_serverUDPFD, m_logger, m_sessionManager)
+    , m_alert(m_logger, m_sessionManager, m_udpHandler)
+    , m_ipcHandler(m_logger, m_alert) {
 
     setupServer();
+
+    // set sockets udp ipc
 }
 
 Server::~Server() {
     if (m_serverTCPFD != -1) {
+        std::cout << "Closing TCP server socket...\n";
         close(m_serverTCPFD);
+    }
+    if (m_serverUDPFD != -1) {
+        std::cout << "Closing UDP server socket...\n";
+        close(m_serverUDPFD);
+    }
+    if (m_serverUnixFD != -1) {
+        std::cout << "Closing IPC server socket...\n";
+        close(m_serverUnixFD);
+        unlink("/tmp/server_ipc.sock");
     }
 }
 
@@ -56,6 +76,7 @@ void Server::setupServer() {
 
     setTCPConfig();
     setUDPConfig();
+    setUNIXconfig();
 }
 
 // TODO: migrate to epoll + worker pool
@@ -63,23 +84,19 @@ void Server::run() {
     fd_set read_fds;
     struct timeval timevalue {};
 
-    // use sockaddr_storage, not sockaddr_in(16 bytes) for both ipv4 and ipv6 clients size addresses.
-    struct sockaddr_storage cli_addr {};
-    // struct sockaddr_in cli_addr {};
-    socklen_t clilen = sizeof(cli_addr);
-
     while (g_shutdown_flag == 0) {
         FD_ZERO(&read_fds);
         FD_SET(m_serverTCPFD, &read_fds);
         FD_SET(m_serverUDPFD, &read_fds);
+        FD_SET(m_serverUnixFD, &read_fds);
 
         timevalue.tv_sec = 1;
         timevalue.tv_usec = 0;
-
         // use select to wait for 1 sec or a clients connects and then go for another iteration
 
         // First param of select must be the higher+1 descriptor
-        int maxFD = std::max(m_serverTCPFD, m_serverUDPFD) + 1;
+        int partialMaxFD = std::max(m_serverTCPFD, m_serverUDPFD); // higher of the two will compare against unix
+        int maxFD = std::max(partialMaxFD, m_serverUnixFD) + 1;
 
         int activity = select(maxFD, &read_fds, NULL, NULL, &timevalue);
 
@@ -89,59 +106,16 @@ void Server::run() {
         }
 
         if (activity > 0 && FD_ISSET(m_serverTCPFD, &read_fds)) {
-
-            socklen_t clilen = sizeof(cli_addr);
-
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-            int newsockfd = accept(m_serverTCPFD, reinterpret_cast<struct sockaddr *>(&cli_addr),
-                                   &clilen); // Necessary to interact with API sockets of C
-
-            if (newsockfd < 0) {
-                // m_logger.log(LogLevel::ERROR, "Server", "Error while trying to accept.");
-                perror("Error on accept");
-                continue;
-            }
-
-            // must be big enough to fit ipv4 and ipv6
-            std::array<char, INET6_ADDRSTRLEN> clientIPArray{};
-
-            // Convert binary IP to text depending on if its ipv4 or ipv6
-            if (cli_addr.ss_family == AF_INET) {
-
-                // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-                auto *castedClientAddrIPv4 = reinterpret_cast<struct sockaddr_in *>(&cli_addr);
-
-                if (inet_ntop(AF_INET, &castedClientAddrIPv4->sin_addr, clientIPArray.data(), sizeof(clientIPArray)) ==
-                    nullptr) {
-                    m_logger.log(LogLevel::ERROR, "Server", "Error while trying to convert client IPv4.");
-                    throw std::system_error(errno, std::system_category(), "inet_ntop failed converting client IPv4");
-                }
-                m_logger.log(LogLevel::ERROR, "Server", "Error while trying to convert client IP.");
-            } else {
-
-                // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-                auto *castedClientAddrIPv6 = reinterpret_cast<struct sockaddr_in6 *>(&cli_addr);
-
-                if (inet_ntop(AF_INET6, &castedClientAddrIPv6->sin6_addr, clientIPArray.data(),
-                              sizeof(clientIPArray)) == nullptr) {
-                    m_logger.log(LogLevel::ERROR, "Server", "Error while trying to convert client IPv6.");
-                    throw std::system_error(errno, std::system_category(), "inet_ntop failed converting client IPv6");
-                }
-            }
-            // this creates a new clientSession object in dinamic memory (new). It wrappes it in a shared_ptr and
-            // returns no need to manually delete, local variable session finish and deletes its own ptr. copies of
-            // shared_ptr are used by threads independently of local variable session. When all instances(threads)
-            // complete their jobs and there is no more copies of the object clientSession via shared_ptr, memory will
-            // be freed automaticly.
-            auto session = std::make_shared<clientSession>(newsockfd, m_inventory, m_authenticator, m_logger, m_storage,
-                                                           std::string(clientIPArray.data()));
-            jthread client_thread(&clientSession::run, session);
-            client_thread.detach();
+            handleTcpConnection();
         }
 
-        // Check upd activity
         if (activity > 0 && FD_ISSET(m_serverUDPFD, &read_fds)) {
-            handleUdpMessage();
+            cout << "UDP activity detected, handling messages...\n";
+            m_udpHandler.handleMessage();
+        }
+
+        if (activity > 0 && FD_ISSET(m_serverUnixFD, &read_fds)) {
+            handleUNIXConnection();
         }
     }
     cout << "\nShutdown signal received. Server is now closing.\n";
@@ -248,29 +222,117 @@ void Server::setUDPConfig() {
     }
 
     freeaddrinfo(udp_result);
+    m_udpHandler.setSocketFd(m_serverUDPFD); // Set the socket FD in the UDP handler
+
     m_logger.log(LogLevel::INFO, "Server", "UDP socket listening on port " + udp_port_str);
     cout << "Server UDP socket listening on port: " << udp_port_str << " with FD: " << m_serverUDPFD << '\n';
 }
 
-void Server::handleUdpMessage() {
+void Server::handleTcpConnection() {
 
-    struct sockaddr_storage client_addr {};
-    socklen_t addr_len = sizeof(client_addr);
-    std::array<char, BUFFER_SIZE_UDP> buffer{}; // Buffer for message
+    // use sockaddr_storage, not sockaddr_in(16 bytes) for both ipv4 and ipv6 clients size addresses.
+    struct sockaddr_storage clientAddress {};
+    socklen_t clientLength = sizeof(clientAddress);
 
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-    ssize_t bytes_read = recvfrom(m_serverUDPFD, buffer.data(), buffer.size() - 1, 0,
-                                  reinterpret_cast<struct sockaddr *>(&client_addr), &addr_len); // NOLINT
+    int newsockfd = accept(m_serverTCPFD, reinterpret_cast<struct sockaddr *>(&clientAddress),
+                           &clientLength); // Necessary to interact with API sockets of C
 
-    if (bytes_read < 0) {
-        m_logger.log(LogLevel::ERROR, "Server", "UDP recvfrom error");
+    if (newsockfd < 0) {
+        m_logger.log(LogLevel::ERROR, "Server", "Error while trying to accept.");
+        perror("Error on accept");
         return;
     }
-    buffer[bytes_read] = '\0'; // NOLINT bytes_read will always be at max buffer.size - 1
 
-    cout << "Received UDP message: " + std::string(buffer.data()) << '\n';
-    m_logger.log(LogLevel::INFO, "Server", "Received UDP message: " + std::string(buffer.data()));
+    auto clientIp = getClientIP(clientAddress);
+    if (clientIp == "UNKNOWN") {
 
-    // Process the message UDP here or call a function
-    // if necesssary, answer with sendto()
+        m_logger.log(LogLevel::ERROR, "Server", "Error while trying to get client IP.");
+    }
+
+    // this creates a new clientSession object in dinamic memory (new). It wrappes it in a shared_ptr and
+    // returns no need to manually delete, local variable session finish and deletes its own ptr. copies of
+    // shared_ptr are used by threads independently of local variable session. When all instances(threads)
+    // complete their jobs and there is no more copies of the object clientSession via shared_ptr, memory will
+    // be freed automaticly.
+    auto session = std::make_shared<clientSession>(newsockfd, m_inventory, m_authenticator, m_logger, m_storage,
+                                                   clientIp, m_sessionManager, m_config);
+    jthread client_thread(&clientSession::run, session);
+    client_thread.detach();
+}
+
+void Server::setUNIXconfig() {
+
+    const char *socketPath = "/tmp/server_ipc.sock";
+
+    m_serverUnixFD = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (m_serverUnixFD < 0) {
+        throw std::runtime_error("Failed to create UNIX socket");
+    }
+
+    struct sockaddr_un server_addr {};
+    server_addr.sun_family = AF_UNIX;
+
+    // necssary to interact with C API
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+    strncpy(server_addr.sun_path, socketPath, sizeof(server_addr.sun_path) - 1);
+
+    // erase socket file if already exists from a previus run.
+    // This prevents the "Adress already in use" error for unix sockets
+    unlink(socketPath);
+
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+    if (bind(m_serverUnixFD, reinterpret_cast<struct sockaddr *>(&server_addr), sizeof(server_addr)) < 0) {
+        throw std::runtime_error("Failed to bind IPC socket");
+    }
+
+    if (listen(m_serverUnixFD, MAX_UNIX_CLIENTS) < 0) {
+        throw std::runtime_error("Failed to listen on IPC socket");
+    }
+
+    m_logger.log(LogLevel::INFO, "Server", "IPC socket listening on " + std::string(socketPath));
+    cout << "Server IPC socket listening on path: " << socketPath << " with FD: " << m_serverUnixFD << '\n';
+}
+
+void Server::handleUNIXConnection() {
+    // use sockaddr_storage, not sockaddr_in(16 bytes) for both ipv4 and ipv6 clients size addresses.
+    struct sockaddr_un clientAddress {};
+    socklen_t clientLength = sizeof(clientAddress);
+
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+    int newsockfd = accept(m_serverUnixFD, reinterpret_cast<struct sockaddr *>(&clientAddress),
+                           &clientLength); // Necessary to interact with API sockets of C
+
+    if (newsockfd < 0) {
+        m_logger.log(LogLevel::ERROR, "Server", "Error while trying to accept.");
+        perror("Error on accept");
+        return;
+    }
+    m_logger.log(LogLevel::INFO, "Server", "IPC connection established.");
+
+    m_ipcHandler.handleConnection(newsockfd);
+}
+
+std::string Server::getClientIP(const struct sockaddr_storage &clientAddress) {
+    // must be big enough to fit ipv4 and ipv6
+    std::array<char, INET6_ADDRSTRLEN> clientIPArray{};
+
+    if (clientAddress.ss_family == AF_INET) {
+        const auto *castedClientAddrIPv4 = reinterpret_cast<const struct sockaddr_in *>(&clientAddress); // NOLINT
+        if (inet_ntop(AF_INET, &castedClientAddrIPv4->sin_addr, clientIPArray.data(), sizeof(clientIPArray)) ==
+            nullptr) {
+            return "UNKNOWN"; // Return a default value
+        }
+    } else if (clientAddress.ss_family == AF_INET6) {
+
+        const auto *castedClientAddrIPv6 = reinterpret_cast<const struct sockaddr_in6 *>(&clientAddress); // NOLINT
+        if (inet_ntop(AF_INET6, &castedClientAddrIPv6->sin6_addr, clientIPArray.data(), sizeof(clientIPArray)) ==
+            nullptr) {
+            return "UNKNOWN";
+        }
+
+    } else {
+        return "UNKNOWN"; // Unsupported address family
+    }
+    return std::string(clientIPArray.data());
 }

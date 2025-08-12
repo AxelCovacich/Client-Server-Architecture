@@ -9,6 +9,7 @@
 #ifndef OUTPUT_HANDLER_H
 #define OUTPUT_HANDLER_H
 
+#include "client_context.h"
 #include <stdio.h>
 
 /**
@@ -20,7 +21,8 @@
  * @param command The original command string entered by the user.
  * @param output_stream The file stream to write the formatted output to (e.g., stdout).
  */
-void print_readable_response(const char *server_response, const char *input_buffer, FILE *output_stream);
+void print_readable_response(ClientContext *context, const char *server_response, const char *input_buffer,
+                             FILE *output_stream);
 
 /**
  * @brief Formats and prints a full inventory report from a JSON response.
@@ -42,5 +44,7 @@ void print_get_stock_response(const char *response_string, FILE *output_stream);
  * @param output_stream The file stream to write the formatted output to.
  */
 void print_get_history_response(const char *response_string, FILE *output_stream);
+
+void handle_login_response(ClientContext *context, const char *response_string, FILE *output_stream);
 
 #endif // OUTPUT_HANDLER_H

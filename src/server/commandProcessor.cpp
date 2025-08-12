@@ -1,6 +1,4 @@
 #include "commandProcessor.hpp"
-#include "inventory.hpp"
-#include "storage.hpp"
 #include <iostream>
 #include <map>
 #include <nlohmann/json.hpp>
@@ -11,8 +9,23 @@ using namespace std;
 
 namespace commandProcessor {
 
-commandResult processCommand(const json &request, const std::string &clientId, bool is_in_maintenance,
-                             Inventory &inventory, Logger &logger, Storage &storage) {
+static commandResult handleStatusCommand(const json &request, bool IsInMaintenance, json &response);
+static commandResult handleEndCommand(const json &request, json &response, Logger &logger, const std::string &clientId);
+static commandResult handleGetInventoryCommand(const json &request, const std::string &clientId, Inventory &inventory,
+                                               Logger &logger, json &response);
+static commandResult handleUpdateStockCommand(const json &request, const std::string &clientId, Inventory &inventory,
+                                              Logger &logger, json &response);
+static commandResult handleGetStockCommand(const json &request, const std::string &clientId, Inventory &inventory,
+                                           Logger &logger, json &response);
+static commandResult handleGetHistoryCommand(const json &request, const std::string &clientId, Storage &storage,
+                                             Logger &logger, json &response);
+static commandResult handleUnlockClientCommand(const json &request, const std::string &clientId,
+                                               SessionManager &sessionManager, const Config &config, Logger &logger,
+                                               json &response);
+
+commandResult processCommand(const json &request, const std::string &clientId, bool isInMaintenance,
+                             Inventory &inventory, Logger &logger, Storage &storage, SessionManager &sessionManager,
+                             const Config &config) {
 
     json response;
 
@@ -34,133 +47,40 @@ commandResult processCommand(const json &request, const std::string &clientId, b
 
     //  Process the command
     if (cmd == "status") {
-        response["status"] = "success";
-        response["message"] = is_in_maintenance ? "STATUS: MAINTENANCE" : "STATUS: OK";
-        return {response.dump(), true};
+        return handleStatusCommand(request, isInMaintenance, response);
     }
 
-    if (is_in_maintenance) {
+    if (isInMaintenance) {
         response["status"] = "error";
         response["message"] = "Server is in maintenance mode.";
         return {response.dump(), true};
     }
 
     if (cmd == "end") {
-        response["status"] = "success";
-        response["message"] = "Goodbye!";
-        logger.log(LogLevel::INFO, "CommandProcessor", "Requested disconnection via end command for client " + clientId,
-                   clientId);
-        return {response.dump(), false}; // To finish
+
+        return handleEndCommand(request, response, logger, clientId);
     }
 
     if (cmd == "get_inventory") {
 
-        auto inventoryMap = inventory.getInventorySummary(clientId);
-
-        if (inventoryMap.has_value()) {
-            json inventoryData = *inventoryMap;
-            response["status"] = "success";
-            response["message"] = "Inventory data for client " + clientId + " retrieved.";
-            response["data"] = inventoryData;
-        } else {
-            response["status"] = "error";
-            response["message"] = "Inventory data for client " + clientId + " is empty.";
-        }
-        return {response.dump(), true};
+        return handleGetInventoryCommand(request, clientId, inventory, logger, response);
     }
 
     if (cmd == "update_stock") {
 
-        try {
-
-            // 1. .at() to add values and check. If a key is not present, catch will attend.
-            const json &payload = request.at("payload");
-            const std::string category = payload.at("category");
-            const std::string item = payload.at("item");
-            const int quantity = payload.at("quantity");
-
-            auto result = inventory.updateStock(clientId, category, item, quantity);
-
-            if (result.success) {
-
-                response["status"] = "success";
-            } else {
-
-                response["status"] = "error";
-            }
-            response["message"] = result.message;
-            return {response.dump(), true};
-
-        } catch (const json::exception &e) {
-            // If any key is missing, or wrong type this will treat it
-            //    (ej: "quantity": "abc")
-            // cerr << "Invalid payload for update_stock: " << e.what() << '\n';
-            response["status"] = "error";
-            response["message"] = "Invalid or missing field in update_stock payload.";
-            logger.log(LogLevel::WARNING, "CommandProcessor", "Invalid or missing field in update_stock payload.",
-                       clientId);
-
-            return {response.dump(), true};
-        }
+        return handleUpdateStockCommand(request, clientId, inventory, logger, response);
     }
 
     if (cmd == "get_stock") {
-        try {
-
-            const json &payload = request.at("payload");
-            const std::string category = payload.at("category");
-            const std::string item = payload.at("item");
-
-            std::optional<int> result = inventory.getStock(clientId, category, item);
-
-            if (result.has_value()) {
-                response["status"] = "success";
-                std::string message = "Stock data retrieved successfully.";
-                response["message"] = message;
-
-                json data_payload;
-                data_payload["category"] = category;
-                data_payload["item"] = item;
-                data_payload["quantity"] = result.value();
-
-                response["data"] = data_payload;
-                return {response.dump(), true};
-            }
-            response["status"] = "error";
-            response["message"] = "Item not found for the specified client/category.";
-            return {response.dump(), true};
-
-        } catch (const json::exception &e) {
-
-            // cerr << "Invalid payload for get_stock: " << e.what() << '\n';
-            response["status"] = "error";
-            response["message"] = "Invalid or missing field in get_stock payload.";
-            logger.log(LogLevel::WARNING, "CommandProcessor", "Invalid or missing field in get_stock payload.",
-                       clientId);
-            return {response.dump(), true};
-        }
+        return handleGetStockCommand(request, clientId, inventory, logger, response);
     }
 
     if (cmd == "get_history") {
-        std::vector<LogEntry> history = storage.getInventoryHistoryTransaction(clientId);
+        return handleGetHistoryCommand(request, clientId, storage, logger, response);
+    }
 
-        response["status"] = "success";
-        response["message"] = "Inventory history retrieved.";
-
-        json historyArray = json::array(); // create an empty json array to store temporarly store the logs
-        for (const auto &entry : history) {
-            json logEntry;
-            logEntry["timestamp"] = entry.timestamp;
-            logEntry["message"] = entry.message;
-            logEntry["component"] = entry.component;
-            logEntry["level"] = entry.level;
-            historyArray.push_back(logEntry); // add the json object logentry with the contents of the log to the array
-        }
-
-        response["data"] = historyArray; // now add to the data field the entire array with all the logs captured in the
-                                         // loop if empty(no logs found), it just returns an empty field []
-
-        return {response.dump(), true};
+    if (cmd == "unlock_client") {
+        return handleUnlockClientCommand(request, clientId, sessionManager, config, logger, response);
     }
 
     // for unknown command
@@ -170,4 +90,175 @@ commandResult processCommand(const json &request, const std::string &clientId, b
                clientId);
     return {response.dump(), true};
 }
+
+static commandResult handleStatusCommand(const json &request, bool isInMaintenance, json &response) {
+    response["status"] = "success";
+    response["message"] = isInMaintenance ? "STATUS: MAINTENANCE" : "STATUS: OK";
+    return {response.dump(), true};
+}
+
+static commandResult handleEndCommand(const json &request, json &response, Logger &logger,
+                                      const std::string &clientId) {
+    response["status"] = "success";
+    response["message"] = "Goodbye!";
+    logger.log(LogLevel::INFO, "CommandProcessor", "Requested disconnection via end command for client " + clientId,
+               clientId);
+    return {response.dump(), false}; // To finish
+}
+
+static commandResult handleGetInventoryCommand(const json &request, const std::string &clientId, Inventory &inventory,
+                                               Logger &logger, json &response) {
+
+    auto inventoryMap = inventory.getInventorySummary(clientId);
+
+    if (inventoryMap.has_value()) {
+        json inventoryData = *inventoryMap;
+        response["status"] = "success";
+        response["message"] = "Inventory data for client " + clientId + " retrieved.";
+        response["data"] = inventoryData;
+    } else {
+        response["status"] = "error";
+        response["message"] = "Inventory data for client " + clientId + " is empty.";
+    }
+    return {response.dump(), true};
+}
+
+static commandResult handleUpdateStockCommand(const json &request, const std::string &clientId, Inventory &inventory,
+                                              Logger &logger, json &response) {
+
+    try {
+
+        // 1. .at() to add values and check. If a key is not present, catch will attend.
+        const json &payload = request.at("payload");
+        const std::string category = payload.at("category");
+        const std::string item = payload.at("item");
+        const int quantity = payload.at("quantity");
+        auto result = inventory.updateStock(clientId, category, item, quantity);
+
+        if (result.success) {
+
+            response["status"] = "success";
+        } else {
+
+            response["status"] = "error";
+        }
+        response["message"] = result.message;
+        return {response.dump(), true};
+
+    } catch (const json::exception &e) {
+        // If any key is missing, or wrong type this will treat it
+        //    (ej: "quantity": "abc")
+        // cerr << "Invalid payload for update_stock: " << e.what() << '\n';
+        response["status"] = "error";
+        response["message"] = "Invalid or missing field in update_stock payload.";
+        logger.log(LogLevel::WARNING, "CommandProcessor", "Invalid or missing field in update_stock payload.",
+                   clientId);
+
+        return {response.dump(), true};
+    }
+}
+
+static commandResult handleGetStockCommand(const json &request, const std::string &clientId, Inventory &inventory,
+                                           Logger &logger, json &response) {
+
+    try {
+        const json &payload = request.at("payload");
+        const std::string category = payload.at("category");
+        const std::string item = payload.at("item");
+
+        std::optional<int> result = inventory.getStock(clientId, category, item);
+
+        if (result.has_value()) {
+            response["status"] = "success";
+            std::string message = "Stock data retrieved successfully.";
+            response["message"] = message;
+
+            json data_payload;
+            data_payload["category"] = category;
+            data_payload["item"] = item;
+            data_payload["quantity"] = result.value();
+
+            response["data"] = data_payload;
+            return {response.dump(), true};
+        }
+        response["status"] = "error";
+        response["message"] = "Item not found for the specified client/category.";
+        return {response.dump(), true};
+
+    } catch (const json::exception &e) {
+
+        // cerr << "Invalid payload for get_stock: " << e.what() << '\n';
+        response["status"] = "error";
+        response["message"] = "Invalid or missing field in get_stock payload.";
+        logger.log(LogLevel::WARNING, "CommandProcessor", "Invalid or missing field in get_stock payload.", clientId);
+        return {response.dump(), true};
+    }
+}
+
+static commandResult handleGetHistoryCommand(const json &request, const std::string &clientId, Storage &storage,
+                                             Logger &logger, json &response) {
+
+    std::vector<LogEntry> history = storage.getInventoryHistoryTransaction(clientId);
+
+    response["status"] = "success";
+    response["message"] = "Inventory history retrieved.";
+
+    json historyArray = json::array(); // create an empty json array to store temporarly store the logs
+
+    for (const auto &entry : history) {
+        json logEntry;
+        logEntry["timestamp"] = entry.timestamp;
+        logEntry["message"] = entry.message;
+        logEntry["component"] = entry.component;
+        logEntry["level"] = entry.level;
+        historyArray.push_back(logEntry); // add the json object logentry with the contents of the log to the array
+    }
+
+    response["data"] = historyArray; // now add to the data field the entire array with all the logs captured in the
+                                     // loop if empty(no logs found), it just returns an empty field []
+    return {response.dump(), true};
+}
+
+static commandResult handleUnlockClientCommand(const json &request, const std::string &clientId,
+                                               SessionManager &sessionManager, const Config &config, Logger &logger,
+                                               json &response) {
+    if (clientId == "admin") {
+
+        try {
+            const json &payload = request.at("payload");
+            const std::string secretPhrase = payload.at("secret_phrase");
+            const std::string clientToUnlock = payload.at("client_to_unlock");
+            const std::string configSecretPhrase = config.getSecretPhrase();
+
+            if (secretPhrase == configSecretPhrase) {
+                bool success = sessionManager.unlockClient(clientToUnlock);
+                if (success) {
+                    response["status"] = "success";
+                    response["message"] = "Client `" + clientToUnlock + "` successfully unlocked.";
+                    return {response.dump(), true};
+                }
+                response["status"] = "error";
+                response["message"] =
+                    "Couldn't unlock Client `" + clientToUnlock + "`. Client didn't found or misspelled.";
+                return {response.dump(), true};
+            }
+            response["status"] = "error";
+            response["message"] = "Wrong secret phrase. Try again.";
+            return {response.dump(), true};
+        } catch (const json::exception &e) {
+            response["status"] = "error";
+            response["message"] = "Invalid or missing field in unlock_client payload.";
+            logger.log(LogLevel::WARNING, "CommandProcessor", "Invalid or missing field in unlock_client payload.",
+                       clientId);
+            return {response.dump(), true};
+        }
+    } else {
+        response["status"] = "error";
+        response["message"] = "Command only available for admin user.";
+        logger.log(LogLevel::WARNING, "CommandProcessor", "Trying to execute admin commands with a invalid user.",
+                   clientId);
+        return {response.dump(), true};
+    }
+}
+
 } // namespace commandProcessor

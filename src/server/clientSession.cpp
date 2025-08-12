@@ -1,11 +1,10 @@
 #include "clientSession.hpp"
-#include "authenticator.hpp"
 #include "commandProcessor.hpp"
 #include "server.hpp"
 #include <array>
 #include <cstring> // For memset()
 #include <iostream>
-
+#include <memory>
 #include <thread>
 #include <unistd.h>
 
@@ -13,7 +12,8 @@ using namespace std;
 using json = nlohmann::json;
 
 clientSession::clientSession(int clientSocket, Inventory &inventory, Authenticator &authenticator, Logger &logger,
-                             Storage &storage, const std::string &clientIP)
+                             Storage &storage, const std::string &clientIP, SessionManager &sessionManager,
+                             const Config &config)
     : m_clientSocket(clientSocket)
     , m_isAuthenticated(false)
     , m_inventory(inventory)
@@ -21,6 +21,8 @@ clientSession::clientSession(int clientSocket, Inventory &inventory, Authenticat
     , m_logger(logger)
     , m_clientIP(clientIP)
     , m_storage(storage)
+    , m_sessionManager(sessionManager)
+    , m_config(config)
 // m_clientID("") starts empty already
 {
     // constructor actions here
@@ -81,10 +83,14 @@ void clientSession::run() {
             break;
         }
     }
-    // cout << "Closing connection with client from thread: " << this_thread::get_id() << '\n';
+    cout << "Closing connection with client from thread: " << this_thread::get_id() << '\n';
+    // if is empty, the client has never autenticathed or registered, nothing to do.
+    if (!m_clientID.empty()) {
+        m_sessionManager.unregisterSession(m_clientID);
+    }
+
     m_logger.log(LogLevel::INFO, "ClientSession",
                  "Closing connection with client: " + m_clientID + " from IP: " + m_clientIP);
-    close(m_clientSocket);
 }
 
 bool clientSession::isAuthenticated() const {
@@ -115,7 +121,7 @@ clientSession::processResult clientSession::processMessage(const std::string &js
 
                 const std::string user = request.at("payload").at("hostname");
                 const std::string pass = request.at("payload").at("password");
-
+                // cout<< "DEBUG: Attempting login for user: " << user << " With password: " << pass << '\n';
                 AuthResult result = m_authenticator.authenticate(user, pass);
                 json response;
 
@@ -123,12 +129,22 @@ clientSession::processResult clientSession::processMessage(const std::string &js
                 case AuthResult::SUCCESS:
                     m_isAuthenticated = true;
                     m_clientID = user;
+                    // register the active session with clientID + this session object that is running the client. Pass
+                    // the shared_ptr of himself
+                    m_sessionManager.registerSession(m_clientID, shared_from_this());
                     response["status"] = "success";
                     response["message"] = "Login successful! Welcome " + m_clientID + '.';
+                    response["client_id"] = m_clientID;
+                    m_logger.log(LogLevel::INFO, "ClientSession",
+                                 "Client " + m_clientID + " authenticated successfully from IP: " + m_clientIP);
                     break;
                 case AuthResult::FAILED_ACCOUNT_LOCKED:
                     response["status"] = "error";
                     response["message"] = "Account is temporarily locked due to too many failed attempts.";
+                    break;
+                case AuthResult::FAILED_ALERT_LOCKED:
+                    response["status"] = "error";
+                    response["message"] = "Account is locked untill manually freed by an admin, due to alert trigger.";
                     break;
                 case AuthResult::FAILED_USER_NOT_FOUND:
                 case AuthResult::FAILED_BAD_CREDENTIALS:
@@ -145,19 +161,39 @@ clientSession::processResult clientSession::processMessage(const std::string &js
                 // std::cerr << "Invalid login request format: " << e.what() << '\n';
                 m_logger.log(LogLevel::WARNING, "ClientSession",
                              "Malformed login request from ClientIP: " + m_clientIP);
-                return {"{\"status\":\"error\",\"message\":\"Malformed login request.\"}", true};
+                json response;
+                response["status"] = "error";
+                response["message"] =
+                    "Malformed login request. Please provide a valid JSON with 'payload', 'hostname' and 'password'.";
+
+                return {response.dump(), true};
+            } catch (const std::exception &e) {
+                // std::cerr << "CRITICAL ERROR during login attempt from clientIP: " << m_clientIP << ": " << e.what()
+                //           << '\n';
+                m_logger.log(LogLevel::ERROR, "ClientSession",
+                             "CRITICAL: Unhandled exception during login attempt from clientIP: " + m_clientIP +
+                                 ". Error: " + e.what());
+
+                json response;
+                response["status"] = "error";
+                response["message"] = "An internal server error occurred. Please reconnect";
+
+                return {response.dump(), false}; // close connection
             }
         } else {
             // not authenticated, cant process any other command
-            return {"{\"status\":\"error\",\"message\":\"Authentication required.\"}", true};
+            json response;
+            response["status"] = "error";
+            response["message"] = "Authentication required. Please log in first.";
+            return {response.dump(), true};
         }
 
     } else {
 
         try {
 
-            auto result =
-                commandProcessor::processCommand(request, m_clientID, false, m_inventory, m_logger, m_storage);
+            auto result = commandProcessor::processCommand(request, m_clientID, false, m_inventory, m_logger, m_storage,
+                                                           m_sessionManager, m_config);
             return result;
 
         } catch (const std::exception &e) {
@@ -181,4 +217,18 @@ json clientSession::createLoggableRequest(json request) {
         }
     }
     return request;
+}
+
+std::shared_ptr<sockaddr_storage> clientSession::getUdpAddress() const {
+
+    std::lock_guard<std::mutex> lock(m_sessionMutex);
+
+    return m_udpAddress;
+}
+
+void clientSession::setUdpAddress(const struct sockaddr_storage &addr) {
+
+    std::lock_guard<std::mutex> lock(m_sessionMutex);
+
+    m_udpAddress = std::make_shared<sockaddr_storage>(addr);
 }

@@ -29,7 +29,8 @@ void Storage::initializeSchema() {
                 hostname      TEXT PRIMARY KEY NOT NULL    CHECK (length(hostname) > 0),
                 password_hash TEXT NOT NULL,
                 failed_attempts INTEGER DEFAULT 0          CHECK(failed_attempts <= 3),
-                last_failed_timestamp INTEGER DEFAULT 0
+                last_failed_timestamp INTEGER DEFAULT 0,
+                is_locked     INTEGER DEFAULT 0
             );
         )");
 
@@ -61,6 +62,7 @@ void Storage::initializeSchema() {
                 FOREIGN KEY (client_id) REFERENCES users(hostname)
             );
         )");
+        cout << "Logs table initialized successfully.\n";
 
     } catch (const SQLite::Exception &e) {
         std::cerr << "Error initializing schema: " << e.what() << '\n';
@@ -195,7 +197,8 @@ std::optional<userAuthData> Storage::getUserLoginData(const std::string &hostnam
 
     try {
         SQLite::Statement query(
-            m_db, "SELECT password_hash, failed_attempts, last_failed_timestamp FROM users WHERE hostname = ?");
+            m_db,
+            "SELECT password_hash, failed_attempts, last_failed_timestamp, is_locked FROM users WHERE hostname = ?");
         query.bind(1, hostname);
 
         if (query.executeStep()) {
@@ -203,12 +206,13 @@ std::optional<userAuthData> Storage::getUserLoginData(const std::string &hostnam
             userData.passwordHash = query.getColumn("password_hash").getString();
             userData.failedAttempts = query.getColumn("failed_attempts").getInt();
             userData.lastFailedTimestamp = query.getColumn("last_failed_timestamp").getInt();
+            userData.is_locked = (query.getColumn("is_locked").getInt() == 1);
             return userData;
         }
 
         return std::nullopt; // no user registered for the hostname given
     } catch (const std::exception &e) {
-        std::cerr << "Error getting hostname password-hash from data base: " << e.what() << '\n';
+        std::cerr << "Error getting user data login from data base: " << e.what() << '\n';
         throw;
     }
 }
@@ -282,4 +286,34 @@ std::vector<LogEntry> Storage::getInventoryHistoryTransaction(const std::string 
         throw;
     }
     return history;
+}
+
+bool Storage::setClientLockStatus(const std::string &hostname, bool isLocked) {
+    try {
+        SQLite::Statement query(m_db, "UPDATE users SET is_locked = ? WHERE hostname = ?");
+        query.bind(
+            1, isLocked ? 1 : 0); // based on bool isLocked, if got to lock, will write 1, if have to unlock, write a 0
+        query.bind(2, hostname);
+        int rowsModified = query.exec();
+        std::cout << "DEBUG: UPDATE for user '" << hostname << "' modified " << rowsModified << " rows.\n";
+        return (rowsModified == 1); // if no rows were modified, the client doesn't exists, return false
+
+    } catch (const std::exception &e) {
+        std::cerr << "Error trying to set the lock status of client in data base: " << e.what() << '\n';
+        throw;
+    }
+}
+
+bool Storage::isClientLocked(const std::string &hostname) {
+    try {
+        SQLite::Statement query(m_db, "SELECT is_locked FROM users WHERE hostname = ?");
+        query.bind(1, hostname);
+        if (query.executeStep()) {
+            return (query.getColumn(0).getInt() == 1);
+        }
+    } catch (const std::exception &e) {
+        std::cerr << "Error trying to get status of client in data base: " << e.what() << '\n';
+        throw;
+    }
+    return false; // if didn't find the user just return false
 }

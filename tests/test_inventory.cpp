@@ -61,7 +61,7 @@ void testUpdateStockModifiesExistingItem() {
     TEST_ASSERT_EQUAL_INT(99, final_stock.value());
 }
 
-void testGetInventorySummaryReturnsCorrectMap() {
+void testGetInventorySummaryReturnsCorrectMapFromDataBase() {
     Storage storage(":memory:");
     storage.initializeSchema();
     std::string clientId = "warehouse-A";
@@ -70,8 +70,8 @@ void testGetInventorySummaryReturnsCorrectMap() {
     Inventory inventory(storage, logger);
     storage.createUser(clientId, "pass123");
     // first we add items to inventory
-    inventory.updateStock("warehouse-A", "food", "meat", 150);
-    inventory.updateStock("warehouse-A", "medicine", "bandages", 300);
+    storage.saveStockUpdate("warehouse-A", "food", "meat", 150);
+    storage.saveStockUpdate("warehouse-A", "medicine", "bandages", 300);
 
     auto result = inventory.getInventorySummary("warehouse-A");
 
@@ -81,6 +81,38 @@ void testGetInventorySummaryReturnsCorrectMap() {
 
     TEST_ASSERT_EQUAL_INT(150, inventoryMap["food"]["meat"]);
     TEST_ASSERT_EQUAL_INT(300, inventoryMap["medicine"]["bandages"]);
+}
+
+void testgetInventorySummaryFromCacheHit() {
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    SystemClock clock;
+    Logger logger(storage, clock, std::cerr);
+    Inventory inventory(storage, logger);
+    std::string clientId = "warehouse-A";
+    storage.createUser(clientId, "pass123");
+
+    // one update to call getInventory and set up the client cache from now on
+    storage.saveStockUpdate(clientId, "medicine", "bandages", 300);
+
+    auto firstResult = inventory.getInventorySummary("warehouse-A");
+    TEST_ASSERT_TRUE(firstResult.has_value());
+    TEST_ASSERT_EQUAL_INT(300, (*firstResult)["medicine"]["bandages"]);
+
+    // now updates will impact on cache
+    inventory.updateStock(clientId, "food", "meat", 150);
+    inventory.updateStock(clientId, "food", "vegetables", 400);
+
+    // should be a cache hit now
+    auto result = inventory.getInventorySummary("warehouse-A");
+
+    TEST_ASSERT_TRUE(result.has_value());
+
+    Inventory::ClientInventoryMap inventoryMap = *result;
+
+    TEST_ASSERT_EQUAL_INT(150, inventoryMap["food"]["meat"]);
+    TEST_ASSERT_EQUAL_INT(300, inventoryMap["medicine"]["bandages"]);
+    TEST_ASSERT_EQUAL_INT(400, inventoryMap["food"]["vegetables"]);
 }
 
 void testGetInventorySummaryForUnknownClientReturnsEmpty() {
@@ -135,29 +167,6 @@ void testGetStockRetrievesFromDatabaseOnCacheMiss() {
 
     TEST_ASSERT_TRUE(result.has_value());
     TEST_ASSERT_EQUAL_INT(777, *result);
-}
-
-void testgetInventorySummaryFromDataBase() {
-    Storage storage(":memory:");
-    storage.initializeSchema();
-    SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
-    Inventory inventory(storage, logger);
-    std::string clientId = "warehouse-A";
-    storage.createUser(clientId, "pass123");
-    storage.saveStockUpdate(clientId, "medicine", "bandages", 300);
-    storage.saveStockUpdate(clientId, "food", "meat", 150);
-    storage.saveStockUpdate(clientId, "food", "vegetables", 400);
-
-    auto result = inventory.getInventorySummary("warehouse-A");
-
-    TEST_ASSERT_TRUE(result.has_value());
-
-    Inventory::ClientInventoryMap inventoryMap = *result;
-
-    TEST_ASSERT_EQUAL_INT(150, inventoryMap["food"]["meat"]);
-    TEST_ASSERT_EQUAL_INT(300, inventoryMap["medicine"]["bandages"]);
-    TEST_ASSERT_EQUAL_INT(400, inventoryMap["food"]["vegetables"]);
 }
 
 void testUpdateStockInvalidCategory() {

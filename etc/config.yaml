@@ -1,0 +1,8 @@
+database:
+    path: "./var/lib/my_db.sqlite3"
+
+security:
+    unlock_secret_phrase: "we do not assembly"
+
+server:
+    port: "7777"

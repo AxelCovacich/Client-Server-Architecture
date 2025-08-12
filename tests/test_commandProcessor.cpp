@@ -1,8 +1,12 @@
 #include "clock.hpp"
 #include "commandProcessor.hpp"
+#include "config.hpp"
 #include "inventory.hpp"
 #include "logger.hpp"
+#include "test_helper.hpp"
 #include "unity.h"
+#include <cstdio>
+#include <fstream>
 #include <iostream>
 #include <nlohmann/json.hpp>
 
@@ -24,14 +28,17 @@ using json = nlohmann::json;
 void testProcessCommandStatusAsJSON() {
     std::string json_request = "{\"command\": \"status\"}";
     json request_object = json::parse(json_request);
+    Config dummyConfig = createDummyConfig();
     Storage storage(":memory:");
 
     SystemClock clock;
     Logger logger(storage, clock, std::cerr);
     Inventory inventory(storage, logger);
     std::string clientId = "warehouse-A";
+    SessionManager sessionManager(storage, logger);
 
-    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage);
+    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage,
+                                                   sessionManager, dummyConfig);
 
     json response = json::parse(result.first);
 
@@ -44,13 +51,15 @@ void testProcessCommandEndAsJSON() {
     std::string json_request = "{\"command\": \"end\"}";
     json request_object = json::parse(json_request);
     Storage storage(":memory:");
-
+    Config dummyConfig = createDummyConfig();
     SystemClock clock;
     Logger logger(storage, clock, std::cerr);
     Inventory inventory(storage, logger);
     std::string clientId = "warehouse-A";
+    SessionManager session(storage, logger);
 
-    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage);
+    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
+                                                   dummyConfig);
     json response = json::parse(result.first);
 
     TEST_ASSERT_EQUAL_STRING("success", response["status"].get<std::string>().c_str());
@@ -67,8 +76,11 @@ void testProcessCommandUnknownAsJSON() {
     Logger logger(storage, clock, std::cerr);
     Inventory inventory(storage, logger);
     std::string clientId = "warehouse-A";
+    Config dummyConfig = createDummyConfig();
+    SessionManager session(storage, logger);
 
-    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage);
+    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
+                                                   dummyConfig);
     json response = json::parse(result.first);
 
     TEST_ASSERT_EQUAL_STRING("success", response["status"].get<std::string>().c_str());
@@ -89,7 +101,10 @@ void testProcessCommandUpdateStockAsJSON() {
     Inventory inventory(storage, logger);
     std::string clientId = "warehouse-A";
     storage.createUser(clientId, "pass123");
-    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage);
+    Config dummyConfig = createDummyConfig();
+    SessionManager session(storage, logger);
+    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
+                                                   dummyConfig);
     json response = json::parse(result.first);
 
     TEST_ASSERT_EQUAL_STRING("success", response["status"].get<std::string>().c_str());
@@ -108,7 +123,10 @@ void testProcessCommandSrvrInMaintenance() {
     SystemClock clock;
     Logger logger(storage, clock, std::cerr);
     Inventory inventory(storage, logger);
-    auto result = commandProcessor::processCommand(request_object, clientId, true, inventory, logger, storage);
+    Config dummyConfig = createDummyConfig();
+    SessionManager session(storage, logger);
+    auto result = commandProcessor::processCommand(request_object, clientId, true, inventory, logger, storage, session,
+                                                   dummyConfig);
     json response = json::parse(result.first);
 
     TEST_ASSERT_EQUAL_STRING("error", response["status"].get<std::string>().c_str());
@@ -126,7 +144,10 @@ void testProcessCommandNoCommand() {
     SystemClock clock;
     Logger logger(storage, clock, std::cerr);
     Inventory inventory(storage, logger);
-    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage);
+    Config dummyConfig = createDummyConfig();
+    SessionManager session(storage, logger);
+    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
+                                                   dummyConfig);
     json response = json::parse(result.first);
 
     TEST_ASSERT_EQUAL_STRING("error", response["status"].get<std::string>().c_str());
@@ -147,7 +168,10 @@ void testProcessCommandNoPayloadForUpload() {
     SystemClock clock;
     Logger logger(storage, clock, std::cerr);
     Inventory inventory(storage, logger);
-    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage);
+    Config dummyConfig = createDummyConfig();
+    SessionManager session(storage, logger);
+    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
+                                                   dummyConfig);
     json response = json::parse(result.first);
 
     TEST_ASSERT_EQUAL_STRING("error", response["status"].get<std::string>().c_str());
@@ -167,7 +191,10 @@ void testProcessCommandNoQuantityForUpload() {
     SystemClock clock;
     Logger logger(storage, clock, std::cerr);
     Inventory inventory(storage, logger);
-    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage);
+    Config dummyConfig = createDummyConfig();
+    SessionManager session(storage, logger);
+    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
+                                                   dummyConfig);
     json response = json::parse(result.first);
 
     TEST_ASSERT_EQUAL_STRING("error", response["status"].get<std::string>().c_str());
@@ -187,7 +214,10 @@ void testProcessCommandNoItemForUpload() {
     SystemClock clock;
     Logger logger(storage, clock, std::cerr);
     Inventory inventory(storage, logger);
-    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage);
+    Config dummyConfig = createDummyConfig();
+    SessionManager session(storage, logger);
+    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
+                                                   dummyConfig);
     json response = json::parse(result.first);
 
     TEST_ASSERT_EQUAL_STRING("error", response["status"].get<std::string>().c_str());
@@ -206,7 +236,10 @@ void testProcessCommandNoCategoryForUpload() {
     SystemClock clock;
     Logger logger(storage, clock, std::cerr);
     Inventory inventory(storage, logger);
-    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage);
+    Config dummyConfig = createDummyConfig();
+    SessionManager session(storage, logger);
+    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
+                                                   dummyConfig);
     json response = json::parse(result.first);
 
     TEST_ASSERT_EQUAL_STRING("error", response["status"].get<std::string>().c_str());
@@ -228,7 +261,10 @@ void testProcessCommandUpdateStockInvalidQuantityType() {
     SystemClock clock;
     Logger logger(storage, clock, std::cerr);
     Inventory inventory(storage, logger);
-    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage);
+    Config dummyConfig = createDummyConfig();
+    SessionManager session(storage, logger);
+    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
+                                                   dummyConfig);
     json response = json::parse(result.first);
 
     TEST_ASSERT_EQUAL_STRING("error", response["status"].get<std::string>().c_str());
@@ -250,7 +286,10 @@ void testProcessCommandUpdateStockNegativeQuantity() {
     SystemClock clock;
     Logger logger(storage, clock, std::cerr);
     Inventory inventory(storage, logger);
-    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage);
+    Config dummyConfig = createDummyConfig();
+    SessionManager session(storage, logger);
+    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
+                                                   dummyConfig);
     json response = json::parse(result.first);
 
     TEST_ASSERT_EQUAL_STRING("error", response["status"].get<std::string>().c_str());
@@ -269,6 +308,8 @@ void testProcessCommandgetInventory() {
     SystemClock clock;
     Logger logger(storage, clock, std::cerr);
     Inventory inventory(storage, logger);
+    Config dummyConfig = createDummyConfig();
+    SessionManager session(storage, logger);
 
     inventory.updateStock(clientId, "food", "meat", 100);
     inventory.updateStock(clientId, "medicine", "bandages", 250);
@@ -276,7 +317,8 @@ void testProcessCommandgetInventory() {
     std::string request_str = "{\"command\":\"get_inventory\"}";
 
     json request_object = json::parse(request_str);
-    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage);
+    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
+                                                   dummyConfig);
 
     json response = json::parse(result.first);
 
@@ -305,7 +347,10 @@ void testProcessCommandgGetEmptyInventory() {
     std::string request_str = "{\"command\":\"get_inventory\"}";
     storage.createUser(clientId, "pass123");
     json request_object = json::parse(request_str);
-    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage);
+    Config dummyConfig = createDummyConfig();
+    SessionManager session(storage, logger);
+    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
+                                                   dummyConfig);
 
     json response = json::parse(result.first);
 
@@ -326,11 +371,14 @@ void testProcessCommandGetStockSuccessfully() {
     SystemClock clock;
     Logger logger(storage, clock, std::cerr);
     Inventory inventory(storage, logger);
+    Config dummyConfig = createDummyConfig();
+    SessionManager session(storage, logger);
 
     inventory.updateStock(clientId, "food", "meat", 100);
     std::string request_str = "{\"command\":\"get_stock\",\"payload\":{\"category\":\"food\",\"item\":\"meat\"}}";
     json request_object = json::parse(request_str);
-    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage);
+    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
+                                                   dummyConfig);
     json response = json::parse(result.first);
 
     TEST_ASSERT_EQUAL_STRING("success", response["status"].get<std::string>().c_str());
@@ -351,11 +399,14 @@ void testProcessCommandGetStockNoItemFound() {
     SystemClock clock;
     Logger logger(storage, clock, std::cerr);
     Inventory inventory(storage, logger);
+    Config dummyConfig = createDummyConfig();
+    SessionManager session(storage, logger);
     storage.createUser(clientId, "pass123");
     // inventory.updateStock(clientId, "food", "water", 100);
     std::string request_str = "{\"command\":\"get_stock\",\"payload\":{\"category\":\"food\",\"item\":\"meat\"}}";
     json request_object = json::parse(request_str);
-    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage);
+    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
+                                                   dummyConfig);
     json response = json::parse(result.first);
 
     TEST_ASSERT_EQUAL_STRING("error", response["status"].get<std::string>().c_str());
@@ -375,7 +426,10 @@ void testProcessCommandInvalidPayloadForGetStock() {
     SystemClock clock;
     Logger logger(storage, clock, std::cerr);
     Inventory inventory(storage, logger);
-    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage);
+    Config dummyConfig = createDummyConfig();
+    SessionManager session(storage, logger);
+    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
+                                                   dummyConfig);
     json response = json::parse(result.first);
 
     TEST_ASSERT_EQUAL_STRING("error", response["status"].get<std::string>().c_str());
@@ -393,6 +447,8 @@ void testCommnadGetHistory() {
     MockClock clock;
     Logger logger(storage, clock, std::cerr);
     Inventory inventory(storage, logger);
+    Config dummyConfig = createDummyConfig();
+    SessionManager session(storage, logger);
 
     clock.set_time(100);
     inventory.updateStock(clientId, "food", "meat", 100);
@@ -402,7 +458,8 @@ void testCommnadGetHistory() {
     std::string request_str = "{\"command\":\"get_history\"}";
 
     json request_object = json::parse(request_str);
-    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage);
+    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
+                                                   dummyConfig);
 
     json response = json::parse(result.first);
 
@@ -438,11 +495,14 @@ void testCommnadGetHistoryNoLogsEmptyData() {
     MockClock clock;
     Logger logger(storage, clock, std::cerr);
     Inventory inventory(storage, logger);
+    Config dummyConfig = createDummyConfig();
+    SessionManager session(storage, logger);
 
     std::string request_str = "{\"command\":\"get_history\"}";
 
     json request_object = json::parse(request_str);
-    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage);
+    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
+                                                   dummyConfig);
 
     json response = json::parse(result.first);
 
@@ -453,4 +513,202 @@ void testCommnadGetHistoryNoLogsEmptyData() {
     TEST_ASSERT_TRUE(response["data"].is_array());
     TEST_ASSERT_TRUE(response["data"].empty());
     TEST_ASSERT_TRUE(result.second);
+}
+
+void testUnlockClientWithCorrectSecretPhrase() {
+
+    std::string clientId = "admin";
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    storage.createUser(clientId, "pass123");
+    storage.createUser("blocked_user", "pass123");
+
+    MockClock clock;
+    Logger logger(storage, clock, std::cerr);
+    Inventory inventory(storage, logger);
+    SessionManager sessionManager(storage, logger);
+    createTempYamlFile(R"(
+server:
+  port: 9999
+database:
+  path: ":memory:"
+security:
+  unlock_secret_phrase: "secret_phrase"
+)");
+    const std::vector<std::string> args = {"./server", "./temp_config.yaml"};
+
+    Config config(args);
+
+    std::string request_str = R"({
+        "command": "unlock_client",
+        "payload": {
+            "client_to_unlock": "blocked_user",
+            "secret_phrase": "secret_phrase"
+        }
+    })";
+    json request_object = json::parse(request_str);
+
+    storage.setClientLockStatus("blocked_user", true); // block the user to unlockit with command and secret phrase
+
+    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage,
+                                                   sessionManager, config);
+
+    json response = json::parse(result.first);
+    TEST_ASSERT_EQUAL_STRING("success", response["status"].get<std::string>().c_str());
+    TEST_ASSERT_EQUAL_STRING("Client `blocked_user` successfully unlocked.",
+                             response["message"].get<std::string>().c_str());
+    TEST_ASSERT_FALSE(storage.isClientLocked("blocked_user"));
+    remove("./temp_config.yaml");
+}
+
+void testUnlockClientWrongClient() {
+
+    std::string clientId = "admin";
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    storage.createUser(clientId, "pass123");
+    // storage.createUser("blocked_user","pass123");
+
+    MockClock clock;
+    Logger logger(storage, clock, std::cerr);
+    Inventory inventory(storage, logger);
+    SessionManager sessionManager(storage, logger);
+    createTempYamlFile(R"(
+server:
+  port: 9999
+database:
+  path: ":memory:"
+security:
+  unlock_secret_phrase: "secret_phrase"
+)");
+    const std::vector<std::string> args = {"./server", "./temp_config.yaml"};
+
+    Config config(args);
+    std::string request_str = R"({
+        "command": "unlock_client",
+        "payload": {
+            "client_to_unlock": "blocked_user",
+            "secret_phrase": "secret_phrase"
+        }
+    })";
+    json request_object = json::parse(request_str);
+
+    // storage.setClientLockStatus("blocked_user",true);   //block the user to unlockit with command and secret phrase
+
+    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage,
+                                                   sessionManager, config);
+
+    json response = json::parse(result.first);
+    TEST_ASSERT_EQUAL_STRING("error", response["status"].get<std::string>().c_str());
+    TEST_ASSERT_EQUAL_STRING("Couldn't unlock Client `blocked_user`. Client didn't found or misspelled.",
+                             response["message"].get<std::string>().c_str());
+}
+
+void testUnlockClientWrongPhrase() {
+
+    std::string clientId = "admin";
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    storage.createUser(clientId, "pass123");
+    // storage.createUser("blocked_user","pass123");
+
+    MockClock clock;
+    Logger logger(storage, clock, std::cerr);
+    Inventory inventory(storage, logger);
+    SessionManager sessionManager(storage, logger);
+    createTempYamlFile(R"(
+server:
+  port: 9999
+database:
+  path: ":memory:"
+security:
+  unlock_secret_phrase: "secret_phrase"
+)");
+    const std::vector<std::string> args = {"./server", "./temp_config.yaml"};
+
+    Config config(args);
+
+    std::string request_str = R"({
+        "command": "unlock_client",
+        "payload": {
+            "client_to_unlock": "blocked_user",
+            "secret_phrase": "wrong_phrase"
+        }
+    })";
+    json request_object = json::parse(request_str);
+
+    // storage.setClientLockStatus("blocked_user",true);   //block the user to unlockit with command and secret phrase
+
+    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage,
+                                                   sessionManager, config);
+
+    json response = json::parse(result.first);
+    TEST_ASSERT_EQUAL_STRING("error", response["status"].get<std::string>().c_str());
+    TEST_ASSERT_EQUAL_STRING("Wrong secret phrase. Try again.", response["message"].get<std::string>().c_str());
+}
+
+void testUnlockClientWrongPayload() {
+
+    std::string clientId = "admin";
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    storage.createUser(clientId, "pass123");
+    // storage.createUser("blocked_user","pass123");
+
+    MockClock clock;
+    Logger logger(storage, clock, std::cerr);
+    Inventory inventory(storage, logger);
+    SessionManager sessionManager(storage, logger);
+    Config dummyConfig = createDummyConfig();
+
+    std::string request_str = R"({
+        "command": "unlock_client",
+        "payload": {
+            "client_to_unlock": "blocked_user"
+        }
+    })";
+    json request_object = json::parse(request_str);
+
+    // storage.setClientLockStatus("blocked_user",true);   //block the user to unlockit with command and secret phrase
+
+    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage,
+                                                   sessionManager, dummyConfig);
+
+    json response = json::parse(result.first);
+    TEST_ASSERT_EQUAL_STRING("error", response["status"].get<std::string>().c_str());
+    TEST_ASSERT_EQUAL_STRING("Invalid or missing field in unlock_client payload.",
+                             response["message"].get<std::string>().c_str());
+}
+
+void testUnlockClientNotAdminUser() {
+
+    std::string clientId = "Not_Admin";
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    storage.createUser(clientId, "pass123");
+    storage.createUser("blocked_user", "pass123");
+
+    MockClock clock;
+    Logger logger(storage, clock, std::cerr);
+    Inventory inventory(storage, logger);
+    SessionManager sessionManager(storage, logger);
+    Config dummyConfig = createDummyConfig();
+
+    std::string request_str = R"({
+        "command": "unlock_client",
+        "payload": {
+            "client_to_unlock": "blocked_user",
+            "secret_phrase": "secret_phrase"
+        }
+    })";
+    json request_object = json::parse(request_str);
+
+    // storage.setClientLockStatus("blocked_user",true);   //block the user to unlockit with command and secret phrase
+
+    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage,
+                                                   sessionManager, dummyConfig);
+
+    json response = json::parse(result.first);
+    TEST_ASSERT_EQUAL_STRING("error", response["status"].get<std::string>().c_str());
+    TEST_ASSERT_EQUAL_STRING("Command only available for admin user.", response["message"].get<std::string>().c_str());
 }

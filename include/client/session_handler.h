@@ -13,9 +13,10 @@
 #ifndef SESSION_HANDLER_H
 #define SESSION_HANDLER_H
 
+#include "client.h"
+#include "client_context.h"
+#include "input_handler.h"
 #include "transport.h"
-
-#define SLEEP_KEEPALIVE_TIME 60
 
 /**
  * @brief Starts the main interactive communication loop with the server.
@@ -28,16 +29,27 @@
  * @param send A function pointer to the send function to use (e.g., tcp_send).
  * @return 0 on a clean shutdown, or -1 if a critical error occurs.
  */
-int start_communication(int sockfd, recv_fn recieve, send_fn send);
+int start_communication(ClientContext *context, recv_fn recieve, send_fn send);
 
 /**
- * @brief The main function for the background keepalive thread.
- *
- * This function runs in a continuous loop, sending a UDP keepalive datagram
- * to the server every 60 seconds.
- * @param arg A pointer to an integer containing the UDP socket file descriptor.
- * @return Always returns NULL.
+ * @brief Starts the auxiliary threads for the session (keepalive and udp listener).
+ * @param context Pointer to the client context.
  */
-void *keepalive_thread_func(void *arg);
+void session_start_aux_threads(ClientContext *context);
+
+/**
+ * @brief Executes a specific client action based on parsed user input.
+ *
+ * This function acts as a dispatcher for the main communication loop. It takes
+ * a UserInputAction and performs the corresponding task, such as building and
+ * sending a JSON message or handling the quit sequence.
+ *
+ * @param sockfd The active socket file descriptor for the server connection.
+ * @param action The UserInputAction enum value determining which action to perform.
+ * @param buffer The raw user input buffer, used to build the JSON message for SEND actions.
+ * @return A TransactionResult enum value indicating the outcome of the operation.
+ */
+transaction_result execute_client_action(ClientContext *context, UserInputAction action, char *buffer, recv_fn recieve,
+                                         send_fn send);
 
 #endif // SESSION_HANDLER_H

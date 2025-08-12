@@ -2,10 +2,16 @@
 #define CLIENT_SESSION_HPP
 
 #include "authenticator.hpp"
+#include "config.hpp"
 #include "inventory.hpp"
 #include "logger.hpp"
+#include "sessionManager.hpp"
+#include <memory>
+#include <mutex>
 #include <nlohmann/json.hpp>
+#include <optional>
 #include <string>
+#include <sys/socket.h>
 
 using json = nlohmann::json;
 
@@ -17,18 +23,22 @@ using json = nlohmann::json;
  * the authentication handshake, the main command processing loop, and ensures
  * resources are cleaned up upon disconnection.
  */
-class clientSession {
+class clientSession : public std::enable_shared_from_this<clientSession> {
   private:
     int m_clientSocket;
     std::string m_clientID;
     bool m_isAuthenticated;
     std::string m_clientIP;
+    std::shared_ptr<sockaddr_storage> m_udpAddress;
+    mutable std::mutex m_sessionMutex;
 
     // need to be by reference for mutex use. Can't be copies of the object
     Inventory &m_inventory;
     Authenticator &m_authenticator;
     Logger &m_logger;
     Storage &m_storage;
+    const Config &m_config;
+    SessionManager &m_sessionManager;
 
   public:
     /**
@@ -40,7 +50,7 @@ class clientSession {
      * @param clientIP The IP from the connected client.
      */
     clientSession(int clientSocket, Inventory &inventory, Authenticator &autenthicator, Logger &logger,
-                  Storage &storage, const std::string &clientIP);
+                  Storage &storage, const std::string &clientIP, SessionManager &sessionManager, const Config &config);
 
     ~clientSession();
 
@@ -86,6 +96,10 @@ class clientSession {
      * @return A new JSON object with sensitive data masked.
      */
     static json createLoggableRequest(json request);
+
+    void setUdpAddress(const struct sockaddr_storage &addr);
+
+    std::shared_ptr<sockaddr_storage> getUdpAddress() const;
 };
 
 #endif // CLIENT_SESSION_HPP

@@ -1,7 +1,8 @@
+// session_handler.c
+
 #include "session_handler.h"
-#include "client.h"
-#include "input_handler.h"
 #include "output_handler.h"
+#include "udp_handler.h"
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -14,10 +15,10 @@
  * `TRANSACTION_SERVER_CLOSED` if the server closes the connection, `TRANSACTION_CLOSE` if client closes connection with
  * end command.
  */
-static transaction_result handle_server_transaction(int sockfd, const char *message, recv_fn recieve, send_fn send,
-                                                    const char *input_buffer_copy) {
+static transaction_result handle_server_transaction(ClientContext *context, const char *message, recv_fn recieve,
+                                                    send_fn send, const char *input_buffer_copy) {
 
-    if (send(sockfd, message, strlen(message), 0) < 0) {
+    if (send(context->tcp_socket, message, strlen(message), 0) < 0) {
         perror("Error writing to socket");
         return TRANSACTION_ERROR;
     }
@@ -25,7 +26,7 @@ static transaction_result handle_server_transaction(int sockfd, const char *mess
     char server_response[BUFFER_SIZE];
     memset(server_response, '\0', BUFFER_SIZE); // NOLINT
 
-    ssize_t bytes_read = recieve(sockfd, server_response, BUFFER_SIZE - 1, 0);
+    ssize_t bytes_read = recieve(context->tcp_socket, server_response, BUFFER_SIZE - 1, 0);
     if (bytes_read < 0) {
         perror("Error reading from socket");
         return TRANSACTION_ERROR;
@@ -36,25 +37,13 @@ static transaction_result handle_server_transaction(int sockfd, const char *mess
     }
     server_response[bytes_read] = '\0';
 
-    print_readable_response(server_response, input_buffer_copy, stdout);
+    print_readable_response(context, server_response, input_buffer_copy, stdout);
     // printf("Answer from server: %s\n", buffer);
     return TRANSACTION_SUCCESS;
 }
 
-/**
- * @brief Executes a specific client action based on parsed user input.
- *
- * This function acts as a dispatcher for the main communication loop. It takes
- * a UserInputAction and performs the corresponding task, such as building and
- * sending a JSON message or handling the quit sequence.
- *
- * @param sockfd The active socket file descriptor for the server connection.
- * @param action The UserInputAction enum value determining which action to perform.
- * @param buffer The raw user input buffer, used to build the JSON message for SEND actions.
- * @return A TransactionResult enum value indicating the outcome of the operation.
- */
-static transaction_result execute_client_action(int sockfd, UserInputAction action, char *buffer, recv_fn recieve,
-                                                send_fn send) {
+transaction_result execute_client_action(ClientContext *context, UserInputAction action, char *buffer, recv_fn recieve,
+                                         send_fn send) {
 
     transaction_result result = TRANSACTION_SUCCESS;
     switch (action) {
@@ -68,14 +57,14 @@ static transaction_result execute_client_action(int sockfd, UserInputAction acti
             return TRANSACTION_SUCCESS; // Not sending anything, going back to loop for another user input
         }
 
-        result = handle_server_transaction(sockfd, json_build.json_string, recieve, send, input_buffer_copy);
+        result = handle_server_transaction(context, json_build.json_string, recieve, send, input_buffer_copy);
         free(json_build.json_string);
         return result;
     }
 
     case INPUT_ACTION_QUIT:
 
-        result = handle_server_transaction(sockfd, "{\"command\":\"end\"}", recieve, send, "end");
+        result = handle_server_transaction(context, "{\"command\":\"end\"}", recieve, send, "end");
         if (result == TRANSACTION_ERROR) {
             return result;
         }
@@ -91,14 +80,14 @@ static transaction_result execute_client_action(int sockfd, UserInputAction acti
     }
 }
 
-int start_communication(int sockfd, recv_fn recieve, send_fn send) {
+int start_communication(ClientContext *context, recv_fn recieve, send_fn send) {
     ssize_t bytes_read = 0;
     char buffer[BUFFER_SIZE];
 
     // one read before while cicle to recieve welcome message from server.
     memset(buffer, '\0', BUFFER_SIZE); // NOLINT
 
-    bytes_read = recieve(sockfd, buffer, BUFFER_SIZE - 1, 0);
+    bytes_read = recieve(context->tcp_socket, buffer, BUFFER_SIZE - 1, 0);
 
     if (bytes_read <= 0) {
         perror("Failed to receive welcome message or server closed connection");
@@ -108,12 +97,6 @@ int start_communication(int sockfd, recv_fn recieve, send_fn send) {
     buffer[bytes_read] = '\0';
     printf("Server says: %s", buffer);
 
-    /*char hostname[HOSTNAME_BUFFER_SIZE];
-    if (gethostname(hostname, sizeof(hostname)) != 0) {
-        perror("Error at gethostname:");
-        return -1;
-    }*/
-
     while (true) {
 
         printf("Enter message to send(or 'end' to stop): ");
@@ -122,7 +105,7 @@ int start_communication(int sockfd, recv_fn recieve, send_fn send) {
             break; // EoI
         }
         UserInputAction action = process_user_input(buffer);
-        transaction_result result = execute_client_action(sockfd, action, buffer, recieve, send);
+        transaction_result result = execute_client_action(context, action, buffer, recieve, send);
 
         if (result == TRANSACTION_ERROR) {
             printf("Closing client...\n");
@@ -136,15 +119,20 @@ int start_communication(int sockfd, recv_fn recieve, send_fn send) {
     return 0;
 }
 
-void *keepalive_thread_func(void *arg) {
-    int udp_sock = *(int *)arg;
-    const char *keepalive_msg = "{\"command\":\"keepalive\"}";
+void session_start_aux_threads(ClientContext *context) {
 
-    while (1) {
-        sleep(SLEEP_KEEPALIVE_TIME);
-
-        printf("\n[Keepalive] Sending heartbeat...\n");
-        udp_send(udp_sock, keepalive_msg, strlen(keepalive_msg), 0);
+    pthread_t keepalive_thread = 0;
+    if (pthread_create(&keepalive_thread, NULL, keepalive_thread_func, context) != 0) {
+        perror("Failed to create keepalive thread");
+        return;
     }
-    return NULL;
+    pthread_detach(keepalive_thread); // thread will run independently and will not block the main thread. At
+                                      // finish, it will clean up itself.
+
+    pthread_t udp_listener_thread = 0;
+    if (pthread_create(&udp_listener_thread, NULL, udp_listener_thread_func, context) != 0) {
+        perror("Failed to create UDP listener thread");
+        return;
+    }
+    pthread_detach(udp_listener_thread);
 }

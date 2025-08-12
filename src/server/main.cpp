@@ -1,6 +1,5 @@
-#include "argsParser.hpp"
-#include "authenticator.hpp"
-#include "inventory.hpp"
+#include "config.hpp"
+#include "configValidator.hpp"
 #include "server.hpp"
 #include "storage.hpp"
 #include <csignal>
@@ -26,34 +25,28 @@ void signal_handler(int signum);
 int main(int argc, char *argv[]) {
 
     const std::vector<std::string> args(argv, argv + argc); // vector that contains all the elements of the command line
-    std::unique_ptr<Server> server = nullptr; // smart pointer to server lives in the stack to controll the server
-                                              // object
 
-    auto parsedArgs = ArgsParser::parseArguments(args);
-    if (!parsedArgs) {
+    if (!ConfigValidator::validateArguments(args)) {
         return 1;
     }
 
-    int port = parsedArgs->port;
-    std::string dbPath = parsedArgs->dbPath;
-
+    std::unique_ptr<Server> server = nullptr; // smart pointer to server lives in the stack to control the server
+                                              // object
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
     signal(SIGQUIT, signal_handler);
 
     try {
 
+        Config config(args);
         SystemClock clock;
-        Storage storage(dbPath);
+        Storage storage(config.getDbPath());
         storage.initializeSchema();
         Logger logger(storage, clock, std::cerr);
-        Authenticator authenticator(storage, clock, logger);
-        Inventory inventory(storage, logger);
-
         logger.log(LogLevel::INFO, "Main", "Core services initialized.");
 
         // making a server object on the heap, controlled by smart pointer server
-        server = std::make_unique<Server>(port, inventory, authenticator, logger, storage);
+        server = std::make_unique<Server>(config, clock, storage, logger);
         logger.log(LogLevel::INFO, "Main", "Server successfully started. Running loop...");
 
         server->run();

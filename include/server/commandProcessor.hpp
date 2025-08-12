@@ -1,8 +1,11 @@
 #ifndef COMMAND_PROCESSOR_HPP
 #define COMMAND_PROCESSOR_HPP
 
+#include "config.hpp"
 #include "inventory.hpp"
 #include "logger.hpp"
+#include "sessionManager.hpp"
+#include "storage.hpp"
 #include <nlohmann/json.hpp>
 #include <string>
 #include <utility>
@@ -37,7 +40,8 @@ using commandResult = std::pair<std::string, bool>;
  * indicating if the session should continue.
  */
 commandResult processCommand(const json &request, const std::string &clientId, bool is_in_maintenance,
-                             Inventory &inventory, Logger &logger, Storage &storage);
+                             Inventory &inventory, Logger &logger, Storage &storage, SessionManager &session,
+                             const Config &config);
 
 } // namespace commandProcessor
 

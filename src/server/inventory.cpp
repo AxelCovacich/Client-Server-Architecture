@@ -115,7 +115,7 @@ std::optional<Inventory::ClientInventoryMap> Inventory::getInventorySummary(cons
 std::optional<Inventory::ClientInventoryMap>
 Inventory::getInventorySummaryFromCache(const std::string &clientId) const {
 
-    // 1. Search for the client
+    // Search for the client
     auto client_it = m_inventories.find(clientId);
     if (client_it == m_inventories.end()) {
         // doesn't exist

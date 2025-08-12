@@ -1,11 +1,15 @@
+// output_handler.c
+
 #include "output_handler.h"
 #include "cJSON.h"
 #include "client.h"
+#include "session_handler.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-void print_readable_response(const char *server_response, const char *input_buffer, FILE *output_stream) {
+void print_readable_response(ClientContext *context, const char *server_response, const char *input_buffer,
+                             FILE *output_stream) {
 
     char input_buffer_copy[BUFFER_SIZE];
     strncpy(input_buffer_copy, input_buffer, sizeof(input_buffer_copy) - 1); // NOLINT
@@ -28,6 +32,12 @@ void print_readable_response(const char *server_response, const char *input_buff
     if (strcmp(command, "get_history") == 0) {
 
         print_get_history_response(server_response, output_stream);
+        return;
+    }
+
+    if (strcmp(command, "login") == 0) {
+
+        handle_login_response(context, server_response, output_stream);
         return;
     }
 
@@ -74,7 +84,7 @@ void print_inventory_response(const char *response_string, FILE *output_stream) 
                 }
             }
         }
-        fprintf(output_stream, "------------------------\n");
+        fprintf(output_stream, "------------------------\n"); // NOLINT
     } else {
 
         cJSON *message = cJSON_GetObjectItem(root, "message");
@@ -157,6 +167,48 @@ void print_get_history_response(const char *response_string, FILE *output_stream
         if (message && cJSON_IsString(message)) {
             fprintf(output_stream, "Error from server: %s\n", message->valuestring); // NOLINT
         }
+    }
+
+    cJSON_Delete(root);
+}
+
+void handle_login_response(ClientContext *context, const char *response_string, FILE *output_stream) {
+    cJSON *root = cJSON_Parse(response_string);
+    if (root == NULL) {
+        fprintf(output_stream, "Error: Could not parse server response.\n"); // NOLINT
+        return;
+    }
+
+    cJSON *status = cJSON_GetObjectItem(root, "status");
+    if (!status || !cJSON_IsString(status)) {
+        fprintf(output_stream, "Error: Invalid server response (missing status).\n"); // NOLINT
+        cJSON_Delete(root);
+        return;
+    }
+
+    cJSON *message = cJSON_GetObjectItem(root, "message");
+    if (!message || !cJSON_IsString(message)) {
+        fprintf(output_stream, "Error: Invalid server response (missing message).\n"); // NOLINT
+        cJSON_Delete(root);
+        return;
+    }
+
+    if (strcmp(status->valuestring, "success") == 0) {
+
+        cJSON *client_id = cJSON_GetObjectItem(root, "client_id");
+        if (!client_id || !cJSON_IsString(client_id)) {
+            fprintf(output_stream, "Error: Login response missing client_id.\n"); // NOLINT
+            cJSON_Delete(root);
+            return;
+        }
+        fprintf(output_stream, "-Status: %s\n", status->valuestring);   // NOLINT
+        fprintf(output_stream, "-Message: %s\n", message->valuestring); // NOLINT
+
+        client_context_set_id(context, client_id->valuestring);
+
+        session_start_aux_threads(context);
+    } else {
+        fprintf(output_stream, "Error from server: %s\n", message->valuestring);
     }
 
     cJSON_Delete(root);

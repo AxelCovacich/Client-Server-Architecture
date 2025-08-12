@@ -86,6 +86,18 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib) # for .a libs
 
 # --- Dependencies ---
 
+# --- YAML Configuration Library ---
+include(FetchContent)
+
+FetchContent_Declare(
+  yaml-cpp
+  GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+  #GIT_TAG yaml-cpp-0.8.0
+)
+set(YAML_CPP_BUILD_TESTS OFF)
+
+FetchContent_MakeAvailable(yaml-cpp)
+
 FetchContent_Declare(
   json
   GIT_REPOSITORY https://github.com/nlohmann/json
@@ -126,12 +138,17 @@ add_library(ServerLib STATIC)
 target_sources(ServerLib PRIVATE
     src/server/server.cpp
     src/server/commandProcessor.cpp
-    src/server/argsParser.cpp
     src/server/inventory.cpp
     src/server/authenticator.cpp
     src/server/clientSession.cpp
     src/server/storage.cpp
     src/server/logger.cpp
+    src/server/alertManager.cpp
+    src/server/sessionManager.cpp
+    src/server/config.cpp
+    src/server/configValidator.cpp
+    src/server/udpHandler.cpp
+    src/server/ipcHandler.cpp
 )
 
 # Add the path to ServerLib's PUBLIC headers
@@ -140,7 +157,7 @@ target_include_directories(ServerLib PUBLIC
 )
 
 target_link_libraries(ServerLib PUBLIC nlohmann_json::nlohmann_json)
-target_link_libraries(ServerLib PUBLIC SQLiteCpp bcrypt)
+target_link_libraries(ServerLib PUBLIC SQLiteCpp bcrypt yaml-cpp)
 
 # 2. ClientLib
 add_library(ClientLib SHARED
@@ -150,6 +167,8 @@ add_library(ClientLib SHARED
     src/client/transport.c
     src/client/session_handler.c
     src/client/output_handler.c
+    src/client/client_context.c
+    src/client/udp_handler.c
 )
 target_include_directories(ClientLib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include/client

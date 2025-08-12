@@ -1,5 +1,6 @@
 // src/client/main.c
 #include "client.h"
+#include "client_context.h"
 #include "input_handler.h"
 #include "session_handler.h"
 #include <pthread.h>
@@ -25,37 +26,32 @@ int main(int argc, const char *argv[]) {
         return 1;
     }
 
-    int socket_tcp_fd = setup_and_connect(config.host, config.port_tcp, "tcp");
+    ClientContext context;
+    client_context_init(&context);
+    context.tcp_socket = setup_and_connect(config.host, config.port_tcp, "tcp");
 
-    if (socket_tcp_fd == -1) {
+    if (context.tcp_socket == -1) {
         fprintf(stderr, "Could not establish tcp connection.\n"); // NOLINT
         return 1;
     }
 
-    printf("Connection successful to %s! TCP Socket FD is %d\n", argv[1], socket_tcp_fd);
+    printf("Connection successful to %s! TCP Socket FD is %d\n", argv[1], context.tcp_socket);
 
-    int socket_udp_fd = setup_and_connect(config.host, config.port_udp, "udp");
-    if (socket_tcp_fd == -1) {
+    context.udp_socket = setup_and_connect(config.host, config.port_udp, "udp");
+    if (context.udp_socket == -1) {
         fprintf(stderr, "Could not establish udp connection.\n"); // NOLINT
         return 1;
     }
-    printf("Connection successful to %s! UDP Socket FD is %d\n", argv[1], socket_udp_fd);
+    printf("Connection successful to %s! UDP Socket FD is %d\n", argv[1], context.udp_socket);
 
-    pthread_t keepalive_thread = 0;
-    if (pthread_create(&keepalive_thread, NULL, keepalive_thread_func, &socket_udp_fd) != 0) {
-        close(socket_udp_fd);
-        perror("Failed to create keepalive thread");
-        return 1;
-    }
-
-    if (start_communication(socket_tcp_fd, tcp_recv, tcp_send) < 0) {
+    if (start_communication(&context, tcp_recv, tcp_send) < 0) {
 
         fprintf(stderr, "An error occurred during communication.\n"); // NOLINT
-        close(socket_tcp_fd);
+        close(context.tcp_socket);
         return 1;
     }
 
-    close(socket_tcp_fd);
-    close(socket_udp_fd);
+    close(context.tcp_socket);
+    close(context.udp_socket);
     return 0;
 }

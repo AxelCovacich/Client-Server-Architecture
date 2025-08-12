@@ -7,7 +7,13 @@
 #include <mutex>
 #include <string>
 
-enum class AuthResult { SUCCESS, FAILED_USER_NOT_FOUND, FAILED_ACCOUNT_LOCKED, FAILED_BAD_CREDENTIALS };
+enum class AuthResult {
+    SUCCESS,
+    FAILED_USER_NOT_FOUND,
+    FAILED_ACCOUNT_LOCKED,
+    FAILED_BAD_CREDENTIALS,
+    FAILED_ALERT_LOCKED
+};
 
 /**
  * @class Authenticator

@@ -48,7 +48,6 @@ int setup_and_connect(const char *host, const char *in_port, const char *protoco
 
         if (strcmp(protocol, "udp") == 0) {
             initialize_udp_peer_address(current_addr->ai_addr, current_addr->ai_addrlen);
-            udp_send(sockfd, "", 0, 0); // check in for server to know client addr
         }
 
         if (hints.ai_socktype == SOCK_STREAM) {

@@ -522,3 +522,95 @@ void testgetInventoryHistoryTransactionEmptyForNoUser() {
     std::vector<LogEntry> history = storage.getInventoryHistoryTransaction("Warehouse-1");
     TEST_ASSERT_EQUAL_INT(0, history.size());
 }
+
+/**
+ * @brief Tests that setClientLockStatus correctly updates the lock status of a user.
+ */
+void testSetClientLockStatus() {
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    storage.createUser("warehouse-A", "pass123");
+
+    TEST_ASSERT_FALSE(storage.isClientLocked("warehouse-A"));
+
+    storage.setClientLockStatus("warehouse-A", true);
+
+    TEST_ASSERT_TRUE(storage.isClientLocked("warehouse-A"));
+
+    storage.setClientLockStatus("warehouse-A", false);
+
+    TEST_ASSERT_FALSE(storage.isClientLocked("warehouse-A"));
+}
+
+/**
+ * @brief Tests that isClientLocked correctly reads the lock status.
+ */
+void testIsClientLocked() {
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    storage.createUser("user-unlocked", "pass123");
+    storage.createUser("user-locked", "pass456");
+
+    storage.setClientLockStatus("user-locked", true);
+
+    TEST_ASSERT_FALSE(storage.isClientLocked("user-unlocked"));
+
+    TEST_ASSERT_TRUE(storage.isClientLocked("user-locked"));
+
+    TEST_ASSERT_FALSE(storage.isClientLocked("non-existent-user"));
+}
+
+void testGetInventoryHistoryThrowsNoTable() {
+    Storage storage(":memory:");
+
+    try {
+        std::vector<LogEntry> history = storage.getInventoryHistoryTransaction("Warehouse-1");
+
+        TEST_FAIL_MESSAGE("Expected SQLite::Exception but no exception was thrown.");
+
+    } catch (const SQLite::Exception &e) {
+
+        TEST_ASSERT_NOT_NULL(strstr(e.what(), "no such table"));
+        TEST_PASS_MESSAGE("Correctly caught expected exception.");
+
+    } catch (...) {
+
+        TEST_FAIL_MESSAGE("Expected SQLite::Exception but a different exception was thrown.");
+    }
+}
+
+void testSetClientLockStatusThrowsNoTable() {
+    Storage storage(":memory:");
+
+    try {
+        bool success = storage.setClientLockStatus("Warehouse-1", true);
+        TEST_FAIL_MESSAGE("Expected SQLite::Exception but no exception was thrown.");
+
+    } catch (const SQLite::Exception &e) {
+
+        TEST_ASSERT_NOT_NULL(strstr(e.what(), "no such table"));
+        TEST_PASS_MESSAGE("Correctly caught expected exception.");
+
+    } catch (...) {
+
+        TEST_FAIL_MESSAGE("Expected SQLite::Exception but a different exception was thrown.");
+    }
+}
+
+void testIsClientLockedThrowsNoTable() {
+    Storage storage(":memory:");
+
+    try {
+        bool success = storage.isClientLocked("Warehouse-1");
+        TEST_FAIL_MESSAGE("Expected SQLite::Exception but no exception was thrown.");
+
+    } catch (const SQLite::Exception &e) {
+
+        TEST_ASSERT_NOT_NULL(strstr(e.what(), "no such table"));
+        TEST_PASS_MESSAGE("Correctly caught expected exception.");
+
+    } catch (...) {
+
+        TEST_FAIL_MESSAGE("Expected SQLite::Exception but a different exception was thrown.");
+    }
+}
