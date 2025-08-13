@@ -169,6 +169,7 @@ add_library(ClientLib SHARED
     src/client/output_handler.c
     src/client/client_context.c
     src/client/udp_handler.c
+    src/client/logger.c
 )
 target_include_directories(ClientLib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include/client
