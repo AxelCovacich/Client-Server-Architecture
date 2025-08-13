@@ -88,18 +88,21 @@ void test_build_json_fails_on_missing_arguments() {
     TEST_ASSERT_NULL(result.json_string);
 }
 
-void test_input_arguments_succeess() {
+void test_input_arguments_success() {
     client_config config;
-    const char *argv[] = {"./client", "localhost", "7000"};
-    int argc = 3;
+    const char *argv[] = {"./client", "localhost", "8000", "8001"};
+    int argc = 4;
 
     TEST_ASSERT_TRUE(parse_arguments(argc, argv, &config));
+    TEST_ASSERT_EQUAL_STRING("localhost", config.host);
+    TEST_ASSERT_EQUAL_STRING("8000", config.port_tcp);
+    TEST_ASSERT_EQUAL_STRING("8001", config.port_udp);
 }
 
 void test_parse_arguments_fails_on_insufficient_args() {
 
-    const char *argv[] = {"./client", "localhost"};
-    int argc = 2;
+    const char *argv[] = {"./client"};
+    int argc = 1;
     client_config config;
 
     bool result = parse_arguments(argc, argv, &config);
@@ -180,4 +183,68 @@ void test_build_json_update_stock_fails_invalid_quantity() {
     TEST_ASSERT_NULL(result.json_string);
 
     free(result.json_string);
+}
+
+void test_parse_arguments_env_tcp_port() {
+    setenv("CLIENT_TCP_PORT", "8000", 1);
+    client_config config;
+    const char *argv[] = {"./client", "localhost"};
+    int argc = 2;
+
+    TEST_ASSERT_TRUE(parse_arguments(argc, argv, &config));
+    TEST_ASSERT_EQUAL_STRING("8000", config.port_tcp);
+    TEST_ASSERT_EQUAL_STRING("8889", config.port_udp); // Default value
+
+    unsetenv("CLIENT_TCP_PORT");
+}
+
+void test_parse_arguments_env_udp_port() {
+    setenv("CLIENT_UDP_PORT", "8001", 1);
+    client_config config;
+    const char *argv[] = {"./client", "localhost"};
+    int argc = 2;
+
+    TEST_ASSERT_TRUE(parse_arguments(argc, argv, &config));
+    TEST_ASSERT_EQUAL_STRING("8888", config.port_tcp); // default
+    TEST_ASSERT_EQUAL_STRING("8001", config.port_udp);
+
+    unsetenv("CLIENT_UDP_PORT");
+}
+
+void test_parse_arguments_arguments_override_env_port() {
+    setenv("CLIENT_TCP_PORT", "8000", 1);
+    setenv("CLIENT_UDP_PORT", "8001", 1);
+    client_config config;
+    const char *argv[] = {"./client", "localhost", "7000", "9000"};
+    int argc = 4;
+
+    TEST_ASSERT_TRUE(parse_arguments(argc, argv, &config));
+    TEST_ASSERT_EQUAL_STRING("localhost", config.host);
+    TEST_ASSERT_EQUAL_STRING("7000", config.port_tcp);
+    TEST_ASSERT_EQUAL_STRING("9000", config.port_udp);
+
+    unsetenv("CLIENT_TCP_PORT");
+    unsetenv("CLIENT_UDP_PORT");
+}
+
+void test_parse_arguments_invalid_env_tcp_port() {
+    setenv("CLIENT_TCP_PORT", "not_a_port", 1);
+    const char *argv[] = {"./client", "localhost"};
+    int argc = 2;
+    client_config config;
+
+    bool result = parse_arguments(argc, argv, &config);
+
+    TEST_ASSERT_FALSE(result);
+}
+
+void test_parse_arguments_invalid_env_udp_port() {
+    setenv("CLIENT_UDP_PORT", "not_a_port", 1);
+    const char *argv[] = {"./client", "localhost"};
+    int argc = 2;
+    client_config config;
+
+    bool result = parse_arguments(argc, argv, &config);
+
+    TEST_ASSERT_FALSE(result);
 }

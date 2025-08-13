@@ -24,7 +24,7 @@ void test_setup_and_connect_fails_with_invalid_port_string();
 void test_build_json_for_simple_command();
 void test_build_json_for_command_with_args();
 void test_build_json_fails_on_missing_arguments();
-void test_input_arguments_succeess();
+void test_input_arguments_success();
 void test_parse_arguments_fails_on_insufficient_args();
 void test_parse_arguments_fails_on_invalid_port();
 void test_build_json_get_stock_success();
@@ -53,6 +53,11 @@ void test_logger_init_success();
 void test_logger_init_fail();
 void test_logger_log_writes_to_file();
 void test_level_to_string();
+void test_parse_arguments_invalid_env_tcp_port();
+void test_parse_arguments_env_tcp_port();
+void test_parse_arguments_env_udp_port();
+void test_parse_arguments_arguments_override_env_port();
+void test_parse_arguments_invalid_env_udp_port();
 
 } // extern "C"
 
@@ -263,7 +268,7 @@ int main() {
     RUN_TEST(testGetFullInventoryIsEmpty);
     RUN_TEST(testCommnadGetHistoryNoLogsEmptyData);
     RUN_TEST(testCommnadGetHistory);
-    RUN_TEST(test_input_arguments_succeess);
+    RUN_TEST(test_input_arguments_success);
     RUN_TEST(test_parse_arguments_fails_on_insufficient_args);
     RUN_TEST(test_parse_arguments_fails_on_invalid_port);
     RUN_TEST(test_build_json_get_stock_success);
@@ -331,6 +336,10 @@ int main() {
     RUN_TEST(test_logger_init_fail);
     RUN_TEST(test_logger_log_writes_to_file);
     RUN_TEST(test_level_to_string);
-
+    RUN_TEST(test_parse_arguments_invalid_env_tcp_port);
+    RUN_TEST(test_parse_arguments_env_tcp_port);
+    RUN_TEST(test_parse_arguments_env_udp_port);
+    RUN_TEST(test_parse_arguments_arguments_override_env_port);
+    RUN_TEST(test_parse_arguments_invalid_env_udp_port);
     return UNITY_END();
 }

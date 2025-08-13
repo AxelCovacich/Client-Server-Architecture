@@ -43,22 +43,55 @@ UserInputAction process_user_input(char *buffer) {
 }
 
 bool parse_arguments(int argc, const char *argv[], client_config *out_config) {
-    if (argc != 3) {
-        fprintf(stderr, "Usage: %s <host> <port>\n", argv[0]); // NOLINT
+    if (argc < 2 || argc > 4) {
+        fprintf(stderr, "Usage: %s <host> <tcp_port>(optional) <udp_port>(optional)\n", argv[0]); // NOLINT
         return false;
     }
 
-    int port_num = atoi(argv[2]);
-    if (port_num <= 0 || port_num > MAX_PORT_NUMBER) {
-        fprintf(stderr, "Error: Port must be a number between 1 and 65535.\n"); // NOLINT
-        return false;
+    // 1. Set defaults
+    out_config->port_tcp = DEFAULT_TCP_PORT;
+    out_config->port_udp = DEFAULT_UDP_PORT;
+
+    // 2. Override with env vars if present
+    const char *env_tcp_port = getenv("CLIENT_TCP_PORT");
+    if (env_tcp_port != NULL) {
+        int tcp_port_num = atoi(env_tcp_port);
+        if (tcp_port_num <= 0 || tcp_port_num > MAX_PORT_NUMBER) {
+            fprintf(stderr, "Error: TCP port in environment is invalid.\n");
+            return false;
+        }
+        out_config->port_tcp = env_tcp_port;
+    }
+
+    const char *env_udp_port = getenv("CLIENT_UDP_PORT");
+    if (env_udp_port != NULL) {
+        int udp_port_num = atoi(env_udp_port);
+        if (udp_port_num <= 0 || udp_port_num > MAX_PORT_NUMBER) {
+            fprintf(stderr, "Error: UDP port in environment is invalid.\n");
+            return false;
+        }
+        out_config->port_udp = env_udp_port;
+    }
+
+    // 3. Override with arguments if present
+    if (argc >= 3) {
+        int tcp_port_num = atoi(argv[2]);
+        if (tcp_port_num <= 0 || tcp_port_num > MAX_PORT_NUMBER) {
+            fprintf(stderr, "Error: TCP port must be a number between 1 and 65535.\n");
+            return false;
+        }
+        out_config->port_tcp = argv[2];
+    }
+    if (argc == 4) {
+        int udp_port_num = atoi(argv[3]);
+        if (udp_port_num <= 0 || udp_port_num > MAX_PORT_NUMBER) {
+            fprintf(stderr, "Error: UDP port must be a number between 1 and 65535.\n");
+            return false;
+        }
+        out_config->port_udp = argv[3];
     }
 
     out_config->host = argv[1];
-    out_config->port_tcp = argv[2];
-
-    snprintf(out_config->port_udp, sizeof(out_config->port_udp), "%d", port_num + 1); // NOLINT
-
     return true;
 }
 

@@ -18,6 +18,8 @@
 #include <stddef.h>
 
 #define MAX_PORT_NUMBER 65535
+#define DEFAULT_TCP_PORT "8888" // Default TCP port
+#define DEFAULT_UDP_PORT "8889" // Default UDP port
 #define BASE 10
 
 /**
@@ -74,7 +76,7 @@ json_build_result build_json_from_input(char *raw_input);
 typedef struct {
     const char *host;
     const char *port_tcp;
-    char port_udp[16];
+    const char *port_udp;
     const char *protocol;
 } client_config;
 
