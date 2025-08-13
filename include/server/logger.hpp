@@ -7,6 +7,7 @@
 #include <ostream>
 #include <string>
 
+#define DATE_BUFFER_SIZE 32
 enum class LogLevel { DEBUG, INFO, WARNING, ERROR };
 
 class Logger {

@@ -7,6 +7,8 @@
 #include <mutex>
 #include <string>
 
+#define BLOCK_DURATION_SECONDS 900 // 15 minutes in seconds
+
 enum class AuthResult {
     SUCCESS,
     FAILED_USER_NOT_FOUND,
