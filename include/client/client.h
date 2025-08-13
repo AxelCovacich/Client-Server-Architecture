@@ -1,6 +1,7 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
+#include "client_context.h"
 #include "transport.h"
 #include <stdbool.h> // Para el tipo bool
 #include <stddef.h>
@@ -28,5 +29,7 @@ typedef enum {
  * @return The socket file descriptor on success, or -1 on failure.
  */
 int setup_and_connect(const char *host, const char *port, const char *protocol);
+
+void client_cleanup(ClientContext *context);
 
 #endif // CLIENT_H
