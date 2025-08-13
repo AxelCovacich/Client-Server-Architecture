@@ -54,7 +54,7 @@ void Storage::initializeSchema() {
         m_db.exec(R"(
             CREATE TABLE IF NOT EXISTS logs (
                 log_id    INTEGER PRIMARY KEY AUTOINCREMENT,
-                timestamp INTEGER NOT NULL,
+                timestamp TEXT NOT NULL,
                 level     TEXT NOT NULL,
                 component TEXT NOT NULL,
                 message   TEXT NOT NULL,
@@ -240,14 +240,14 @@ void Storage::updateLoginAttempts(const std::string &hostname, bool loginSuccess
     }
 }
 
-void Storage::saveLogEntry(std::time_t timestamp, const std::string &level, const std::string &component,
+void Storage::saveLogEntry(const std::string &date, const std::string &level, const std::string &component,
                            const std::string &message, const std::optional<std::string> &clientId) {
     try {
 
         SQLite::Statement query(m_db, R"(
                                             INSERT INTO logs (timestamp, level, component, message,client_id)
                                             VALUES (?, ?, ?, ?, ?);)");
-        query.bind(1, static_cast<int64_t>(timestamp));
+        query.bind(1, date);
         query.bind(2, level);
         query.bind(3, component);
         query.bind(4, message);
@@ -276,7 +276,7 @@ std::vector<LogEntry> Storage::getInventoryHistoryTransaction(const std::string 
         // Must iterate over all the rows found for client, pushback will add the logentry object with all elements at
         // the end of the vector history.
         while (query.executeStep()) {
-            history.push_back({.timestamp = query.getColumn("timestamp").getInt64(),
+            history.push_back({.timestamp = query.getColumn("timestamp").getString(),
                                .level = query.getColumn("level").getString(),
                                .component = query.getColumn("component").getString(),
                                .message = query.getColumn("message").getString()});

@@ -1,4 +1,5 @@
 #include "logger.hpp"
+#include <ctime>
 #include <iostream>
 
 Logger::Logger(Storage &storage, const IClock &clock, std::ostream &errorStream)
@@ -10,14 +11,19 @@ Logger::Logger(Storage &storage, const IClock &clock, std::ostream &errorStream)
 void Logger::log(LogLevel level, const std::string &component, const std::string &message,
                  const std::optional<std::string> &clientId) noexcept {
 
-    std::time_t now = m_clock.now();
+    time_t now = m_clock.now();
+    tm *UTCTime = gmtime(&now);
+    char buf[DATE_BUFFER_SIZE];
+    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", UTCTime);
+    std::string date = std::string(buf) + " UTC";
+
     std::string level_str = levelToString(level);
 
     // std::cout << "[" << now << "] [" << component << "] [" << level_str << "] " << message << '\n';
 
     try {
         std::string level_str = levelToString(level);
-        m_storage.saveLogEntry(now, level_str, component, message, clientId);
+        m_storage.saveLogEntry(date, level_str, component, message, clientId);
 
     } catch (const std::exception &e) {
 

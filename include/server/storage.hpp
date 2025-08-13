@@ -15,7 +15,7 @@ struct userAuthData {
 };
 
 struct LogEntry {
-    std::time_t timestamp;
+    std::string timestamp;
     std::string level;
     std::string component;
     std::string message;
@@ -121,14 +121,14 @@ class Storage {
      * @brief Saves a single log entry to the database.
      *
      * This function is the persistence mechanism for the Logger module.
-     * @param timestamp The Unix timestamp of the event.
+     * @param timestamp The UTC date timestamp of the log entry.
      * @param level The log level string (e.g., "INFO").
      * @param component The component originating the log (e.g., "Authenticator").
      * @param message The descriptive log message.
      * @param clientId (Optional) The client associated with the event.
      * @throw SQLite::Exception if a database error occurs.
      */
-    void saveLogEntry(std::time_t timestamp, const std::string &level, const std::string &component,
+    void saveLogEntry(const std::string &timestamp, const std::string &level, const std::string &component,
                       const std::string &message, const std::optional<std::string> &clientId = std::nullopt);
 
     /**
@@ -144,6 +144,7 @@ class Storage {
     std::vector<LogEntry> getInventoryHistoryTransaction(const std::string &clientId);
 
     bool setClientLockStatus(const std::string &hostname, bool isLocked);
+
     bool isClientLocked(const std::string &hostname);
 
   private:
