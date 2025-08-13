@@ -109,7 +109,6 @@ void testAuthenticatorPassAfterBlockedTime() {
     clock.set_time(1000000000);
     storage.updateLoginAttempts(hostname, false, clock.now());
 
-    const long BLOCK_DURATION_SECONDS = 15 * 60;
     clock.set_time(1000000000 + BLOCK_DURATION_SECONDS + 1); // 15 min pass simulation
 
     AuthResult result = authenticator.authenticate("warehouse-A", "pass123");

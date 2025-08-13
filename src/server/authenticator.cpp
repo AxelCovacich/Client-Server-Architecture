@@ -27,7 +27,6 @@ AuthResult Authenticator::authenticate(const std::string &hostname, const std::s
         return AuthResult::FAILED_ALERT_LOCKED;
     }
 
-    const long BLOCK_DURATION_SECONDS = 15 * 60; // 15 minutos
     std::time_t currentTime = m_clock.now();
 
     if (authData->failedAttempts >= 3 && (currentTime - authData->lastFailedTimestamp) < BLOCK_DURATION_SECONDS) {
