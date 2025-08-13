@@ -49,6 +49,10 @@ void test_execute_client_action_continue();
 void test_execute_client_action_quit_error();
 void test_execute_client_action_syntax_error();
 void test_execute_client_action_send_error();
+void test_logger_init_success();
+void test_logger_init_fail();
+void test_logger_log_writes_to_file();
+void test_level_to_string();
 
 } // extern "C"
 
@@ -323,5 +327,10 @@ int main() {
     RUN_TEST(test_execute_client_action_quit_error);
     RUN_TEST(test_execute_client_action_syntax_error);
     RUN_TEST(test_execute_client_action_send_error);
+    RUN_TEST(test_logger_init_success);
+    RUN_TEST(test_logger_init_fail);
+    RUN_TEST(test_logger_log_writes_to_file);
+    RUN_TEST(test_level_to_string);
+
     return UNITY_END();
 }
