@@ -457,13 +457,13 @@ void testSaveLogEntrySuccess() {
     Storage storage(":memory:");
     storage.initializeSchema();
     storage.createUser("Warehouse-1", "pass123");
-    storage.saveLogEntry(5000, "INFO", "Authenticator", "User login successful", "Warehouse-1");
+    storage.saveLogEntry("date", "INFO", "Authenticator", "User login successful", "Warehouse-1");
     SQLite::Statement query(storage.getDb(),
                             "SELECT timestamp, level, component, message FROM logs WHERE client_id = ?");
     query.bind(1, "Warehouse-1");
 
     TEST_ASSERT_TRUE(query.executeStep());
-    TEST_ASSERT_EQUAL_INT(5000, query.getColumn(0));
+    TEST_ASSERT_EQUAL_STRING("date", query.getColumn(0));
     TEST_ASSERT_EQUAL_STRING("INFO", query.getColumn(1));
     TEST_ASSERT_EQUAL_STRING("Authenticator", query.getColumn(2));
     TEST_ASSERT_EQUAL_STRING("User login successful", query.getColumn(3));
@@ -474,7 +474,7 @@ void testSaveLogEntryThrowsWithInvalidUser() {
     storage.initializeSchema();
     try {
 
-        storage.saveLogEntry(5000, "INFO", "Authenticator", "User login successful", "some_user");
+        storage.saveLogEntry("some date", "INFO", "Authenticator", "User login successful", "some_user");
 
         TEST_FAIL_MESSAGE("Expected SQLite::Exception but no exception was thrown.");
     } catch (const SQLite::Exception &e) {
@@ -489,18 +489,18 @@ void testgetInventoryHistoryTransactionSuccessfull() {
     Storage storage(":memory:");
     storage.initializeSchema();
     storage.createUser("Warehouse-1", "pass123");
-    storage.saveLogEntry(5000, "INFO", "Inventory", "Stock updated for meat to 50", "Warehouse-1");
-    storage.saveLogEntry(5001, "INFO", "Inventory", "Stock updated for water to 300", "Warehouse-1");
+    storage.saveLogEntry("date 1", "INFO", "Inventory", "Stock updated for meat to 50", "Warehouse-1");
+    storage.saveLogEntry("date 2", "INFO", "Inventory", "Stock updated for water to 300", "Warehouse-1");
 
     std::vector<LogEntry> history = storage.getInventoryHistoryTransaction("Warehouse-1");
 
     TEST_ASSERT_EQUAL_INT(2, history.size());
-    TEST_ASSERT_EQUAL_INT(5000, history[1].timestamp);
+    TEST_ASSERT_EQUAL_STRING("date 1", history[1].timestamp.c_str());
     TEST_ASSERT_EQUAL_STRING("INFO", history[1].level.c_str());
     TEST_ASSERT_EQUAL_STRING("Inventory", history[1].component.c_str());
     TEST_ASSERT_EQUAL_STRING("Stock updated for meat to 50", history[1].message.c_str());
 
-    TEST_ASSERT_EQUAL_INT(5001, history[0].timestamp);
+    TEST_ASSERT_EQUAL_STRING("date 2", history[0].timestamp.c_str());
     TEST_ASSERT_EQUAL_STRING("INFO", history[0].level.c_str());
     TEST_ASSERT_EQUAL_STRING("Inventory", history[0].component.c_str());
     TEST_ASSERT_EQUAL_STRING("Stock updated for water to 300", history[0].message.c_str());

@@ -472,13 +472,16 @@ void testCommnadGetHistory() {
     TEST_ASSERT_FALSE(response["data"].empty());
 
     json data = response["data"];
-    TEST_ASSERT_EQUAL_INT(200, data[0]["timestamp"].get<int>());
+    std::string expectedTimeStamp = "1970-01-01 00:03:20 UTC"; // 100 sec after epoch
+
+    TEST_ASSERT_EQUAL_STRING(expectedTimeStamp.c_str(), data[0]["timestamp"].get<std::string>().c_str());
     TEST_ASSERT_EQUAL_STRING("Inventory", data[0]["component"].get<std::string>().c_str());
     TEST_ASSERT_EQUAL_STRING("INFO", data[0]["level"].get<std::string>().c_str());
     TEST_ASSERT_EQUAL_STRING("Stock succesfully updated for medicine:bandages to 250 for client warehouse-A",
                              data[0]["message"].get<std::string>().c_str());
 
-    TEST_ASSERT_EQUAL_INT(100, data[1]["timestamp"].get<int>());
+    std::string expectedTimeStamp2 = "1970-01-01 00:01:40 UTC"; // 200 sec after epoch
+    TEST_ASSERT_EQUAL_STRING(expectedTimeStamp2.c_str(), data[1]["timestamp"].get<std::string>().c_str());
     TEST_ASSERT_EQUAL_STRING("Inventory", data[1]["component"].get<std::string>().c_str());
     TEST_ASSERT_EQUAL_STRING("INFO", data[1]["level"].get<std::string>().c_str());
     TEST_ASSERT_EQUAL_STRING("Stock succesfully updated for food:meat to 100 for client warehouse-A",
