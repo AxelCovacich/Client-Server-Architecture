@@ -1,12 +1,13 @@
 // session_handler.c
 
 #include "session_handler.h"
+#include "errno.h"
+#include "logger.h"
 #include "output_handler.h"
 #include "udp_handler.h"
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
 /**
  * @brief Handles a single transaction: sends a message and receives the response.
  * @param sockfd The socket file descriptor.
@@ -20,6 +21,7 @@ static transaction_result handle_server_transaction(ClientContext *context, cons
 
     if (send(context->tcp_socket, message, strlen(message), 0) < 0) {
         perror("Error writing to socket");
+        logger_log("Session_handler", ERROR, ("Error writing to socket: %s", strerror(errno)));
         return TRANSACTION_ERROR;
     }
 
@@ -29,16 +31,19 @@ static transaction_result handle_server_transaction(ClientContext *context, cons
     ssize_t bytes_read = recieve(context->tcp_socket, server_response, BUFFER_SIZE - 1, 0);
     if (bytes_read < 0) {
         perror("Error reading from socket");
+        logger_log("Session_handler", ERROR, ("Error reading from socket: %s", strerror(errno)));
         return TRANSACTION_ERROR;
     }
     if (bytes_read == 0) {
         printf("\nServer closed the connection.\n");
+        logger_log("Session_handler", WARNING, "Server closed the connection.");
         return TRANSACTION_SERVER_CLOSED;
     }
     server_response[bytes_read] = '\0';
 
     print_readable_response(context, server_response, input_buffer_copy, stdout);
     // printf("Answer from server: %s\n", buffer);
+    logger_log("Session_handler", INFO, "Successfull Transaction. Received response from server");
     return TRANSACTION_SUCCESS;
 }
 
@@ -51,6 +56,7 @@ transaction_result execute_client_action(ClientContext *context, UserInputAction
         const char *input_buffer_copy = buffer;
         json_build_result json_build = build_json_from_input(buffer);
         if (json_build.status == JSON_BUILD_ERROR_MEMORY) {
+            logger_log("Session_handler", ERROR, "Memory error while building JSON.");
             return TRANSACTION_ERROR;
         }
         if (json_build.status == JSON_BUILD_ERROR_SYNTAX) {
@@ -90,6 +96,8 @@ int start_communication(ClientContext *context, recv_fn recieve, send_fn send) {
     bytes_read = recieve(context->tcp_socket, buffer, BUFFER_SIZE - 1, 0);
 
     if (bytes_read <= 0) {
+        logger_log("Session_handler", ERROR,
+                   ("Failed to receive welcome message or server closed connection: %s", strerror(errno)));
         perror("Failed to receive welcome message or server closed connection");
         return -1;
     }
@@ -108,6 +116,7 @@ int start_communication(ClientContext *context, recv_fn recieve, send_fn send) {
         transaction_result result = execute_client_action(context, action, buffer, recieve, send);
 
         if (result == TRANSACTION_ERROR) {
+            logger_log("Session_handler", ERROR, "Error during transaction execution");
             printf("Closing client...\n");
             return -1;
         }
@@ -115,6 +124,7 @@ int start_communication(ClientContext *context, recv_fn recieve, send_fn send) {
             break;
         }
     }
+    logger_log("Session_handler", INFO, "Client session ended by user or server.");
     printf("Closing client...\n");
     return 0;
 }
@@ -123,6 +133,7 @@ void session_start_aux_threads(ClientContext *context) {
 
     pthread_t keepalive_thread = 0;
     if (pthread_create(&keepalive_thread, NULL, keepalive_thread_func, context) != 0) {
+        logger_log("Session_handler", ERROR, ("Failed to create keepalive thread: %s", strerror(errno)));
         perror("Failed to create keepalive thread");
         return;
     }
@@ -131,6 +142,7 @@ void session_start_aux_threads(ClientContext *context) {
 
     pthread_t udp_listener_thread = 0;
     if (pthread_create(&udp_listener_thread, NULL, udp_listener_thread_func, context) != 0) {
+        logger_log("Session_handler", ERROR, ("Failed to create UDP listener thread: %s", strerror(errno)));
         perror("Failed to create UDP listener thread");
         return;
     }

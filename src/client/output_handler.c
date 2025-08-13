@@ -3,6 +3,7 @@
 #include "output_handler.h"
 #include "cJSON.h"
 #include "client.h"
+#include "logger.h"
 #include "session_handler.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,6 +44,7 @@ void print_readable_response(ClientContext *context, const char *server_response
 
     cJSON *root = cJSON_Parse(server_response);
     if (root == NULL) {
+        logger_log("Output_handler", WARNING, "Error: Could not parse server response.");
         fprintf(output_stream, "Error: Could not parse server response.\n"); // NOLINT
         return;
     }
@@ -85,10 +87,13 @@ void print_inventory_response(const char *response_string, FILE *output_stream) 
             }
         }
         fprintf(output_stream, "------------------------\n"); // NOLINT
+        logger_log("Output_handler", INFO, "Inventory report retrieved successfully.");
     } else {
 
         cJSON *message = cJSON_GetObjectItem(root, "message");
         if (message && cJSON_IsString(message)) {
+            logger_log("Output_handler", WARNING,
+                       ("Error while processing inventory report from server: %s", message->valuestring));
             fprintf(output_stream, "Error from server: %s\n", message->valuestring); // NOLINT
         }
     }
@@ -121,10 +126,13 @@ void print_get_stock_response(const char *response_string, FILE *output_stream) 
             }
         }
         fprintf(output_stream, "------------------------\n"); // NOLINT
+        logger_log("Output_handler", INFO, "Stock report retrieved successfully.");
     } else {
 
         cJSON *message = cJSON_GetObjectItem(root, "message");
         if (message && cJSON_IsString(message)) {
+            logger_log("Output_handler", WARNING,
+                       ("Error while processing stock report from server: %s", message->valuestring));
             fprintf(output_stream, "Error from server: %s\n", message->valuestring); // NOLINT
         }
     }
@@ -157,7 +165,9 @@ void print_get_history_response(const char *response_string, FILE *output_stream
                     fprintf(output_stream, "  - [%d] %s\n", timestamp->valueint, message->valuestring); // NOLINT
                 }
             }
+            logger_log("Output_handler", INFO, "Inventory history retrieved successfully.");
         } else {
+            logger_log("Output_handler", WARNING, "No inventory history found for this client.");
             fprintf(output_stream, "No inventory history found for this client.\n"); // NOLINT
         }
 
@@ -165,6 +175,8 @@ void print_get_history_response(const char *response_string, FILE *output_stream
 
         cJSON *message = cJSON_GetObjectItem(root, "message");
         if (message && cJSON_IsString(message)) {
+            logger_log("Output_handler", WARNING,
+                       ("Error while retrieving inventory history from server: %s", message->valuestring));
             fprintf(output_stream, "Error from server: %s\n", message->valuestring); // NOLINT
         }
     }
@@ -181,6 +193,7 @@ void handle_login_response(ClientContext *context, const char *response_string, 
 
     cJSON *status = cJSON_GetObjectItem(root, "status");
     if (!status || !cJSON_IsString(status)) {
+        logger_log("Output_handler", ERROR, "Error: Invalid server response (missing status).");
         fprintf(output_stream, "Error: Invalid server response (missing status).\n"); // NOLINT
         cJSON_Delete(root);
         return;
@@ -188,6 +201,7 @@ void handle_login_response(ClientContext *context, const char *response_string, 
 
     cJSON *message = cJSON_GetObjectItem(root, "message");
     if (!message || !cJSON_IsString(message)) {
+        logger_log("Output_handler", ERROR, "Error: Invalid server response (missing message).");
         fprintf(output_stream, "Error: Invalid server response (missing message).\n"); // NOLINT
         cJSON_Delete(root);
         return;
@@ -197,17 +211,19 @@ void handle_login_response(ClientContext *context, const char *response_string, 
 
         cJSON *client_id = cJSON_GetObjectItem(root, "client_id");
         if (!client_id || !cJSON_IsString(client_id)) {
+            logger_log("Output_handler", ERROR, "Error: Login response missing client_id.");
             fprintf(output_stream, "Error: Login response missing client_id.\n"); // NOLINT
             cJSON_Delete(root);
             return;
         }
         fprintf(output_stream, "-Status: %s\n", status->valuestring);   // NOLINT
         fprintf(output_stream, "-Message: %s\n", message->valuestring); // NOLINT
+        logger_log("Output_handler", INFO, ("Login successful. Client ID: %s", client_id->valuestring));
 
         client_context_set_id(context, client_id->valuestring);
-
         session_start_aux_threads(context);
     } else {
+        logger_log("Output_handler", WARNING, ("Login failed: %s", message->valuestring));
         fprintf(output_stream, "Error from server: %s\n", message->valuestring);
     }
 

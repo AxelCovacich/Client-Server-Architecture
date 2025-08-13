@@ -1,5 +1,6 @@
 #include "input_handler.h"
 #include "cJSON.h"
+#include "logger.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -75,6 +76,7 @@ json_build_result build_json_for_get_stock(char *command) {
     cJSON *root = cJSON_CreateObject();
     if (root == NULL) {
         printf("Error creating the cJSON object...\n");
+        logger_log("Input_handler", ERROR, "Error creating the cJSON object for get_stock.");
         return (json_build_result){.json_string = NULL, .status = JSON_BUILD_ERROR_MEMORY};
     }
 
@@ -106,6 +108,8 @@ json_build_result build_json_for_update_stock(char *command) {
     cJSON *root = cJSON_CreateObject();
     if (root == NULL) {
         printf("Error creating the cJSON object...\n");
+        logger_log("Input_handler", ERROR, "Error creating the cJSON object for update_stock.");
+
         return (json_build_result){.json_string = NULL, .status = JSON_BUILD_ERROR_MEMORY};
     }
 
@@ -145,6 +149,7 @@ json_build_result build_json_for_login(char *command) {
     cJSON *root = cJSON_CreateObject();
     if (root == NULL) {
         printf("Error creating the cJSON object...\n");
+        logger_log("Input_handler", ERROR, "Error creating the cJSON object for login.");
         return (json_build_result){.json_string = NULL, .status = JSON_BUILD_ERROR_MEMORY};
     }
 
@@ -166,6 +171,7 @@ json_build_result build_json_for_single_command(char *command) {
 
     if (root == NULL) {
         printf("Error creating the cJSON object...\n");
+        logger_log("Input_handler", ERROR, "Error creating the cJSON object for single command.");
         return (json_build_result){.json_string = NULL, .status = JSON_BUILD_ERROR_MEMORY};
     }
     // for simple commands like status
