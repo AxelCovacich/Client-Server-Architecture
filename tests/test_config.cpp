@@ -19,7 +19,7 @@ security:
 
     Config config(args);
 
-    TEST_ASSERT_EQUAL_INT(9999, config.getPort());
+    TEST_ASSERT_EQUAL_INT(9999, config.getTcpPort());
 
     remove("./temp_config.yaml");
 }
@@ -38,24 +38,31 @@ security:
 
     Config config(args);
 
-    TEST_ASSERT_EQUAL_INT(8080, config.getPort());
+    TEST_ASSERT_EQUAL_INT(8080, config.getTcpPort());
 
     remove("./temp_config.yaml");
 }
-/*
 /**
  * @brief Tests that Config prioritizes an environment variable over the YAML file.
- /
+ */
 void testConfigPrioritizesEnvVariableOverYaml() {
 
-    createTempYamlFile("server:\n  port: 9999");
+    setenv("SERVER_PORT", "7777", 1);
+    createTempYamlFile(R"(
+server:
+  port: 9999
+database:
+  path: "./db_from_test.sqlite3"
+security:
+  unlock_secret_phrase: "test_phrase"
+)");
     const std::vector<std::string> args = {"./server", "./temp_config.yaml"};
 
     Config config(args);
 
-    //ask for port stored on getenv
-    TEST_ASSERT_EQUAL_INT(7777, config.getPort());
-
+    // ask for port stored on getenv
+    TEST_ASSERT_EQUAL_INT(7777, config.getTcpPort());
+    unsetenv("SERVER_PORT"); // Clean up environment variable
     remove("./temp_config.yaml");
 }
 
@@ -81,34 +88,6 @@ security:
     remove("./temp_config.yaml");
 }
 
-/**
- * @brief Tests that Config prioritizes the DB_PATH environment variable over the YAML file.
-
-void test_config_prioritizes_env_variable_for_db_path() {
-
-    createTempYamlFile(R"(
-                            database:
-                            path: "./path_from_yaml.sqlite3"
-                            server:
-                            port: 8080
-                            )");
-    const std::vector<std::string> args = {"./server", "./temp_config.yaml"};
-
-    Config config(args);
-
-    TEST_ASSERT_EQUAL_STRING("/path/from/env", config.getDbPath().c_str());
-
-    remove("./temp_config.yaml");
-}
-*\
-
-// TODO: The test for environment variable priority is currently handled by manual
-// verification, as it requires a specific execution environment.
-// To test automatically in the future, the test runner would need to be
-// invoked with the environment variables set, e.g.:
-// $ SERVER_PORT=7777 ctest
-*/
-
 void testConfigSecretPhraseFromYaml() {
 
     createTempYamlFile(R"(
@@ -124,6 +103,132 @@ security:
     Config config(args);
 
     TEST_ASSERT_EQUAL_STRING("test_phrase", config.getSecretPhrase().c_str());
+
+    remove("./temp_config.yaml");
+}
+
+void testConfigPrioritizesCliArgumentsTcpAndUdp() {
+    createTempYamlFile(R"(
+server:
+  port: 9999
+database:
+  path: "./db_from_test.sqlite3"
+security:
+  unlock_secret_phrase: "test_phrase"
+)");
+    const std::vector<std::string> args = {"./server", "./temp_config.yaml", "8080", "8081"};
+
+    Config config(args);
+
+    TEST_ASSERT_EQUAL_INT(8080, config.getTcpPort());
+    TEST_ASSERT_EQUAL_INT(8081, config.getUdpPort());
+
+    remove("./temp_config.yaml");
+}
+
+void testConfigFailsOnInvalidPortInYaml() {
+    createTempYamlFile(R"(
+server:
+  port: -1
+database:
+  path: "./db_from_test.sqlite3"
+security:
+  unlock_secret_phrase: "test_phrase"
+)");
+    const std::vector<std::string> args = {"./server", "./temp_config.yaml"};
+
+    try {
+        Config config(args);
+    } catch (const std::runtime_error &e) {
+        TEST_ASSERT_EQUAL_STRING("Port in config file out of valid range", e.what());
+    }
+    remove("./temp_config.yaml");
+}
+
+void testConfigFailsOnInvalidEnvPort() {
+    setenv("SERVER_PORT", "not_a_number", 1);
+    createTempYamlFile(R"(
+server:
+  port: 9999
+database:
+  path: "./db_from_test.sqlite3"
+security:
+  unlock_secret_phrase: "test_phrase"
+)");
+    const std::vector<std::string> args = {"./server", "./temp_config.yaml"};
+
+    try {
+        Config config(args);
+        TEST_FAIL_MESSAGE("Expected std::runtime_error but no exception was thrown.");
+
+    } catch (const std::runtime_error &e) {
+        TEST_ASSERT_EQUAL_STRING("Environment variable SERVER_PORT is not a valid number", e.what());
+    } catch (...) {
+        TEST_FAIL_MESSAGE("Expected runtime_error but a different exception was thrown.");
+    }
+    unsetenv("SERVER_PORT");
+    remove("./temp_config.yaml");
+}
+
+void testConfigCliArgumentHasPriorityOverEnv() {
+    setenv("SERVER_PORT", "7777", 1);
+    createTempYamlFile(R"(
+server:
+  port: 9999
+database:
+  path: "./db_from_test.sqlite3"
+security:
+  unlock_secret_phrase: "test_phrase"
+)");
+    const std::vector<std::string> args = {"./server", "./temp_config.yaml", "8080"};
+
+    Config config(args);
+
+    TEST_ASSERT_EQUAL_INT(8080, config.getTcpPort());
+
+    unsetenv("SERVER_PORT");
+    remove("./temp_config.yaml");
+}
+
+void testConfigFailsOnMissingDbPathInYaml() {
+    createTempYamlFile(R"(
+server:
+  port: 9999
+security:
+  unlock_secret_phrase: "test_phrase"
+)");
+    const std::vector<std::string> args = {"./server", "./temp_config.yaml"};
+
+    try {
+        Config config(args);
+        TEST_FAIL_MESSAGE("Expected std::runtime_error but no exception was thrown.");
+    } catch (const std::runtime_error &e) {
+        TEST_ASSERT_EQUAL_STRING("Database path is not set in config file", e.what());
+    } catch (...) {
+        TEST_FAIL_MESSAGE("Expected runtime_error but a different exception was thrown.");
+    }
+
+    remove("./temp_config.yaml");
+}
+
+void testConfigFailsOnMissingSecretPhraseInYaml() {
+    createTempYamlFile(R"(
+server:
+  port: 9999
+database:
+  path: "./db_from_test.sqlite3"
+)");
+
+    const std::vector<std::string> args = {"./server", "./temp_config.yaml"};
+
+    try {
+        Config config(args);
+        TEST_FAIL_MESSAGE("Expected std::runtime_error but no exception was thrown.");
+    } catch (const std::runtime_error &e) {
+        TEST_ASSERT_EQUAL_STRING("Secret phrase is not set in config file", e.what());
+    } catch (...) {
+        TEST_FAIL_MESSAGE("Expected runtime_error but a different exception was thrown.");
+    }
 
     remove("./temp_config.yaml");
 }

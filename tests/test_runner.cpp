@@ -55,7 +55,6 @@ void test_logger_log_writes_to_file();
 void test_level_to_string();
 void test_parse_arguments_invalid_env_tcp_port();
 void test_parse_arguments_env_tcp_port();
-void test_parse_arguments_env_udp_port();
 void test_parse_arguments_arguments_override_env_port();
 void test_parse_arguments_invalid_env_udp_port();
 
@@ -176,6 +175,13 @@ void testGetClientIpIpv4();
 void testGetClientIpIpv6();
 void testGetClientIpInvalid();
 void testClientSessionHandlesSQlExceptionOnLogin();
+void testConfigPrioritizesEnvVariableOverYaml();
+void testConfigPrioritizesCliArgumentsTcpAndUdp();
+void testConfigFailsOnInvalidEnvPort();
+void testConfigFailsOnInvalidPortInYaml();
+void testConfigCliArgumentHasPriorityOverEnv();
+void testConfigFailsOnMissingDbPathInYaml();
+void testConfigFailsOnMissingSecretPhraseInYaml();
 /**
  * @brief Runs all the tests.
  *
@@ -338,8 +344,14 @@ int main() {
     RUN_TEST(test_level_to_string);
     RUN_TEST(test_parse_arguments_invalid_env_tcp_port);
     RUN_TEST(test_parse_arguments_env_tcp_port);
-    RUN_TEST(test_parse_arguments_env_udp_port);
     RUN_TEST(test_parse_arguments_arguments_override_env_port);
     RUN_TEST(test_parse_arguments_invalid_env_udp_port);
+    RUN_TEST(testConfigPrioritizesEnvVariableOverYaml);
+    RUN_TEST(testConfigPrioritizesCliArgumentsTcpAndUdp);
+    RUN_TEST(testConfigFailsOnInvalidEnvPort);
+    RUN_TEST(testConfigFailsOnInvalidPortInYaml);
+    RUN_TEST(testConfigCliArgumentHasPriorityOverEnv);
+    RUN_TEST(testConfigFailsOnMissingDbPathInYaml);
+    RUN_TEST(testConfigFailsOnMissingSecretPhraseInYaml);
     return UNITY_END();
 }
