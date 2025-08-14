@@ -16,6 +16,7 @@ void AlertManager::processAlert(const std::string &alertMessage) {
 
     try {
         json alertData = json::parse(alertMessage);
+        alertData["category"] = "alert"; // Add the category field to the alert data
         // validate fields
         const std::string &type = alertData.at("type");
         const std::string &message = alertData.at("message");

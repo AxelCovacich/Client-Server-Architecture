@@ -58,11 +58,16 @@ void UdpHandler::handleKeepalive(const json &request, const struct sockaddr_stor
             // cout<<"DEBUG: Updated UDP address for client " << clientId << '\n';
             m_logger.log(LogLevel::DEBUG, "UdpHandler", "Updated UDP address for client " + clientId);
 
-            const char *pong_msg = "{\"status\":\"success\",\"message\":\"PONG\"}";
+            json pongMessage;
+            pongMessage["category"] = "keepalive";
+            pongMessage["status"] = "success";
+            pongMessage["message"] = "Sending PONG response to keepalive message from server.";
+            std::string pongString = pongMessage.dump();
+
             socklen_t addr_len =
                 (client_addr.ss_family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
 
-            sendto(m_udpSocketFd, pong_msg, strlen(pong_msg), 0,
+            sendto(m_udpSocketFd, pongString.c_str(), pongString.length(), 0,
                    reinterpret_cast<const struct sockaddr *>(&client_addr), addr_len); // NOLINT
         } else {
             // cout << "DEBUG: No session found for keepalive message from client " << clientId << '\n';
