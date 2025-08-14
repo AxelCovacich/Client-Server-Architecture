@@ -44,8 +44,9 @@ Config::Config(const std::vector<std::string> &args) {
         if (env_port != nullptr) {
             try {
                 int env_port_num = std::stoi(env_port);
-                if (env_port_num <= 0 || env_port_num > MAX_PORT)
+                if (env_port_num <= 0 || env_port_num > MAX_PORT) {
                     throw std::runtime_error("Invalid port number in environment variable. Out of range.");
+                }
                 m_tcpPort = env_port_num;
                 m_udpPort = env_port_num;
             } catch (const std::exception &) {

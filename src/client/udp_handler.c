@@ -46,7 +46,8 @@ void *keepalive_thread_func(void *arg) {
         return NULL;
     }
     char keepalive_msg[KEEPALIVE_MSG_SIZE];
-    snprintf(keepalive_msg, sizeof(keepalive_msg), "{\"command\":\"keepalive\", \"clientId\":\"%s\"}", client_id);
+    snprintf(keepalive_msg, sizeof(keepalive_msg), "{\"command\":\"keepalive\", \"clientId\":\"%s\"}",
+             client_id); // NOLINT
 
     while (1) {
         printf("\n[Keepalive] Sending heartbeat...\n"); // NOLINT

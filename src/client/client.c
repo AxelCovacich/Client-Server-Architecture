@@ -72,8 +72,10 @@ int setup_and_connect(const char *host, const char *in_port, const char *protoco
 
 void client_cleanup(ClientContext *context) {
     logger_close();
-    if (context->tcp_socket != -1)
+    if (context->tcp_socket != -1) {
         close(context->tcp_socket);
-    if (context->udp_socket != -1)
+    }
+    if (context->udp_socket != -1) {
         close(context->udp_socket);
+    }
 }

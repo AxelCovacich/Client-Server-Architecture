@@ -224,7 +224,7 @@ void handle_login_response(ClientContext *context, const char *response_string, 
         session_start_aux_threads(context);
     } else {
         logger_log("Output_handler", WARNING, ("Login failed: %s", message->valuestring));
-        fprintf(output_stream, "Error from server: %s\n", message->valuestring);
+        fprintf(output_stream, "Error from server: %s\n", message->valuestring); // NOLINT
     }
 
     cJSON_Delete(root);

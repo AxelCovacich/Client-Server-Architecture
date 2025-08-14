@@ -63,7 +63,7 @@ void UdpHandler::handleKeepalive(const json &request, const struct sockaddr_stor
                 (client_addr.ss_family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
 
             sendto(m_udpSocketFd, pong_msg, strlen(pong_msg), 0,
-                   reinterpret_cast<const struct sockaddr *>(&client_addr), addr_len);
+                   reinterpret_cast<const struct sockaddr *>(&client_addr), addr_len); // NOLINT
         } else {
             // cout << "DEBUG: No session found for keepalive message from client " << clientId << '\n';
             m_logger.log(LogLevel::ERROR, "UdpHandler",
@@ -85,7 +85,7 @@ void UdpHandler::broadcastMessage(const json &alertMessage) {
         socklen_t addr_len = (address.ss_family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
 
         sendto(m_udpSocketFd, alert_str.c_str(), alert_str.length(), 0,
-               reinterpret_cast<const struct sockaddr *>(&address), addr_len);
+               reinterpret_cast<const struct sockaddr *>(&address), addr_len); // NOLINT
     }
     m_logger.log(LogLevel::INFO, "UdpHandler", "Broadcasted alert message to all connected clients: " + alert_str);
 }
