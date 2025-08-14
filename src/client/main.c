@@ -2,6 +2,7 @@
 #include "client.h"
 #include "client_context.h"
 #include "input_handler.h"
+#include "ipc_handler.h"
 #include "logger.h"
 #include "session_handler.h"
 #include <pthread.h>
@@ -52,6 +53,12 @@ int main(int argc, const char *argv[]) {
     }
     printf("Connection successful to %s! UDP Socket FD is %d\n", argv[1], context.udp_socket);
 
+    if (!ipc_init(&context)) {
+        logger_log("Main", ERROR, "IPC initialization failed.");
+        fprintf(stderr, "IPC initialization failed.\n"); // NOLINT
+        client_cleanup(&context);
+        return 1;
+    }
     if (start_communication(&context, tcp_recv, tcp_send) < 0) {
         logger_log("Main", ERROR, "Communication failed.");
         fprintf(stderr, "An error occurred during communication.\n"); // NOLINT
