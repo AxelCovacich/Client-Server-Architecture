@@ -116,4 +116,6 @@ json_build_result build_json_for_login(char *command);
  */
 json_build_result build_json_for_single_command(char *command);
 
+bool config_arguments_ports(int argc, const char *argv[], client_config *out_config);
+
 #endif // INPUT_HANDLER_H

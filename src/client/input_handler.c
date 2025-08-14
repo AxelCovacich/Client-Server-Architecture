@@ -55,26 +55,11 @@ bool parse_arguments(int argc, const char *argv[], client_config *out_config) {
     out_config->port_udp = DEFAULT_PORT;
 
     // 2. Override with arguments if present
-    if (argc == 3) {
-        int tcp_port_num = atoi(argv[2]);
-        if (tcp_port_num <= 0 || tcp_port_num > MAX_PORT_NUMBER) {
-            fprintf(stderr, "Error: TCP port must be a number between 1 and 65535.\n");
+    if (argc >= 3) {
+        bool success = config_arguments_ports(argc, argv, out_config);
+        if (!success) {
             return false;
         }
-        out_config->port_tcp = argv[2];
-        out_config->port_udp = argv[2]; // If only one port is provided, use it for both TCP and UDP
-        return true;
-    }
-    if (argc == 4) {
-        int tcp_port_num = atoi(argv[2]);
-        int udp_port_num = atoi(argv[3]);
-        if (tcp_port_num <= 0 || tcp_port_num > MAX_PORT_NUMBER || udp_port_num <= 0 ||
-            udp_port_num > MAX_PORT_NUMBER) {
-            fprintf(stderr, "Error: Port must be a number between 1 and 65535.\n");
-            return false;
-        }
-        out_config->port_tcp = argv[2];
-        out_config->port_udp = argv[3];
         return true;
     }
 
@@ -83,7 +68,7 @@ bool parse_arguments(int argc, const char *argv[], client_config *out_config) {
     if (env_tcp_port != NULL) {
         int tcp_port_num = atoi(env_tcp_port);
         if (tcp_port_num <= 0 || tcp_port_num > MAX_PORT_NUMBER) {
-            fprintf(stderr, "Error: port in environment is invalid.\n");
+            fprintf(stderr, "Error: port in environment is invalid.\n"); // NOLINT
             return false;
         }
         out_config->port_tcp = env_tcp_port;
@@ -210,4 +195,31 @@ json_build_result build_json_for_single_command(char *command) {
     char *json_string = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
     return (json_build_result){.json_string = json_string, .status = JSON_BUILD_SUCCESS};
+}
+
+bool config_arguments_ports(int argc, const char *argv[], client_config *out_config) {
+
+    if (argc == 3) {
+        int tcp_port_num = atoi(argv[2]);
+        if (tcp_port_num <= 0 || tcp_port_num > MAX_PORT_NUMBER) {
+            fprintf(stderr, "Error: TCP port must be a number between 1 and 65535.\n"); // NOLINT
+            return false;
+        }
+        out_config->port_tcp = argv[2];
+        out_config->port_udp = argv[2]; // If only one port is provided, use it for both TCP and UDP
+        return true;
+    }
+    if (argc == 4) {
+        int tcp_port_num = atoi(argv[2]);
+        int udp_port_num = atoi(argv[3]);
+        if (tcp_port_num <= 0 || tcp_port_num > MAX_PORT_NUMBER || udp_port_num <= 0 ||
+            udp_port_num > MAX_PORT_NUMBER) {
+            fprintf(stderr, "Error: Port must be a number between 1 and 65535.\n"); // NOLINT
+            return false;
+        }
+        out_config->port_tcp = argv[2];
+        out_config->port_udp = argv[3];
+        return true;
+    }
+    return false;
 }
