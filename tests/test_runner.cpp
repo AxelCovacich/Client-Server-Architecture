@@ -57,7 +57,8 @@ void test_parse_arguments_invalid_env_tcp_port();
 void test_parse_arguments_env_tcp_port();
 void test_parse_arguments_arguments_override_env_port();
 void test_parse_arguments_invalid_env_udp_port();
-
+void test_parse_arguments_ports_from_one_arg();
+void test_parse_arguments_invalid_udp_args();
 } // extern "C"
 
 void testProcessCommandStatusAsJSON();
@@ -353,5 +354,7 @@ int main() {
     RUN_TEST(testConfigCliArgumentHasPriorityOverEnv);
     RUN_TEST(testConfigFailsOnMissingDbPathInYaml);
     RUN_TEST(testConfigFailsOnMissingSecretPhraseInYaml);
+    RUN_TEST(test_parse_arguments_ports_from_one_arg);
+    RUN_TEST(test_parse_arguments_invalid_udp_args);
     return UNITY_END();
 }

@@ -212,6 +212,25 @@ void test_parse_arguments_arguments_override_env_port() {
     unsetenv("CLIENT_PORT");
 }
 
+void test_parse_arguments_invalid_udp_args() {
+    client_config config;
+    const char *argv[] = {"./client", "localhost", "7000", "not_a_port"};
+    int argc = 4;
+
+    TEST_ASSERT_FALSE(parse_arguments(argc, argv, &config));
+}
+
+void test_parse_arguments_ports_from_one_arg() {
+    client_config config;
+    const char *argv[] = {"./client", "localhost", "7000"};
+    int argc = 3;
+
+    TEST_ASSERT_TRUE(parse_arguments(argc, argv, &config));
+    TEST_ASSERT_EQUAL_STRING("localhost", config.host);
+    TEST_ASSERT_EQUAL_STRING("7000", config.port_tcp);
+    TEST_ASSERT_EQUAL_STRING("7000", config.port_udp);
+}
+
 void test_parse_arguments_invalid_env_tcp_port() {
     setenv("CLIENT_PORT", "not_a_port", 1);
     const char *argv[] = {"./client", "localhost"};
