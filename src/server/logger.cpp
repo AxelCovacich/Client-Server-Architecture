@@ -1,4 +1,5 @@
 #include "logger.hpp"
+#include <array>
 #include <ctime>
 #include <iostream>
 
@@ -13,9 +14,9 @@ void Logger::log(LogLevel level, const std::string &component, const std::string
 
     time_t now = m_clock.now();
     tm *UTCTime = gmtime(&now);
-    char buf[DATE_BUFFER_SIZE];
-    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", UTCTime);
-    std::string date = std::string(buf) + " UTC";
+    std::array<char, DATE_BUFFER_SIZE> buffer{}; // Buffer for message
+    strftime(buffer.data(), buffer.size(), "%Y-%m-%d %H:%M:%S", UTCTime);
+    std::string date = std::string(buffer.data()) + " UTC";
 
     std::string level_str = levelToString(level);
 
