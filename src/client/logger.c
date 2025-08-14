@@ -12,8 +12,7 @@ static FILE *pFile = NULL;
 int logger_init(const char *log_path) {
     // Initialization code for logger (e.g., open file at log_path)
 
-    mkdir(LOG_DIR, S_IRWXU | S_IRWXG | S_IRWXO); // Permits 0777
-
+    mkdir(LOG_DIR, S_IRWXU | S_IXGRP | S_IXOTH | S_IRGRP | S_IROTH); // 0755 (rwxr-xr-x).
     pFile = fopen(log_path, "a");
     if (pFile == NULL) {
         perror("Failed to open log file");
