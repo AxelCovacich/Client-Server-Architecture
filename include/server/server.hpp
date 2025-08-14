@@ -53,7 +53,8 @@ class Server {
     static std::string getClientIP(const struct sockaddr_storage &clientAddress);
 
   private:
-    int m_port;
+    int m_tcpPort;
+    int m_udpPort;
     int m_serverTCPFD;
     int m_serverUDPFD;
     int m_serverUnixFD;

@@ -4,6 +4,8 @@
 #include "yaml-cpp/yaml.h"
 #include <string>
 #include <vector>
+
+#define MAX_PORT 65535
 /**
  * @class Config
  * @brief Manages loading and accessing server configuration from a YAML file.
@@ -22,13 +24,15 @@ class Config {
      */
     explicit Config(const YAML::Node &node);
 
-    int getPort() const;
+    int getTcpPort() const;
+    int getUdpPort() const;
     std::string getDbPath() const;
     std::string getSecretPhrase() const;
 
   private:
     YAML::Node m_configNode;
-    int m_port;
+    int m_tcpPort;
+    int m_udpPort;
     std::string m_dbPath;
     std::string m_secretPhrase;
 };

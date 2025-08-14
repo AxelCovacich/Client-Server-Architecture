@@ -18,8 +18,7 @@
 #include <stddef.h>
 
 #define MAX_PORT_NUMBER 65535
-#define DEFAULT_TCP_PORT "8888" // Default TCP port
-#define DEFAULT_UDP_PORT "8889" // Default UDP port
+#define DEFAULT_PORT "8888" // Default port
 #define BASE 10
 
 /**

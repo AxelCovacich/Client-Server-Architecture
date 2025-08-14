@@ -5,4 +5,5 @@ security:
     unlock_secret_phrase: "we do not assembly"
 
 server:
-    port: "7777"
+    port: "8888"
+ 

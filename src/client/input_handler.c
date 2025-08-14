@@ -48,50 +48,48 @@ bool parse_arguments(int argc, const char *argv[], client_config *out_config) {
         return false;
     }
 
+    out_config->host = argv[1];
+
     // 1. Set defaults
-    out_config->port_tcp = DEFAULT_TCP_PORT;
-    out_config->port_udp = DEFAULT_UDP_PORT;
+    out_config->port_tcp = DEFAULT_PORT;
+    out_config->port_udp = DEFAULT_PORT;
 
-    // 2. Override with env vars if present
-    const char *env_tcp_port = getenv("CLIENT_TCP_PORT");
-    if (env_tcp_port != NULL) {
-        int tcp_port_num = atoi(env_tcp_port);
-        if (tcp_port_num <= 0 || tcp_port_num > MAX_PORT_NUMBER) {
-            fprintf(stderr, "Error: TCP port in environment is invalid.\n");
-            return false;
-        }
-        out_config->port_tcp = env_tcp_port;
-    }
-
-    const char *env_udp_port = getenv("CLIENT_UDP_PORT");
-    if (env_udp_port != NULL) {
-        int udp_port_num = atoi(env_udp_port);
-        if (udp_port_num <= 0 || udp_port_num > MAX_PORT_NUMBER) {
-            fprintf(stderr, "Error: UDP port in environment is invalid.\n");
-            return false;
-        }
-        out_config->port_udp = env_udp_port;
-    }
-
-    // 3. Override with arguments if present
-    if (argc >= 3) {
+    // 2. Override with arguments if present
+    if (argc == 3) {
         int tcp_port_num = atoi(argv[2]);
         if (tcp_port_num <= 0 || tcp_port_num > MAX_PORT_NUMBER) {
             fprintf(stderr, "Error: TCP port must be a number between 1 and 65535.\n");
             return false;
         }
         out_config->port_tcp = argv[2];
+        out_config->port_udp = argv[2]; // If only one port is provided, use it for both TCP and UDP
+        return true;
     }
     if (argc == 4) {
+        int tcp_port_num = atoi(argv[2]);
         int udp_port_num = atoi(argv[3]);
-        if (udp_port_num <= 0 || udp_port_num > MAX_PORT_NUMBER) {
-            fprintf(stderr, "Error: UDP port must be a number between 1 and 65535.\n");
+        if (tcp_port_num <= 0 || tcp_port_num > MAX_PORT_NUMBER || udp_port_num <= 0 ||
+            udp_port_num > MAX_PORT_NUMBER) {
+            fprintf(stderr, "Error: Port must be a number between 1 and 65535.\n");
             return false;
         }
+        out_config->port_tcp = argv[2];
         out_config->port_udp = argv[3];
+        return true;
     }
 
-    out_config->host = argv[1];
+    // 3. Override with env vars if present and no args for ports
+    const char *env_tcp_port = getenv("CLIENT_PORT");
+    if (env_tcp_port != NULL) {
+        int tcp_port_num = atoi(env_tcp_port);
+        if (tcp_port_num <= 0 || tcp_port_num > MAX_PORT_NUMBER) {
+            fprintf(stderr, "Error: port in environment is invalid.\n");
+            return false;
+        }
+        out_config->port_tcp = env_tcp_port;
+        out_config->port_udp = env_tcp_port; // If only one port is provided, use it for both TCP and UDP
+    }
+
     return true;
 }
 

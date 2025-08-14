@@ -37,7 +37,8 @@ void signal_handler(int signum) {
 
 Server::Server(const Config &config, const IClock &clock, Storage &storage, Logger &logger)
     : m_config(config)
-    , m_port(config.getPort())
+    , m_tcpPort(config.getTcpPort())
+    , m_udpPort(config.getUdpPort())
     , m_clock(clock)
     , m_storage(storage)
     , m_logger(logger)
@@ -139,7 +140,7 @@ void Server::setTCPConfig() {
     // Obtain a list of possible directions
     // Use 'nullptr' for host, to listen on all interfaces.
     // Use stored port number in m_port.
-    if (getaddrinfo(nullptr, std::to_string(m_port).c_str(), &hints, &resultList) != 0) {
+    if (getaddrinfo(nullptr, std::to_string(m_tcpPort).c_str(), &hints, &resultList) != 0) {
         m_logger.log(LogLevel::ERROR, "Server", "getaddrinfo failed.");
         throw std::runtime_error("getaddrinfo failed");
     }
@@ -189,8 +190,9 @@ void Server::setTCPConfig() {
         throw std::runtime_error("Failed to listen");
     }
 
-    m_logger.log(LogLevel::INFO, "Server", "Server TCP socket listening on port " + std::to_string(m_port));
-    cout << "Server TCP socket listening on port: " << std::to_string(m_port) << " with FD: " << m_serverTCPFD << '\n';
+    m_logger.log(LogLevel::INFO, "Server", "Server TCP socket listening on port " + std::to_string(m_tcpPort));
+    cout << "Server TCP socket listening on port: " << std::to_string(m_tcpPort) << " with FD: " << m_serverTCPFD
+         << '\n';
 }
 
 void Server::setUDPConfig() {
@@ -201,9 +203,7 @@ void Server::setUDPConfig() {
     udp_hints.ai_socktype = SOCK_DGRAM; // UDP
     udp_hints.ai_flags = AI_PASSIVE;
 
-    // Use another port TCP + 1
-    std::string udp_port_str = std::to_string(m_port + 1);
-    if (getaddrinfo(nullptr, udp_port_str.c_str(), &udp_hints, &udp_result) != 0) {
+    if (getaddrinfo(nullptr, std::to_string(m_udpPort).c_str(), &udp_hints, &udp_result) != 0) {
         throw std::runtime_error("getaddrinfo for UDP failed");
     }
 
@@ -224,8 +224,9 @@ void Server::setUDPConfig() {
     freeaddrinfo(udp_result);
     m_udpHandler.setSocketFd(m_serverUDPFD); // Set the socket FD in the UDP handler
 
-    m_logger.log(LogLevel::INFO, "Server", "UDP socket listening on port " + udp_port_str);
-    cout << "Server UDP socket listening on port: " << udp_port_str << " with FD: " << m_serverUDPFD << '\n';
+    m_logger.log(LogLevel::INFO, "Server", "UDP socket listening on port " + std::to_string(m_udpPort));
+    cout << "Server UDP socket listening on port: " << std::to_string(m_udpPort) << " with FD: " << m_serverUDPFD
+         << '\n';
 }
 
 void Server::handleTcpConnection() {
