@@ -76,7 +76,6 @@ typedef struct {
     const char *host;
     const char *port_tcp;
     const char *port_udp;
-    const char *protocol;
 } client_config;
 
 /**

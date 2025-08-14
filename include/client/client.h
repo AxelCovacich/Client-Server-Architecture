@@ -2,8 +2,9 @@
 #define CLIENT_H
 
 #include "client_context.h"
+#include "input_handler.h"
 #include "transport.h"
-#include <stdbool.h> // Para el tipo bool
+#include <stdbool.h>
 #include <stddef.h>
 
 // The buffer size is part of the module's public contract
@@ -22,13 +23,13 @@ typedef enum {
 } transaction_result;
 
 /**
- * @brief Sets up a TCP connection to a host and port using getaddrinfo.
- * @param host The hostname or IP address of the server.
- * @param port The port number as a string (e.g., "8080").
+ * @brief Sets up a TCP or UDP connection to a host and port using getaddrinfo.
+ * @param context The context containing connection information.
+ * @param config The configuration containing host and port information.
  * @param protocol The protocol used to create the socket. Can be `tcp` or `udp`.
- * @return The socket file descriptor on success, or -1 on failure.
+ * @return Boolean indicating success or failure of the setup.
  */
-int setup_and_connect(const char *host, const char *port, const char *protocol);
+bool setup_and_connect(ClientContext *context, client_config config, const char *protocol);
 
 void client_cleanup(ClientContext *context);
 

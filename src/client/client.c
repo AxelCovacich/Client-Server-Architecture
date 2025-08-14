@@ -13,22 +13,25 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-int setup_and_connect(const char *host, const char *in_port, const char *protocol) {
+bool setup_and_connect(ClientContext *context, client_config config, const char *protocol) {
     struct addrinfo hints;
     struct addrinfo *result_list = NULL;
     struct addrinfo *current_addr = NULL;
     int sockfd = -1;
     int getaddrinfo_status = 1;
-    const char *port = in_port;
+    const char *port = NULL;
+    const char *host = config.host;
 
     memset(&hints, 0, sizeof(hints)); // NOLINT
     hints.ai_family = AF_UNSPEC;      // IPv4 or IPv6
     if (strcmp(protocol, "tcp") == 0) {
 
         hints.ai_socktype = SOCK_STREAM; // TCP
+        port = config.port_tcp;
     } else {
 
         hints.ai_socktype = SOCK_DGRAM; // UDP
+        port = config.port_udp;
     }
 
     // we use getaddrinfo(thread safe and supports Ipv4 and Ipv6) instead of
@@ -37,7 +40,7 @@ int setup_and_connect(const char *host, const char *in_port, const char *protoco
     if (getaddrinfo_status != 0) {
         logger_log("Client", ERROR, ("getaddrinfo error: %s", gai_strerror(getaddrinfo_status)));
         fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(getaddrinfo_status)); // NOLINT
-        return -1;
+        return false;
     }
 
     for (current_addr = result_list; current_addr != NULL; current_addr = current_addr->ai_next) {
@@ -67,7 +70,19 @@ int setup_and_connect(const char *host, const char *in_port, const char *protoco
 
     freeaddrinfo(result_list);
 
-    return (current_addr == NULL) ? -1 : sockfd;
+    if (current_addr != NULL) {
+        if (strcmp(protocol, "tcp") == 0) {
+            context->tcp_socket = sockfd;
+        } else {
+            context->udp_socket = sockfd;
+        }
+        return true;
+    } else {
+        logger_log("Client", ERROR, "Failed to connect to any address.");
+        fprintf(stderr, "Failed to connect to any address.\n"); // NOLINT
+        close(sockfd);
+        return false;
+    }
 }
 
 void client_cleanup(ClientContext *context) {

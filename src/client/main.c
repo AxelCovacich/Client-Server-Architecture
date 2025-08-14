@@ -33,19 +33,18 @@ int main(int argc, const char *argv[]) {
     }
     ClientContext context;
     client_context_init(&context);
-    context.tcp_socket = setup_and_connect(config.host, config.port_tcp, "tcp");
 
-    if (context.tcp_socket == -1) {
+    bool setup = setup_and_connect(&context, config, "tcp");
+    if (setup == false) {
         logger_log("Main", ERROR, "Could not establish TCP connection.");
         fprintf(stderr, "Could not establish tcp connection.\n"); // NOLINT
         client_cleanup(&context);
         return 1;
     }
-
     printf("Connection successful to %s! TCP Socket FD is %d\n", argv[1], context.tcp_socket);
 
-    context.udp_socket = setup_and_connect(config.host, config.port_udp, "udp");
-    if (context.udp_socket == -1) {
+    bool udp_setup = setup_and_connect(&context, config, "udp");
+    if (udp_setup == false) {
         logger_log("Main", ERROR, "Could not establish UDP connection.");
         client_cleanup(&context);
         fprintf(stderr, "Could not establish udp connection.\n"); // NOLINT
