@@ -3,6 +3,7 @@
 #define _POSIX_C_SOURCE 200112L // Necessary to use getaddrinfo
 
 #include "client.h"
+#include "ipc_handler.h"
 #include "logger.h"
 #include <errno.h>
 #include <netdb.h>
@@ -92,5 +93,9 @@ void client_cleanup(ClientContext *context) {
     }
     if (context->udp_socket != -1) {
         close(context->udp_socket);
+    }
+    if (context->ipc_queue != (mqd_t)-1) {
+        mq_close(context->ipc_queue);
+        mq_unlink(IPC_QUEUE_NAME);
     }
 }
