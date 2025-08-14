@@ -6,6 +6,7 @@ void client_context_init(ClientContext *context) {
     pthread_mutex_init(&context->lock, NULL);
     context->tcp_socket = -1;
     context->udp_socket = -1;
+    context->ipc_queue = (mqd_t)-1; // Initialize message queue to an invalid value
 }
 
 void client_context_set_id(ClientContext *context, const char *client_id) {

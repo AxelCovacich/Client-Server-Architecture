@@ -1,6 +1,7 @@
 #ifndef CLIENT_CONTEXT_H
 #define CLIENT_CONTEXT_H
 
+#include <mqueue.h>
 #include <pthread.h>
 
 #define CLIENT_ID_MAX_LEN 64
@@ -11,6 +12,8 @@ typedef struct {
     pthread_mutex_t lock;
     int tcp_socket;
     int udp_socket;
+    mqd_t ipc_queue; // Message queue for IPC
+
 } ClientContext;
 
 void client_context_init(ClientContext *context);
