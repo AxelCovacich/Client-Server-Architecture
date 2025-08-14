@@ -20,7 +20,6 @@ void tearDown(void) {
 void test_process_input_returns_send_for_normal_message();
 void test_process_input_returns_quit_for_end_command();
 void test_process_input_returns_continue_for_empty_input();
-void test_setup_and_connect_fails_with_invalid_port_string();
 void test_build_json_for_simple_command();
 void test_build_json_for_command_with_args();
 void test_build_json_fails_on_missing_arguments();
@@ -59,6 +58,9 @@ void test_parse_arguments_arguments_override_env_port();
 void test_parse_arguments_invalid_env_udp_port();
 void test_parse_arguments_ports_from_one_arg();
 void test_parse_arguments_invalid_udp_args();
+void test_setup_and_connect_fails_with_invalid_port_string();
+void test_setup_and_connect_fails_with_invalid_host();
+void test_setup_and_connect_fails_with_invalid_udp_port_string();
 } // extern "C"
 
 void testProcessCommandStatusAsJSON();
@@ -200,7 +202,6 @@ int main() {
     RUN_TEST(test_process_input_returns_send_for_normal_message);
     RUN_TEST(test_process_input_returns_quit_for_end_command);
     RUN_TEST(test_process_input_returns_continue_for_empty_input);
-    RUN_TEST(test_setup_and_connect_fails_with_invalid_port_string);
     RUN_TEST(test_build_json_for_simple_command);
     RUN_TEST(test_build_json_for_command_with_args);
     RUN_TEST(test_build_json_fails_on_missing_arguments);
@@ -356,5 +357,8 @@ int main() {
     RUN_TEST(testConfigFailsOnMissingSecretPhraseInYaml);
     RUN_TEST(test_parse_arguments_ports_from_one_arg);
     RUN_TEST(test_parse_arguments_invalid_udp_args);
+    RUN_TEST(test_setup_and_connect_fails_with_invalid_port_string);
+    RUN_TEST(test_setup_and_connect_fails_with_invalid_host);
+    RUN_TEST(test_setup_and_connect_fails_with_invalid_udp_port_string);
     return UNITY_END();
 }

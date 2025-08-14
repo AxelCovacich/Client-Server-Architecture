@@ -10,10 +10,30 @@
  * @brief Tests that setup_and_connect fails when given a non-numeric port.
  */
 void test_setup_and_connect_fails_with_invalid_port_string() {
+    client_config config = {.host = "localhost", .port_tcp = "invalid_port", .port_udp = "8001"};
+    ClientContext context = {0};
 
-    int result_fd = setup_and_connect("localhost", "invalid port", "tcp");
+    bool result = setup_and_connect(&context, config, "tcp");
 
-    TEST_ASSERT_EQUAL_INT(-1, result_fd);
+    TEST_ASSERT_FALSE(result);
+}
+
+void test_setup_and_connect_fails_with_invalid_host() {
+    client_config config = {.host = "no_such_host", .port_tcp = "8000", .port_udp = "8001"};
+    ClientContext context = {0};
+
+    bool result = setup_and_connect(&context, config, "tcp");
+
+    TEST_ASSERT_FALSE(result);
+}
+
+void test_setup_and_connect_fails_with_invalid_udp_port_string() {
+    client_config config = {.host = "localhost", .port_tcp = "8000", .port_udp = "invalid_port"};
+    ClientContext context = {0};
+
+    bool result = setup_and_connect(&context, config, "udp");
+
+    TEST_ASSERT_FALSE(result);
 }
 
 void test_initialize_udp_peer_address_copies_data() {
