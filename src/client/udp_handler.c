@@ -51,7 +51,7 @@ void *keepalive_thread_func(void *arg) {
              client_id); // NOLINT
 
     while (1) {
-        printf("\n[Keepalive] Sending heartbeat...\n"); // NOLINT
+
         if (udp_send(udp_sock, keepalive_msg, strlen(keepalive_msg), 0) < 0) {
             logger_log("UDP_handler", ERROR, ("Failed to send keepalive message: %s", strerror(errno)));
             perror("Failed to send keepalive message");
