@@ -83,8 +83,8 @@ void clientSession::run() {
             break;
         }
     }
-    cout << "Closing connection with client from thread: " << this_thread::get_id() << '\n';
-    // if is empty, the client has never autenticathed or registered, nothing to do.
+    // cout << "Closing connection with client from thread: " << this_thread::get_id() << '\n';
+    //  if is empty, the client has never autenticathed or registered, nothing to do.
     if (!m_clientID.empty()) {
         m_sessionManager.unregisterSession(m_clientID);
     }
@@ -99,8 +99,8 @@ bool clientSession::isAuthenticated() const {
 
 clientSession::processResult clientSession::processMessage(const std::string &json_string) {
 
-    cout << "Thread " << this_thread::get_id() << " received: " << json_string << " from clientIP: " << m_clientIP
-         << '\n';
+    // cout << "Thread " << this_thread::get_id() << " received: " << json_string << " from clientIP: " << m_clientIP
+    //     << '\n';
 
     json request = json::parse(json_string, nullptr, false); // don't throw exception, give back discarded if not valid
     if (request.is_discarded()) {

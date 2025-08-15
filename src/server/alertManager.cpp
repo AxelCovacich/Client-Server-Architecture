@@ -38,5 +38,5 @@ void AlertManager::processAlert(const std::string &alertMessage) {
         std::string errorLog = "Failed to process incoming alert. Reason: " + std::string(e.what());
         m_logger.log(LogLevel::ERROR, "AlertManager", errorLog);
     }
-    cout << "recieved alert Message: " << alertMessage << '\n';
+    // cout << "recieved alert Message: " << alertMessage << '\n';
 }

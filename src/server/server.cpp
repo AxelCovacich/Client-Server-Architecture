@@ -53,7 +53,6 @@ Server::Server(const Config &config, const IClock &clock, Storage &storage, Logg
     , m_ipcHandler(m_logger, m_alert) {
 
     setupServer();
-
     // set sockets udp ipc
 }
 
@@ -111,7 +110,7 @@ void Server::run() {
         }
 
         if (activity > 0 && FD_ISSET(m_serverUDPFD, &read_fds)) {
-            cout << "UDP activity detected, handling messages...\n";
+            // cout << "UDP activity detected, handling messages...\n";
             m_udpHandler.handleMessage();
         }
 

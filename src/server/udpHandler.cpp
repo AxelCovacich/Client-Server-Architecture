@@ -61,7 +61,7 @@ void UdpHandler::handleKeepalive(const json &request, const struct sockaddr_stor
             json pongMessage;
             pongMessage["category"] = "keepalive";
             pongMessage["status"] = "success";
-            pongMessage["message"] = "Sending PONG response to keepalive message from server.";
+            pongMessage["message"] = "PONG: Server received keepalive from client and connection is active.";
             std::string pongString = pongMessage.dump();
 
             socklen_t addr_len =
