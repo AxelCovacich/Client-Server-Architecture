@@ -1,5 +1,6 @@
 #include "udp_handler.h"
 #include "errno.h"
+#include "ipc_handler.h"
 #include "logger.h"
 #include <stdio.h>
 #include <string.h>
