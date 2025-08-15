@@ -95,7 +95,9 @@ void client_cleanup(ClientContext *context) {
         close(context->udp_socket);
     }
     if (context->ipc_queue != (mqd_t)-1) {
+        ipc_exit(context);
         mq_close(context->ipc_queue);
         mq_unlink(IPC_QUEUE_NAME);
     }
+    printf("Client cleanup completed.\n"); // NOLINT
 }
