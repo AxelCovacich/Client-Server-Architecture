@@ -96,6 +96,7 @@ void client_cleanup(ClientContext *context) {
     }
     if (context->ipc_queue != (mqd_t)-1) {
         ipc_exit(context);
+        sleep(SLEEP_IPC_SECS); // Give some time for the IPC to exit gracefully
         mq_close(context->ipc_queue);
         mq_unlink(IPC_QUEUE_NAME);
     }

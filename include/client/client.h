@@ -11,7 +11,7 @@
 #define BUFFER_SIZE 5048
 #define HOSTNAME_BUFFER_SIZE 256
 #define LOGIN_JSON_SIZE 512
-
+#define SLEEP_IPC_SECS 2
 /**
  * @brief Defines the set of possible results of a single transaction (wirte-read) with the server.
  */
