@@ -7,6 +7,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+
 bool ipc_init(ClientContext *context) {
     struct mq_attr attr;
     attr.mq_flags = 0;              // Flags: 0 for blocking, O_NONBLOCK for non-blocking
@@ -68,10 +69,26 @@ int priority_check(const char *message) {
     int priority = 0; // Default priority
     if (strcmp(category->valuestring, "keepalive") == 0) {
         priority = 1;
-    } else if (strcmp(category->valuestring, "alert") == 0) {
+    }
+    if (strcmp(category->valuestring, "alert") == 0) {
         priority = 2; // Higher priority for alerts
+    }
+    if (strcmp(category->valuestring, "exit") == 0) {
+        priority = 3; // Highest priority for exit messages
     }
 
     cJSON_Delete(root);
     return priority;
+}
+
+void ipc_exit(ClientContext *context) {
+    cJSON *message = cJSON_CreateObject();
+    if (message == NULL) {
+        fprintf(stderr, "Error creating IPC exit message.\n"); // NOLINT
+        return;
+    }
+    cJSON_AddStringToObject(message, "category", "exit");
+    cJSON_AddStringToObject(message, "message", "Closing client, goodbye!");
+    ipc_send_message(context, cJSON_Print(message));
+    cJSON_Delete(message);
 }

@@ -12,6 +12,8 @@
 bool ipc_init(ClientContext *context);
 void ipc_send_message(ClientContext *context, const char *message);
 int priority_check(const char *message);
+void ipc_exit(ClientContext *context);
+
 // char *ipc_receive_message();
 
 #endif
