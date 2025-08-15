@@ -159,14 +159,18 @@ void launch_dashboard(ClientContext *context) {
     pid_t pid = fork();
     if (pid == 0) {
         // Child process → runs dashboard
+
         prctl(PR_SET_PDEATHSIG, SIGTERM); // Ensure child terminates if parent dies abruptly
-        char *args[] = {"python3", "./scripts/dashboard.py", client_context_get_id(context), NULL};
-        execvp("python3", args);
-        perror("execvp failed");
+        const char *client_id = client_context_get_id(context);
+
+        const char *args[] = {"gnome-terminal", "--", "./venv/bin/python", "./scripts/dashboard.py", client_id, NULL};
+
+        execv("/usr/bin/gnome-terminal", (char *const *)args);
+        perror("execv failed");
         _exit(1); // Safe exit if exec fails
     } else if (pid > 0) {
         // Parent process → continues as if nothing happened
-        // We don't call wait(), the child is independent
+        // don't call wait(), the child is independent
     } else {
         perror("fork failed");
         logger_log("Session_handler", ERROR, ("Failed to fork for dashboard: %s", strerror(errno)));

@@ -222,6 +222,7 @@ void handle_login_response(ClientContext *context, const char *response_string, 
 
         client_context_set_id(context, client_id->valuestring);
         session_start_aux_threads(context);
+        launch_dashboard(context);
     } else {
         logger_log("Output_handler", WARNING, ("Login failed: %s", message->valuestring));
         fprintf(output_stream, "Error from server: %s\n", message->valuestring); // NOLINT
