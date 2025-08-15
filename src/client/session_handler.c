@@ -5,9 +5,14 @@
 #include "logger.h"
 #include "output_handler.h"
 #include "udp_handler.h"
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/prctl.h>
 #include <unistd.h>
+
+volatile sig_atomic_t exit_requested = 0;
+
 /**
  * @brief Handles a single transaction: sends a message and receives the response.
  * @param sockfd The socket file descriptor.
@@ -105,7 +110,7 @@ int start_communication(ClientContext *context, recv_fn recieve, send_fn send) {
     buffer[bytes_read] = '\0';
     printf("Server says: %s", buffer);
 
-    while (true) {
+    while (exit_requested == 0) {
 
         printf("Enter message to send(or 'end' to stop): ");
         if (fgets(buffer, BUFFER_SIZE, stdin) == NULL) {
@@ -125,7 +130,7 @@ int start_communication(ClientContext *context, recv_fn recieve, send_fn send) {
         }
     }
     logger_log("Session_handler", INFO, "Client session ended by user or server.");
-    printf("Closing client...\n");
+    printf("\nClosing client...\n");
     return 0;
 }
 
@@ -147,4 +152,29 @@ void session_start_aux_threads(ClientContext *context) {
         return;
     }
     pthread_detach(udp_listener_thread);
+}
+
+void launch_dashboard(ClientContext *context) {
+
+    pid_t pid = fork();
+    if (pid == 0) {
+        // Child process → runs dashboard
+        prctl(PR_SET_PDEATHSIG, SIGTERM); // Ensure child terminates if parent dies abruptly
+        char *args[] = {"python3", "./scripts/dashboard.py", client_context_get_id(context), NULL};
+        execvp("python3", args);
+        perror("execvp failed");
+        _exit(1); // Safe exit if exec fails
+    } else if (pid > 0) {
+        // Parent process → continues as if nothing happened
+        // We don't call wait(), the child is independent
+    } else {
+        perror("fork failed");
+        logger_log("Session_handler", ERROR, ("Failed to fork for dashboard: %s", strerror(errno)));
+    }
+    logger_log("Session_handler", INFO, "Dashboard launched successfully.");
+}
+
+void signal_handler(int signum) {
+    exit_requested = 1;
+    fclose(stdin); // EoF to break fgets loop
 }

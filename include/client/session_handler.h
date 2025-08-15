@@ -52,4 +52,8 @@ void session_start_aux_threads(ClientContext *context);
 transaction_result execute_client_action(ClientContext *context, UserInputAction action, char *buffer, recv_fn recieve,
                                          send_fn send);
 
+void launch_dashboard(ClientContext *context);
+
+void signal_handler(int signum);
+
 #endif // SESSION_HANDLER_H
