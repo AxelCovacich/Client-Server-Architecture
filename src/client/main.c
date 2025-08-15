@@ -6,6 +6,7 @@
 #include "logger.h"
 #include "session_handler.h"
 #include <pthread.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,6 +24,9 @@
  */
 
 int main(int argc, const char *argv[]) {
+    signal(SIGINT, signal_handler);
+    signal(SIGTERM, signal_handler);
+    signal(SIGQUIT, signal_handler);
     client_config config;
     if (!parse_arguments(argc, argv, &config)) {
         return 1;
