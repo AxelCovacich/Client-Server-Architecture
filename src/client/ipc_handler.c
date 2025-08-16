@@ -26,20 +26,20 @@ bool ipc_init(ClientContext *context) {
     return true;
 }
 
-void ipc_send_message(ClientContext *context, const char *message) {
+bool ipc_send_message(ClientContext *context, const char *message) {
     if (context->ipc_queue == (mqd_t)-1) {
         fprintf(stderr, "IPC queue not initialized.\n"); // NOLINT
-        return;
+        return false;
     }
     if (strlen(message) >= MAX_MSG_SIZE) {
         fprintf(stderr, "Message too long for IPC queue.\n"); // NOLINT
-        return;
+        return false;
     }
 
     int priority = priority_check(message);
     if (priority < 0) {
         fprintf(stderr, "Invalid message format for IPC queue.\n"); // NOLINT
-        return;
+        return false;
     }
 
     if (mq_send(context->ipc_queue, message, strlen(message) + 1, priority) == -1) {
@@ -48,8 +48,9 @@ void ipc_send_message(ClientContext *context, const char *message) {
         } else {
             perror("mq_send");
         }
-        return;
+        return false;
     }
+    return true;
 }
 
 int priority_check(const char *message) {
@@ -81,7 +82,7 @@ int priority_check(const char *message) {
     return priority;
 }
 
-void ipc_exit(ClientContext *context) {
+bool ipc_exit(ClientContext *context) {
     cJSON *message = cJSON_CreateObject();
     if (message == NULL) {
         fprintf(stderr, "Error creating IPC exit message.\n"); // NOLINT
@@ -89,6 +90,7 @@ void ipc_exit(ClientContext *context) {
     }
     cJSON_AddStringToObject(message, "category", "exit");
     cJSON_AddStringToObject(message, "message", "Closing client, goodbye!");
-    ipc_send_message(context, cJSON_Print(message));
+    bool result = ipc_send_message(context, cJSON_Print(message));
     cJSON_Delete(message);
+    return result;
 }
