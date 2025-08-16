@@ -71,19 +71,7 @@ bool setup_and_connect(ClientContext *context, client_config config, const char 
 
     freeaddrinfo(result_list);
 
-    if (current_addr != NULL) {
-        if (strcmp(protocol, "tcp") == 0) {
-            context->tcp_socket = sockfd;
-        } else {
-            context->udp_socket = sockfd;
-        }
-        return true;
-    } else {
-        logger_log("Client", ERROR, "Failed to connect to any address.");
-        fprintf(stderr, "Failed to connect to any address.\n"); // NOLINT
-        close(sockfd);
-        return false;
-    }
+    return socket_validation(current_addr, context, sockfd, protocol);
 }
 
 void client_cleanup(ClientContext *context) {
@@ -101,4 +89,20 @@ void client_cleanup(ClientContext *context) {
         mq_unlink(IPC_QUEUE_NAME);
     }
     printf("Client cleanup completed.\n"); // NOLINT
+}
+
+bool socket_validation(struct addrinfo *current_addr, ClientContext *context, int sockfd, const char *protocol) {
+    if (current_addr != NULL) {
+        if (strcmp(protocol, "tcp") == 0) {
+            context->tcp_socket = sockfd;
+        } else {
+            context->udp_socket = sockfd;
+        }
+        return true;
+    } else {
+        logger_log("Client", ERROR, "Failed to connect to any address.");
+        fprintf(stderr, "Failed to connect to any address.\n"); // NOLINT
+        close(sockfd);
+        return false;
+    }
 }

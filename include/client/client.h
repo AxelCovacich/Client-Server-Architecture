@@ -4,6 +4,7 @@
 #include "client_context.h"
 #include "input_handler.h"
 #include "transport.h"
+#include <netdb.h>
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -32,5 +33,7 @@ typedef enum {
 bool setup_and_connect(ClientContext *context, client_config config, const char *protocol);
 
 void client_cleanup(ClientContext *context);
+
+bool socket_validation(struct addrinfo *current_addr, ClientContext *context, int sockfd, const char *protocol);
 
 #endif // CLIENT_H
