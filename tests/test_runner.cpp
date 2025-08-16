@@ -61,6 +61,13 @@ void test_parse_arguments_invalid_udp_args();
 void test_setup_and_connect_fails_with_invalid_port_string();
 void test_setup_and_connect_fails_with_invalid_host();
 void test_setup_and_connect_fails_with_invalid_udp_port_string();
+void test_ipc_init();
+void test_ipc_priority_check();
+void test_ipc_priority_check_invalid_json();
+void test_ipc_send_message_long_message_fails();
+void test_ipc_send_message_not_initialized_fails();
+void test_ipc_send_message_success();
+void test_ipc_exit();
 } // extern "C"
 
 void testProcessCommandStatusAsJSON();
@@ -360,5 +367,12 @@ int main() {
     RUN_TEST(test_setup_and_connect_fails_with_invalid_port_string);
     RUN_TEST(test_setup_and_connect_fails_with_invalid_host);
     RUN_TEST(test_setup_and_connect_fails_with_invalid_udp_port_string);
+    RUN_TEST(test_ipc_init);
+    RUN_TEST(test_ipc_priority_check);
+    RUN_TEST(test_ipc_priority_check_invalid_json);
+    RUN_TEST(test_ipc_send_message_long_message_fails);
+    RUN_TEST(test_ipc_send_message_not_initialized_fails);
+    RUN_TEST(test_ipc_send_message_success);
+    RUN_TEST(test_ipc_exit);
     return UNITY_END();
 }
