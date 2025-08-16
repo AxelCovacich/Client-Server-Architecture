@@ -27,7 +27,10 @@ void *udp_listener_thread_func(void *arg) {
 
         buffer[bytes] = '\0';
         logger_log("UDP_handler", INFO, ("UDP Message received: %s", buffer));
-        ipc_send_message(context, buffer);
+        if (!ipc_send_message(context, buffer)) {
+            logger_log("UDP_handler", ERROR, "Error: Failed to send IPC message.");
+            fprintf(stderr, "Error: Failed to send IPC message.\n");
+        }
     }
     return NULL;
 }

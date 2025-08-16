@@ -17,6 +17,7 @@
 #include "client_context.h"
 #include "input_handler.h"
 #include "transport.h"
+#include <stdbool.h>
 
 /**
  * @brief Starts the main interactive communication loop with the server.
@@ -35,7 +36,7 @@ int start_communication(ClientContext *context, recv_fn recieve, send_fn send);
  * @brief Starts the auxiliary threads for the session (keepalive and udp listener).
  * @param context Pointer to the client context.
  */
-void session_start_aux_threads(ClientContext *context);
+bool session_start_aux_threads(ClientContext *context);
 
 /**
  * @brief Executes a specific client action based on parsed user input.
@@ -52,7 +53,7 @@ void session_start_aux_threads(ClientContext *context);
 transaction_result execute_client_action(ClientContext *context, UserInputAction action, char *buffer, recv_fn recieve,
                                          send_fn send);
 
-void launch_dashboard(ClientContext *context);
+bool launch_dashboard(ClientContext *context);
 
 void signal_handler(int signum);
 

@@ -134,13 +134,13 @@ int start_communication(ClientContext *context, recv_fn recieve, send_fn send) {
     return 0;
 }
 
-void session_start_aux_threads(ClientContext *context) {
+bool session_start_aux_threads(ClientContext *context) {
 
     pthread_t keepalive_thread = 0;
     if (pthread_create(&keepalive_thread, NULL, keepalive_thread_func, context) != 0) {
         logger_log("Session_handler", ERROR, ("Failed to create keepalive thread: %s", strerror(errno)));
         perror("Failed to create keepalive thread");
-        return;
+        return false;
     }
     pthread_detach(keepalive_thread); // thread will run independently and will not block the main thread. At
                                       // finish, it will clean up itself.
@@ -149,12 +149,13 @@ void session_start_aux_threads(ClientContext *context) {
     if (pthread_create(&udp_listener_thread, NULL, udp_listener_thread_func, context) != 0) {
         logger_log("Session_handler", ERROR, ("Failed to create UDP listener thread: %s", strerror(errno)));
         perror("Failed to create UDP listener thread");
-        return;
+        return false;
     }
     pthread_detach(udp_listener_thread);
+    return true;
 }
 
-void launch_dashboard(ClientContext *context) {
+bool launch_dashboard(ClientContext *context) {
 
     pid_t pid = fork();
     if (pid == 0) {
@@ -162,20 +163,26 @@ void launch_dashboard(ClientContext *context) {
 
         prctl(PR_SET_PDEATHSIG, SIGTERM); // Ensure child terminates if parent dies abruptly
         const char *client_id = client_context_get_id(context);
-
+        if (client_id == NULL || client_id[0] == '\0') {
+            logger_log("Session_handler", ERROR, "Client ID is not set, cannot launch dashboard.");
+            fprintf(stderr, "Client ID is not set, cannot launch dashboard.\n"); // NOLINT
+            return false;
+        }
         const char *args[] = {"gnome-terminal", "--", "./venv/bin/python", "./scripts/dashboard.py", client_id, NULL};
 
         execv("/usr/bin/gnome-terminal", (char *const *)args);
         perror("execv failed");
-        _exit(1); // Safe exit if exec fails
+        return false;
     } else if (pid > 0) {
         // Parent process → continues as if nothing happened
         // don't call wait(), the child is independent
     } else {
         perror("fork failed");
         logger_log("Session_handler", ERROR, ("Failed to fork for dashboard: %s", strerror(errno)));
+        return false;
     }
     logger_log("Session_handler", INFO, "Dashboard launched successfully.");
+    return true;
 }
 
 void signal_handler(int signum) {

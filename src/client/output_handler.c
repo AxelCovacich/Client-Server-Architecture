@@ -221,8 +221,16 @@ void handle_login_response(ClientContext *context, const char *response_string, 
         logger_log("Output_handler", INFO, ("Login successful. Client ID: %s", client_id->valuestring));
 
         client_context_set_id(context, client_id->valuestring);
-        session_start_aux_threads(context);
-        launch_dashboard(context);
+
+        if (!session_start_aux_threads(context)) {
+            logger_log("Output_handler", ERROR, "Error: Failed to start auxiliary threads.");
+            fprintf(output_stream, "Error: Failed to start auxiliary threads.\n"); // NOLINT
+        }
+        if (!launch_dashboard(context)) {
+            logger_log("Output_handler", ERROR, "Error: Failed to launch dashboard.");
+            fprintf(output_stream, "Error: Failed to launch dashboard.\n"); // NOLINT
+        }
+
     } else {
         logger_log("Output_handler", WARNING, ("Login failed: %s", message->valuestring));
         fprintf(output_stream, "Error from server: %s\n", message->valuestring); // NOLINT
