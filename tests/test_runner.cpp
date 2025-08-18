@@ -68,6 +68,16 @@ void test_ipc_send_message_long_message_fails();
 void test_ipc_send_message_not_initialized_fails();
 void test_ipc_send_message_success();
 void test_ipc_exit();
+void test_start_communication_fails_uninitialized_socket();
+void test_execute_client_action_success();
+void test_execute_client_action_server_closed();
+void test_execute_client_action_recv_error();
+void test_start_communication_user_quit();
+void test_start_communication_send_error();
+void test_socket_validation_success_tcp();
+void test_socket_validation_success_udp();
+void test_socket_validation_error();
+void test_launch_dashboard_fails_without_clientID();
 } // extern "C"
 
 void testProcessCommandStatusAsJSON();
@@ -192,6 +202,7 @@ void testConfigFailsOnInvalidPortInYaml();
 void testConfigCliArgumentHasPriorityOverEnv();
 void testConfigFailsOnMissingDbPathInYaml();
 void testConfigFailsOnMissingSecretPhraseInYaml();
+void testIpcHandlerReadError();
 /**
  * @brief Runs all the tests.
  *
@@ -374,5 +385,16 @@ int main() {
     RUN_TEST(test_ipc_send_message_not_initialized_fails);
     RUN_TEST(test_ipc_send_message_success);
     RUN_TEST(test_ipc_exit);
+    RUN_TEST(test_start_communication_fails_uninitialized_socket);
+    RUN_TEST(test_execute_client_action_success);
+    RUN_TEST(test_execute_client_action_server_closed);
+    RUN_TEST(test_execute_client_action_recv_error);
+    RUN_TEST(test_start_communication_user_quit);
+    RUN_TEST(test_start_communication_send_error);
+    RUN_TEST(test_socket_validation_success_tcp);
+    RUN_TEST(test_socket_validation_success_udp);
+    RUN_TEST(test_socket_validation_error);
+    RUN_TEST(testIpcHandlerReadError);
+    RUN_TEST(test_launch_dashboard_fails_without_clientID);
     return UNITY_END();
 }
