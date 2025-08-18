@@ -99,10 +99,10 @@ bool socket_validation(struct addrinfo *current_addr, ClientContext *context, in
             context->udp_socket = sockfd;
         }
         return true;
-    } else {
-        logger_log("Client", ERROR, "Failed to connect to any address.");
-        fprintf(stderr, "Failed to connect to any address.\n"); // NOLINT
-        close(sockfd);
-        return false;
     }
+    // If we reach here, it means no valid address was found
+    logger_log("Client", ERROR, "Failed to connect to any address.");
+    fprintf(stderr, "Failed to connect to any address.\n"); // NOLINT
+    close(sockfd);
+    return false;
 }

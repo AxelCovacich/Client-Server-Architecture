@@ -21,6 +21,7 @@ typedef enum {
     TRANSACTION_SERVER_CLOSED,
     TRANSACTION_ERROR,
     TRANSACTION_CLOSE,
+    TRANSACTION_LOGIN_SUCCESS,
 } transaction_result;
 
 /**
