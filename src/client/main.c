@@ -63,7 +63,7 @@ int main(int argc, const char *argv[]) {
         client_cleanup(&context);
         return 1;
     }
-    if (start_communication(&context, tcp_recv, tcp_send) < 0) {
+    if (start_communication(&context, tcp_recv, tcp_send, fgets) < 0) {
         logger_log("Main", ERROR, "Communication failed.");
         fprintf(stderr, "An error occurred during communication.\n"); // NOLINT
         client_cleanup(&context);
