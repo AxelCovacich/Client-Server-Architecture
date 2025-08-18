@@ -29,7 +29,7 @@ void *udp_listener_thread_func(void *arg) {
         logger_log("UDP_handler", INFO, ("UDP Message received: %s", buffer));
         if (!ipc_send_message(context, buffer)) {
             logger_log("UDP_handler", ERROR, "Error: Failed to send IPC message.");
-            fprintf(stderr, "Error: Failed to send IPC message.\n");
+            fprintf(stderr, "Error: Failed to send IPC message.\n"); // NOLINT
         }
     }
     return NULL;
@@ -50,8 +50,8 @@ void *keepalive_thread_func(void *arg) {
         return NULL;
     }
     char keepalive_msg[KEEPALIVE_MSG_SIZE];
-    snprintf(keepalive_msg, sizeof(keepalive_msg), "{\"command\":\"keepalive\", \"clientId\":\"%s\"}",
-             client_id); // NOLINT
+    snprintf(keepalive_msg, sizeof(keepalive_msg), "{\"command\":\"keepalive\", \"clientId\":\"%s\"}", // NOLINT
+             client_id);
 
     while (1) {
 
