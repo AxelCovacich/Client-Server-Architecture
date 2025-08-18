@@ -1,4 +1,5 @@
 #include "client_context.h"
+#include "logger.h"
 #include "output_handler.h"
 #include "unity.h"
 #include <stdio.h>
@@ -72,8 +73,9 @@ void test_print_get_history_response_formats_success() {
         "{\"status\":\"success\",\"message\":\"Inventory history "
         "retrieved.\",\"data\":[{\"component\":\"Inventory\",\"level\":\"INFO\",\"message\":\"Stock updated for "
         "food.meat to "
-        "100\",\"timestamp\":1754085000},{\"component\":\"Inventory\",\"level\":\"INFO\",\"message\":\"Stock updated "
-        "for food.water to 100\",\"timestamp\":1754084000}]}";
+        "100\",\"timestamp\":\"2025-08-18 20:15:36 "
+        "UTC\"},{\"component\":\"Inventory\",\"level\":\"INFO\",\"message\":\"Stock updated "
+        "for food.water to 100\",\"timestamp\":\"2025-08-18 20:10:36 UTC\"}]}";
     char output_buffer[1024] = {0};
 
     FILE *memory_stream = fmemopen(output_buffer, sizeof(output_buffer), "w");
@@ -81,11 +83,14 @@ void test_print_get_history_response_formats_success() {
 
     ClientContext context;
     client_context_init(&context);
+    // const char *log_path = "../../var/logs/test_client.log";
+    // logger_init(log_path);
     print_readable_response(&context, server_json_response, "get_history", memory_stream);
     fclose(memory_stream);
 
-    const char *expected_output = "--- Inventory History ---\n  - [1754085000] Stock updated for food.meat to 100\n  - "
-                                  "[1754084000] Stock updated for food.water to 100\n";
+    const char *expected_output =
+        "--- Inventory History ---\n  - [2025-08-18 20:15:36 UTC] Stock updated for food.meat to 100\n  - "
+        "[2025-08-18 20:10:36 UTC] Stock updated for food.water to 100\n";
     TEST_ASSERT_EQUAL_STRING(expected_output, output_buffer);
 }
 
