@@ -1,10 +1,11 @@
 #include "client.h"
 #include "transport.h"
 #include "unity.h"
+#include <netdb.h>
 #include <netinet/in.h> // For sockaddr_in
 #include <stdbool.h>
 #include <string.h>
-#include <string.h> // For memcmp
+#include <unistd.h>
 
 /**
  * @brief Tests that setup_and_connect fails when given a non-numeric port.
@@ -48,4 +49,40 @@ void test_initialize_udp_peer_address_copies_data() {
     const struct sockaddr_storage *internal_address = get_peer_address_for_test();
 
     TEST_ASSERT_EQUAL_INT(0, memcmp(&fake_address, internal_address, sizeof(fake_address)));
+}
+
+void test_socket_validation_success_tcp() {
+    struct addrinfo addr;
+    memset(&addr, 0, sizeof(addr));
+    ClientContext context;
+    client_context_init(&context);
+
+    int sockfd = 42;
+    bool result = socket_validation(&addr, &context, sockfd, "tcp");
+
+    TEST_ASSERT_TRUE(result);
+    TEST_ASSERT_EQUAL(context.tcp_socket, sockfd);
+}
+
+void test_socket_validation_success_udp() {
+    struct addrinfo addr;
+    memset(&addr, 0, sizeof(addr));
+    ClientContext context;
+    client_context_init(&context);
+
+    int sockfd = 43;
+    bool result = socket_validation(&addr, &context, sockfd, "udp");
+
+    TEST_ASSERT_TRUE(result);
+    TEST_ASSERT_EQUAL(context.udp_socket, sockfd);
+}
+
+void test_socket_validation_error() {
+    ClientContext context;
+    client_context_init(&context);
+
+    int sockfd = -1;
+    bool result = socket_validation(NULL, &context, sockfd, "tcp");
+
+    TEST_ASSERT_FALSE(result);
 }
