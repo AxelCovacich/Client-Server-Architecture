@@ -15,14 +15,14 @@ bool ipc_init(ClientContext *context) {
     attr.mq_msgsize = MAX_MSG_SIZE; // Maximum message size (bytes)
     attr.mq_curmsgs = 0;            // Number of messages currently in queue
 
-    mqd_t mq = mq_open(IPC_QUEUE_NAME, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH,
-                       &attr); // 0644  Permissions: rw-r--r--
-    if (mq == (mqd_t)-1) {
+    mqd_t message_queue = mq_open(IPC_QUEUE_NAME, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH,
+                                  &attr); // 0644  Permissions: rw-r--r--
+    if (message_queue == (mqd_t)-1) {
         perror("mq_open");
         return false;
     }
 
-    context->ipc_queue = mq;
+    context->ipc_queue = message_queue;
     return true;
 }
 
@@ -86,7 +86,7 @@ bool ipc_exit(ClientContext *context) {
     cJSON *message = cJSON_CreateObject();
     if (message == NULL) {
         fprintf(stderr, "Error creating IPC exit message.\n"); // NOLINT
-        return;
+        return false;
     }
     cJSON_AddStringToObject(message, "category", "exit");
     cJSON_AddStringToObject(message, "message", "Closing client, goodbye!");
