@@ -310,7 +310,9 @@ void Server::handleUNIXConnection() {
     }
     m_logger.log(LogLevel::INFO, "Server", "IPC connection established.");
 
-    m_ipcHandler.handleConnection(newsockfd);
+    if (!m_ipcHandler.handleConnection(newsockfd)) {
+        close(newsockfd); // error reading from socket
+    }
 }
 
 std::string Server::getClientIP(const struct sockaddr_storage &clientAddress) {
