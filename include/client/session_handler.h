@@ -19,6 +19,8 @@
 #include "transport.h"
 #include <stdbool.h>
 
+typedef char *(*input_fn)(char *buf, int size, FILE *stream);
+
 /**
  * @brief Starts the main interactive communication loop with the server.
  *
@@ -30,7 +32,7 @@
  * @param send A function pointer to the send function to use (e.g., tcp_send).
  * @return 0 on a clean shutdown, or -1 if a critical error occurs.
  */
-int start_communication(ClientContext *context, recv_fn recieve, send_fn send);
+int start_communication(ClientContext *context, recv_fn recieve, send_fn send, input_fn input);
 
 /**
  * @brief Starts the auxiliary threads for the session (keepalive and udp listener).

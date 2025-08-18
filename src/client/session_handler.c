@@ -46,8 +46,10 @@ static transaction_result handle_server_transaction(ClientContext *context, cons
     }
     server_response[bytes_read] = '\0';
 
-    print_readable_response(context, server_response, input_buffer_copy, stdout);
-    // printf("Answer from server: %s\n", buffer);
+    if (print_readable_response(context, server_response, input_buffer_copy, stdout)) {
+        logger_log("Session_handler", INFO, "Client successfully logged in.");
+        return TRANSACTION_LOGIN_SUCCESS;
+    }
     logger_log("Session_handler", INFO, "Successfull Transaction. Received response from server");
     return TRANSACTION_SUCCESS;
 }
@@ -91,7 +93,41 @@ transaction_result execute_client_action(ClientContext *context, UserInputAction
     }
 }
 
-int start_communication(ClientContext *context, recv_fn recieve, send_fn send) {
+static int communication_loop(ClientContext *context, recv_fn recieve, send_fn send, input_fn input, char *buffer) {
+    while (exit_requested == 0) {
+        printf("Enter message to send(or 'end' to stop): ");
+        if (input(buffer, BUFFER_SIZE, stdin) == NULL) {
+            break; // EoI
+        }
+        UserInputAction action = process_user_input(buffer);
+        transaction_result result = execute_client_action(context, action, buffer, recieve, send);
+
+        if (result == TRANSACTION_LOGIN_SUCCESS) {
+            if (!session_start_aux_threads(context)) {
+                logger_log("Session_handler", ERROR, "Failed to start auxiliary threads.");
+                return -1;
+            }
+            if (!launch_dashboard(context)) {
+                logger_log("Session_handler", ERROR, "Failed to launch dashboard.");
+                return -1;
+            }
+            continue;
+        }
+        if (result == TRANSACTION_ERROR) {
+            logger_log("Session_handler", ERROR, "Error during transaction execution");
+            printf("Closing client...\n");
+            return -1;
+        }
+        if (result == TRANSACTION_SERVER_CLOSED || result == TRANSACTION_CLOSE) {
+            break;
+        }
+    }
+    logger_log("Session_handler", INFO, "Client session ended by user or server.");
+    printf("\nClosing client...\n");
+    return 0;
+}
+
+int start_communication(ClientContext *context, recv_fn recieve, send_fn send, input_fn input) {
     ssize_t bytes_read = 0;
     char buffer[BUFFER_SIZE];
 
@@ -110,28 +146,7 @@ int start_communication(ClientContext *context, recv_fn recieve, send_fn send) {
     buffer[bytes_read] = '\0';
     printf("Server says: %s", buffer);
 
-    while (exit_requested == 0) {
-
-        printf("Enter message to send(or 'end' to stop): ");
-        if (fgets(buffer, BUFFER_SIZE, stdin) == NULL) {
-
-            break; // EoI
-        }
-        UserInputAction action = process_user_input(buffer);
-        transaction_result result = execute_client_action(context, action, buffer, recieve, send);
-
-        if (result == TRANSACTION_ERROR) {
-            logger_log("Session_handler", ERROR, "Error during transaction execution");
-            printf("Closing client...\n");
-            return -1;
-        }
-        if (result == TRANSACTION_SERVER_CLOSED || result == TRANSACTION_CLOSE) {
-            break;
-        }
-    }
-    logger_log("Session_handler", INFO, "Client session ended by user or server.");
-    printf("\nClosing client...\n");
-    return 0;
+    return communication_loop(context, recieve, send, input, buffer);
 }
 
 bool session_start_aux_threads(ClientContext *context) {
@@ -157,32 +172,33 @@ bool session_start_aux_threads(ClientContext *context) {
 
 bool launch_dashboard(ClientContext *context) {
 
+    const char *client_id = client_context_get_id(context);
+    if (client_id == NULL || client_id[0] == '\0') {
+        logger_log("Session_handler", ERROR, "Client ID is not set, cannot launch dashboard.");
+        fprintf(stderr, "Client ID is not set, cannot launch dashboard.\n"); // NOLINT
+        return false;
+    }
     pid_t pid = fork();
     if (pid == 0) {
         // Child process → runs dashboard
 
         prctl(PR_SET_PDEATHSIG, SIGTERM); // Ensure child terminates if parent dies abruptly
-        const char *client_id = client_context_get_id(context);
-        if (client_id == NULL || client_id[0] == '\0') {
-            logger_log("Session_handler", ERROR, "Client ID is not set, cannot launch dashboard.");
-            fprintf(stderr, "Client ID is not set, cannot launch dashboard.\n"); // NOLINT
-            return false;
-        }
         const char *args[] = {"gnome-terminal", "--", "./venv/bin/python", "./scripts/dashboard.py", client_id, NULL};
 
         execv("/usr/bin/gnome-terminal", (char *const *)args);
         perror("execv failed");
         return false;
-    } else if (pid > 0) {
+    }
+    if (pid > 0) {
         // Parent process → continues as if nothing happened
         // don't call wait(), the child is independent
-    } else {
-        perror("fork failed");
-        logger_log("Session_handler", ERROR, ("Failed to fork for dashboard: %s", strerror(errno)));
-        return false;
+
+        logger_log("Session_handler", INFO, "Dashboard launched successfully.");
+        return true;
     }
-    logger_log("Session_handler", INFO, "Dashboard launched successfully.");
-    return true;
+    perror("fork failed");
+    logger_log("Session_handler", ERROR, ("Failed to fork for dashboard: %s", strerror(errno)));
+    return false;
 }
 
 void signal_handler(int signum) {
