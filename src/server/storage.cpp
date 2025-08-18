@@ -90,9 +90,7 @@ void Storage::saveStockUpdate(const std::string &clientId, const std::string &ca
         query.bind(4, quantity);
 
         // execute the order to the db
-        int rows_modified = query.exec();
-
-        std::cout << "Database updated. Rows modified: " << rows_modified << '\n' << flush;
+        query.exec();
 
     } catch (const std::exception &e) {
         std::cerr << "Error saving stock update to database: " << e.what() << '\n';

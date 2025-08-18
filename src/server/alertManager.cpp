@@ -34,7 +34,7 @@ void AlertManager::processAlert(const std::string &alertMessage) {
         m_udpHandler.broadcastMessage(alertData);
 
     } catch (const json::exception &e) {
-
+        cerr << "Error processing alert: " << e.what() << '\n';
         std::string errorLog = "Failed to process incoming alert. Reason: " + std::string(e.what());
         m_logger.log(LogLevel::ERROR, "AlertManager", errorLog);
     }

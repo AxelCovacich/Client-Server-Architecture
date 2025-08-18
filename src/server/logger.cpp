@@ -20,7 +20,7 @@ void Logger::log(LogLevel level, const std::string &component, const std::string
 
     std::string level_str = levelToString(level);
 
-    // std::cout << "[" << now << "] [" << component << "] [" << level_str << "] " << message << '\n';
+    // std::cout << "[" << date << "] [" << component << "] [" << level_str << "] " << message << '\n';
 
     try {
         std::string level_str = levelToString(level);
