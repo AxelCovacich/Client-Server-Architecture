@@ -102,7 +102,8 @@ static int communication_loop(ClientContext *context, recv_fn recieve, send_fn s
         UserInputAction action = process_user_input(buffer);
         transaction_result result = execute_client_action(context, action, buffer, recieve, send);
 
-        if (result == TRANSACTION_LOGIN_SUCCESS) {
+        switch (result) {
+        case TRANSACTION_LOGIN_SUCCESS:
             if (!session_start_aux_threads(context)) {
                 logger_log("Session_handler", ERROR, "Failed to start auxiliary threads.");
                 return -1;
@@ -112,19 +113,22 @@ static int communication_loop(ClientContext *context, recv_fn recieve, send_fn s
                 return -1;
             }
             continue;
-        }
-        if (result == TRANSACTION_ERROR) {
+
+        case TRANSACTION_ERROR:
             logger_log("Session_handler", ERROR, "Error during transaction execution");
             printf("Closing client...\n");
             return -1;
-        }
-        if (result == TRANSACTION_SERVER_CLOSED || result == TRANSACTION_CLOSE) {
+
+        case TRANSACTION_SERVER_CLOSED:
+        case TRANSACTION_CLOSE:
+            logger_log("Session_handler", INFO, "Client session ended by user or server.");
+            printf("\nClosing client...\n");
+            return 0;
+
+        default:
             break;
         }
     }
-    logger_log("Session_handler", INFO, "Client session ended by user or server.");
-    printf("\nClosing client...\n");
-    return 0;
 }
 
 int start_communication(ClientContext *context, recv_fn recieve, send_fn send, input_fn input) {
