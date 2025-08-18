@@ -30,7 +30,7 @@ class IpcHandler {
      * Called by the Server's main loop when IPC activity is detected. It accepts
      * the connection, reads the alert message, and forwards it to the AlertManager.
      */
-    void handleConnection(int acceptedSocketFd);
+    bool handleConnection(int acceptedSocketFd);
 
   private:
     Logger &m_logger;
