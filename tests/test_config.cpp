@@ -232,3 +232,16 @@ database:
 
     remove("./temp_config.yaml");
 }
+
+void testConfigLoadsFromDefaultWhenNoArgs() {
+    const std::vector<std::string> args = {"./server"};
+    try {
+        Config config(args);
+        // Basic sanity checks to ensure the config loaded
+        TEST_ASSERT_TRUE(config.getTcpPort() > 0);
+        TEST_ASSERT_FALSE(config.getDbPath().empty());
+        TEST_ASSERT_FALSE(config.getSecretPhrase().empty());
+    } catch (const std::exception &e) {
+        TEST_FAIL_MESSAGE("Expected successful load from default config, but exception thrown.");
+    }
+}

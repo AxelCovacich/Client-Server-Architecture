@@ -168,7 +168,7 @@ void testProcessAlertHandlesMalformedJsonGracefully();
 void testProcessMessageUserLockedAlertTrigger();
 void testValidatorFailsOnExcessiveArgs();
 void testValidatorFailsOnNonNumericPort();
-void testValidatorFailsWithInsufficientArgs();
+void testValidatorSucceedsWithNoArgs();
 void testValidatorSucceedsWithCorrectArgs();
 void testValidatorrInvalidPortNumber();
 void testValidatorZeroNumberPort();
@@ -203,6 +203,7 @@ void testConfigCliArgumentHasPriorityOverEnv();
 void testConfigFailsOnMissingDbPathInYaml();
 void testConfigFailsOnMissingSecretPhraseInYaml();
 void testIpcHandlerReadError();
+void testConfigLoadsFromDefaultWhenNoArgs();
 /**
  * @brief Runs all the tests.
  *
@@ -321,7 +322,7 @@ int main() {
     RUN_TEST(testProcessMessageUserLockedAlertTrigger);
     RUN_TEST(testValidatorFailsOnExcessiveArgs);
     RUN_TEST(testValidatorFailsOnNonNumericPort);
-    RUN_TEST(testValidatorFailsWithInsufficientArgs);
+    RUN_TEST(testValidatorSucceedsWithNoArgs);
     RUN_TEST(testValidatorSucceedsWithCorrectArgs);
     RUN_TEST(testValidatorrInvalidPortNumber);
     RUN_TEST(testValidatorZeroNumberPort);
@@ -396,5 +397,6 @@ int main() {
     RUN_TEST(test_socket_validation_error);
     RUN_TEST(testIpcHandlerReadError);
     RUN_TEST(test_launch_dashboard_fails_without_clientID);
+    RUN_TEST(testConfigLoadsFromDefaultWhenNoArgs);
     return UNITY_END();
 }

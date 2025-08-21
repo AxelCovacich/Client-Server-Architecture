@@ -8,7 +8,7 @@
 
 void testValidatorFailsOnExcessiveArgs() {
 
-    const std::vector<std::string> args = {"./server", "./config.yaml", "8080", "extra"};
+    const std::vector<std::string> args = {"./server", "./config.yaml", "8080", "9000", "extra_arg"};
 
     bool isValid = ConfigValidator::validateArguments(args);
 
@@ -26,18 +26,18 @@ void testValidatorFailsOnNonNumericPort() {
     TEST_ASSERT_FALSE(isValid);
 }
 
-void testValidatorFailsWithInsufficientArgs() {
+void testValidatorSucceedsWithNoArgs() {
     const std::vector<std::string> args = {"./server"};
 
     bool isValid = ConfigValidator::validateArguments(args);
-    TEST_ASSERT_FALSE(isValid);
+    TEST_ASSERT_TRUE(isValid);
 }
 
 void testValidatorSucceedsWithCorrectArgs() {
 
     const char *tempFilePath = "./temp_config_for_test.yaml";
     std::ofstream tempFile(tempFilePath);
-    const std::vector<std::string> args = {"./server", tempFilePath, "7000"};
+    const std::vector<std::string> args = {"./server", tempFilePath, "7000", "8000"};
 
     bool isValid = ConfigValidator::validateArguments(args);
     TEST_ASSERT_TRUE(isValid);

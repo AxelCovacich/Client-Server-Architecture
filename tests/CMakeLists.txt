@@ -47,3 +47,6 @@ target_link_libraries(test_all PRIVATE
 
 # 8) Register the single test with CTest
 add_test(NAME test_all COMMAND test_all)
+
+# 9) Set the working directory for the test to the project root
+set_tests_properties(test_all PROPERTIES WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")

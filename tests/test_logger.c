@@ -5,7 +5,7 @@
 
 void test_logger_init_success() {
     // test path is valid
-    int res = logger_init("../../var/logs/client.log");
+    int res = logger_init("./var/logs/client.log");
     if (res != 0) {
         perror("Logger initialization failed");
     }
@@ -21,7 +21,7 @@ void test_logger_init_fail() {
 }
 
 void test_logger_log_writes_to_file() {
-    const char *log_path = "../../var/logs/test_client.log";
+    const char *log_path = "./var/logs/test_client.log";
     logger_init(log_path);
 
     logger_log("TestComponent", INFO, "Test message");
