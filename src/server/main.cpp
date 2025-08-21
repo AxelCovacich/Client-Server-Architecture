@@ -43,6 +43,7 @@ int main(int argc, char *argv[]) {
         Storage storage(config.getDbPath());
         storage.initializeSchema();
         Logger logger(storage, clock, std::cerr);
+        logger.openLogFile(LOG_PATH);
         logger.log(LogLevel::INFO, "Main", "Core services initialized.");
 
         // making a server object on the heap, controlled by smart pointer server

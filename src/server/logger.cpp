@@ -1,12 +1,36 @@
 #include "logger.hpp"
 #include <array>
 #include <ctime>
+#include <filesystem>
 #include <iostream>
 
-Logger::Logger(Storage &storage, const IClock &clock, std::ostream &errorStream)
+Logger::Logger(Storage &storage, const IClock &clock, std::ostream &errorStream) noexcept
     : m_storage(storage)
     , m_clock(clock)
-    , m_errorStream(errorStream) {
+    , m_errorStream(errorStream)
+    , m_fileEnabled(false) {
+}
+
+bool Logger::openLogFile(const std::string &filePath) noexcept {
+    try {
+        std::filesystem::path path(filePath);
+        if (path.has_parent_path()) {
+            std::filesystem::create_directories(path.parent_path());
+        }
+        // open in append mode so existing logs are preserved
+        m_logFile.open(filePath, std::ios::out | std::ios::app);
+        if (!m_logFile.is_open()) {
+            m_errorStream << "Logger: failed to open log file: " << filePath << '\n';
+            m_fileEnabled = false;
+            return false;
+        }
+        m_fileEnabled = true;
+        return true;
+    } catch (const std::exception &e) {
+        m_errorStream << "Logger: exception opening log file: " << e.what() << '\n';
+        m_fileEnabled = false;
+        return false;
+    }
 }
 
 void Logger::log(LogLevel level, const std::string &component, const std::string &message,
@@ -29,6 +53,23 @@ void Logger::log(LogLevel level, const std::string &component, const std::string
     } catch (const std::exception &e) {
 
         m_errorStream << "CRITICAL LOGGER FAILURE: Could not persist log. DB Error: " << e.what() << '\n';
+    }
+
+    // Also write to file if enabled (best-effort; never throw)
+    if (m_fileEnabled) {
+        try {
+            std::lock_guard<std::mutex> lock(m_fileMutex);
+            m_logFile << "[" << date << "]" << " [" << component << "]" << " [" << level_str << "] " << message;
+            if (clientId) {
+                m_logFile << " (client: " << *clientId << ")";
+            }
+            m_logFile << '\n';
+            m_logFile.flush(); // ensure durability; for perf you may buffer and flush periodically
+        } catch (const std::exception &e) {
+            m_errorStream << "Logger: failed to write to log file: " << e.what() << '\n';
+            // disable to avoid repeated errors
+            m_fileEnabled = false;
+        }
     }
 }
 

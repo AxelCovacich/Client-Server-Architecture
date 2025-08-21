@@ -3,16 +3,19 @@
 
 #include "clock.hpp"
 #include "storage.hpp"
+#include <fstream>
+#include <mutex>
 #include <optional>
 #include <ostream>
 #include <string>
 
 #define DATE_BUFFER_SIZE 32
+#define LOG_PATH "./var/logs/server.log"
 enum class LogLevel { DEBUG, INFO, WARNING, ERROR };
 
 class Logger {
   public:
-    Logger(Storage &storage, const IClock &clock, std::ostream &errorStream);
+    Logger(Storage &storage, const IClock &clock, std::ostream &errorStream) noexcept;
 
     /**
      * @brief Logs a message to the console and persists it to the database.
@@ -40,10 +43,17 @@ class Logger {
      */
     static std::string levelToString(LogLevel level);
 
+    bool openLogFile(const std::string &filePath) noexcept;
+
   private:
     std::ostream &m_errorStream;
     Storage &m_storage;
     const IClock &m_clock;
+
+    // File logging members
+    std::ofstream m_logFile;
+    std::mutex m_fileMutex;
+    bool m_fileEnabled{false};
 };
 
 #endif // LOGGER_HPP
