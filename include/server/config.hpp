@@ -6,6 +6,7 @@
 #include <vector>
 
 #define MAX_PORT 65535
+#define CONFIG_FILE_PATH "./etc/config.yaml"
 /**
  * @class Config
  * @brief Manages loading and accessing server configuration from a YAML file.

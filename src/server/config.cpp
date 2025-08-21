@@ -3,7 +3,15 @@
 
 Config::Config(const std::vector<std::string> &args) {
 
-    m_configNode = YAML::LoadFile(args[1]);
+    std::string configPath;
+
+    if (args.size() == 1) {
+        configPath = CONFIG_FILE_PATH;
+    } else {
+        configPath = args[1];
+    }
+
+    m_configNode = YAML::LoadFile(configPath);
 
     if (!m_configNode["security"] || !m_configNode["security"]["unlock_secret_phrase"] ||
         !m_configNode["security"]["unlock_secret_phrase"].IsScalar()) {

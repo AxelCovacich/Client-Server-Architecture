@@ -1,11 +1,21 @@
 #include "configValidator.hpp"
+#include "config.hpp"
 #include <filesystem>
 #include <iostream>
 
 bool ConfigValidator::validateArguments(const std::vector<std::string> &args) {
-    if (args.size() < 2 || args.size() > 4) {
+    if (args.size() > 4) {
         std::cerr << "Usage: " << args[0] << " <path_to_config.yaml> [optional_tcp_port] [optional_udp_port]\n";
         return false;
+    }
+
+    if (args.size() == 1) {
+        std::cout << "No config path provided. Using default: " << CONFIG_FILE_PATH << "\n";
+        if (!std::filesystem::exists(CONFIG_FILE_PATH)) {
+            std::cerr << "Error: Default configuration file not found at " << CONFIG_FILE_PATH << "\n";
+            return false;
+        }
+        return true;
     }
 
     const std::string &configPath = args[1];
