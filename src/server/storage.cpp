@@ -10,6 +10,15 @@ using namespace std;
 Storage::Storage(const std::string &dbPath, int openFlags)
     : // constructor call of the db object, path to file and flags given. Read and write by default
     m_db(dbPath, openFlags) {
+    try {
+        // Improve concurrency and reduce write contention:
+        // - WAL allows concurrent readers with a writer and usually improves concurrency.
+        // - busy_timeout gives SQLite some time to wait for locks instead of failing immediately.
+        m_db.exec("PRAGMA journal_mode = WAL;");
+        m_db.exec("PRAGMA busy_timeout = 5000;");
+    } catch (const std::exception &e) {
+        std::cerr << "Warning: could not set PRAGMA options: " << e.what() << '\n';
+    }
 }
 
 Storage::~Storage() {
@@ -17,6 +26,8 @@ Storage::~Storage() {
 }
 
 void Storage::initializeSchema() {
+
+    std::lock_guard<std::mutex> lock(m_dbMutex);
 
     try {
         cout << "Initializing database schema...\n";
@@ -73,6 +84,7 @@ void Storage::initializeSchema() {
 
 void Storage::saveStockUpdate(const std::string &clientId, const std::string &category, const std::string &item,
                               int quantity) {
+    std::lock_guard<std::mutex> lock(m_dbMutex);
     try {
         // prepare statement for sql library this way to avoid sqlinjection. insert or update,
         // if already exists(on conflict), just update quantity value
@@ -101,6 +113,7 @@ void Storage::saveStockUpdate(const std::string &clientId, const std::string &ca
 std::optional<int> Storage::getStock(const std::string &clientId, const std::string &category,
                                      const std::string &item) {
 
+    std::lock_guard<std::mutex> lock(m_dbMutex);
     try {
         SQLite::Statement query(m_db,
                                 "SELECT quantity FROM inventory WHERE client_id = ? AND category = ? AND item = ?");
@@ -123,6 +136,7 @@ std::optional<int> Storage::getStock(const std::string &clientId, const std::str
 
 std::optional<Storage::ClientInventoryMap> Storage::getFullInventory(const std::string &clientId) {
 
+    std::lock_guard<std::mutex> lock(m_dbMutex);
     try {
         SQLite::Statement query(m_db, "SELECT category, item, quantity FROM inventory WHERE client_id = ?");
         query.bind(1, clientId);
@@ -155,6 +169,7 @@ std::optional<Storage::ClientInventoryMap> Storage::getFullInventory(const std::
 }
 
 void Storage::createUser(const std::string &hostname, const std::string &password) {
+    std::lock_guard<std::mutex> lock(m_dbMutex);
     try {
 
         std::string password_hash = bcrypt::generateHash(password);
@@ -178,6 +193,7 @@ void Storage::createUser(const std::string &hostname, const std::string &passwor
 }
 
 bool Storage::userExists(const std::string &hostname) {
+    std::lock_guard<std::mutex> lock(m_dbMutex);
     try {
         SQLite::Statement query(m_db, "SELECT COUNT(*) FROM users WHERE hostname = ?");
         query.bind(1, hostname);
@@ -193,6 +209,7 @@ bool Storage::userExists(const std::string &hostname) {
 
 std::optional<userAuthData> Storage::getUserLoginData(const std::string &hostname) {
 
+    std::lock_guard<std::mutex> lock(m_dbMutex);
     try {
         SQLite::Statement query(
             m_db,
@@ -217,6 +234,7 @@ std::optional<userAuthData> Storage::getUserLoginData(const std::string &hostnam
 
 void Storage::updateLoginAttempts(const std::string &hostname, bool loginSuccess, time_t timeStamp) {
 
+    std::lock_guard<std::mutex> lock(m_dbMutex);
     try {
 
         if (loginSuccess) {
@@ -240,6 +258,8 @@ void Storage::updateLoginAttempts(const std::string &hostname, bool loginSuccess
 
 void Storage::saveLogEntry(const std::string &date, const std::string &level, const std::string &component,
                            const std::string &message, const std::optional<std::string> &clientId) {
+
+    std::lock_guard<std::mutex> lock(m_dbMutex);
     try {
 
         SQLite::Statement query(m_db, R"(
@@ -259,7 +279,9 @@ void Storage::saveLogEntry(const std::string &date, const std::string &level, co
 }
 
 std::vector<LogEntry> Storage::getInventoryHistoryTransaction(const std::string &clientId) {
+
     std::vector<LogEntry> history;
+    std::lock_guard<std::mutex> lock(m_dbMutex);
     try {
         SQLite::Statement query(m_db, R"(
                                         SELECT timestamp, level, component, message 
@@ -287,6 +309,7 @@ std::vector<LogEntry> Storage::getInventoryHistoryTransaction(const std::string 
 }
 
 bool Storage::setClientLockStatus(const std::string &hostname, bool isLocked) {
+    std::lock_guard<std::mutex> lock(m_dbMutex);
     try {
         SQLite::Statement query(m_db, "UPDATE users SET is_locked = ? WHERE hostname = ?");
         query.bind(
@@ -303,6 +326,7 @@ bool Storage::setClientLockStatus(const std::string &hostname, bool isLocked) {
 }
 
 bool Storage::isClientLocked(const std::string &hostname) {
+    std::lock_guard<std::mutex> lock(m_dbMutex);
     try {
         SQLite::Statement query(m_db, "SELECT is_locked FROM users WHERE hostname = ?");
         query.bind(1, hostname);

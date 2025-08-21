@@ -3,6 +3,7 @@
 
 #include <SQLiteCpp/Database.h>
 #include <map>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <vector>
@@ -151,6 +152,7 @@ class Storage {
     // Library SQLiteCpp wrappes the connection to the data base with SQLite::Database. We use the object of the
     // library.
     SQLite::Database m_db;
+    std::mutex m_dbMutex; // protect access to m_db from multiple threads
 };
 
 #endif // STORAGE_HPP

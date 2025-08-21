@@ -23,13 +23,14 @@ void SessionManager::unregisterSession(const std::string &clientId) {
 
 bool SessionManager::lockClient(const std::string &clientId) {
 
-    std::lock_guard<std::mutex> lock(m_mutex);
     bool success = m_storage.setClientLockStatus(clientId, true);
 
     if (success) {
-        m_lockedClients.insert(clientId);
+
         m_logger.log(LogLevel::INFO, "SessionManager",
                      "Client '" + clientId + "' has been locked due to alert trigger.", clientId);
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_lockedClients.insert(clientId);
         return success;
     }
     m_logger.log(LogLevel::INFO, "SessionManager",
@@ -38,13 +39,13 @@ bool SessionManager::lockClient(const std::string &clientId) {
 }
 
 bool SessionManager::unlockClient(const std::string &clientId) {
-    std::lock_guard<std::mutex> lock(m_mutex);
 
     bool success = m_storage.setClientLockStatus(clientId, false);
 
     if (success) {
-        m_lockedClients.erase(clientId);
         m_logger.log(LogLevel::INFO, "SessionManager", "Client '" + clientId + "' has been unlocked.", clientId);
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_lockedClients.erase(clientId);
         return success;
     }
     m_logger.log(LogLevel::INFO, "SessionManager",

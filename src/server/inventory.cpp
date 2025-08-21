@@ -28,25 +28,21 @@ UpdateStockResult Inventory::updateStock(const std::string &clientId, const std:
         return result;
     }
 
-    std::lock_guard<std::mutex> lock(m_mutex);
-
-    m_inventories[clientId][category][item] = quantity; // CACHE update!
-
     m_storage.saveStockUpdate(clientId, category, item, quantity);
     m_logger.log(LogLevel::INFO, "Inventory",
                  "Stock succesfully updated for " + category + ":" + item + " to " + std::to_string(quantity) +
                      " for client " + clientId,
                  clientId);
+
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    m_inventories[clientId][category][item] = quantity; // CACHE update!
     return {true,
             "Stock for '" + category + ":" + item + "' successfully updated to " + std::to_string(quantity) + "."};
 }
 
 std::optional<int> Inventory::getStock(const std::string &clientId, const std::string &category,
                                        const std::string &item) {
-
-    // call for mutex, if its free, just execute, if not wait for mutex to release. Unlocks automaticly by finishing the
-    // exec of this function
-    std::lock_guard<std::mutex> lock(m_mutex);
 
     std::optional<int> result = getStockonCache(clientId, category, item);
 
@@ -60,6 +56,7 @@ std::optional<int> Inventory::getStock(const std::string &clientId, const std::s
 
     if (result.has_value()) {
         // update stock in cache.
+        std::lock_guard<std::mutex> lock(m_mutex);
         m_inventories[clientId][category][item] = result.value();
         // m_logger.log(LogLevel::DEBUG, "Inventory", "Stock query for item '" + item + "'.", clientId);
         return result.value();
@@ -70,7 +67,7 @@ std::optional<int> Inventory::getStock(const std::string &clientId, const std::s
 
 std::optional<int> Inventory::getStockonCache(const std::string &clientId, const std::string &category,
                                               const std::string &item) const {
-
+    std::lock_guard<std::mutex> lock(m_mutex);
     auto client_it = m_inventories.find(clientId);
     if (client_it == m_inventories.end()) {
         return std::nullopt; // could't find inventory for client
@@ -90,10 +87,10 @@ std::optional<int> Inventory::getStockonCache(const std::string &clientId, const
 
 std::optional<Inventory::ClientInventoryMap> Inventory::getInventorySummary(const std::string &clientId) {
 
-    std::lock_guard<std::mutex> lock(m_mutex);
-
     m_logger.log(LogLevel::INFO, "Inventory", "Full inventory summary requested for client " + clientId + ".",
                  clientId);
+
+    std::lock_guard<std::mutex> lock(m_mutex);
 
     if (m_fullyCachedClients.contains(clientId)) {
         // Cache Hit!
