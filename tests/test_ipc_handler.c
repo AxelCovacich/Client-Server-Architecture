@@ -1,6 +1,7 @@
 #include "client_context.h"
 #include "ipc_handler.h"
 #include "unity.h"
+#include <string.h>
 
 void test_ipc_init(void) {
     ClientContext context;
