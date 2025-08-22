@@ -10,18 +10,18 @@ BACKUP_DIR = "../backup"
 
 def ensure_backup_dir():
     if not os.path.exists(BACKUP_DIR):
-        os.makedirs(BACKUP_DIR, mode=0o755)
+        os.makedirs(BACKUP_DIR, mode=0o755) # Create with rwxr-xr-x permissions
 
 def backup_file(src_path, prefix, compress=False):
     if not os.path.exists(src_path):
         print(f"File not found: {src_path}")
         return
-    date_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    base_name = f"{prefix}_{date_str}"
-    dest_path = os.path.join(BACKUP_DIR, base_name)
+    date_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")    # Format: YYYYMMDD_HHMMSS
+    base_name = f"{prefix}_{date_str}"                              # e.g., db_backup_20231005_153000
+    dest_path = os.path.join(BACKUP_DIR, base_name)     
     if compress:
-        dest_path += ".gz"
-        with open(src_path, "rb") as f_in, gzip.open(dest_path, "wb") as f_out:
+        dest_path += ".gz"                                          
+        with open(src_path, "rb") as f_in, gzip.open(dest_path, "wb") as f_out:     # Compress and copy
             shutil.copyfileobj(f_in, f_out)
         print(f"Backup compressed: {dest_path}")
     else:
