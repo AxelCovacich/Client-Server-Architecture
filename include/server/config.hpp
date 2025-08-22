@@ -25,15 +25,32 @@ class Config {
      */
     explicit Config(const YAML::Node &node);
 
+    int getMaxLogSize() const;
+    int getMaxLogAge() const;
+    std::string getLogPath() const;
+    int getMaxClients() const;
+    int getMaxUnixConnections() const;
+    int getBlockTimeSeconds() const;
     int getTcpPort() const;
     int getUdpPort() const;
     std::string getDbPath() const;
     std::string getSecretPhrase() const;
 
+    void logConfig();
+    void serverConfig();
+    void databaseConfig();
+    void securityConfig();
+
   private:
     YAML::Node m_configNode;
+    int m_maxLogSize;
+    int m_maxLogAge;
+    int m_maxClients;
+    int m_maxUnixConnections;
+    int m_blockTimeSeconds;
     int m_tcpPort;
     int m_udpPort;
+    std::string m_logPath;
     std::string m_dbPath;
     std::string m_secretPhrase;
 };

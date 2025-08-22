@@ -70,6 +70,7 @@ Server::~Server() {
         close(m_serverUnixFD);
         unlink("/tmp/server_ipc.sock");
     }
+    m_logger.closeLogFile();
 }
 
 void Server::setupServer() {
@@ -184,7 +185,7 @@ void Server::setTCPConfig() {
     }
 
     // everything is ready to listen
-    if (listen(m_serverTCPFD, MAX_CLIENTS_PERMITTED) < 0) {
+    if (listen(m_serverTCPFD, m_config.getMaxClients()) < 0) {
         m_logger.log(LogLevel::ERROR, "Server", "Failed to listen on socket.");
         throw std::runtime_error("Failed to listen");
     }
@@ -286,7 +287,7 @@ void Server::setUNIXconfig() {
         throw std::runtime_error("Failed to bind IPC socket");
     }
 
-    if (listen(m_serverUnixFD, MAX_UNIX_CLIENTS) < 0) {
+    if (listen(m_serverUnixFD, m_config.getMaxUnixConnections()) < 0) {
         throw std::runtime_error("Failed to listen on IPC socket");
     }
 

@@ -13,23 +13,86 @@ Config::Config(const std::vector<std::string> &args) {
 
     m_configNode = YAML::LoadFile(configPath);
 
-    if (!m_configNode["security"] || !m_configNode["security"]["unlock_secret_phrase"] ||
-        !m_configNode["security"]["unlock_secret_phrase"].IsScalar()) {
-        throw std::runtime_error("Secret phrase is not set in config file");
+    securityConfig();
+    databaseConfig();
+    serverConfig();
+    logConfig();
+}
+
+// for testing purposes only
+Config::Config(const YAML::Node &node)
+    : m_configNode(node) {
+}
+
+int Config::getTcpPort() const {
+    return m_tcpPort;
+}
+
+int Config::getUdpPort() const {
+    return m_udpPort;
+}
+
+int Config::getMaxClients() const {
+    return m_maxClients;
+}
+
+int Config::getMaxUnixConnections() const {
+    return m_maxUnixConnections;
+}
+
+int Config::getBlockTimeSeconds() const {
+    return m_blockTimeSeconds;
+}
+
+std::string Config::getDbPath() const {
+    return m_dbPath;
+}
+
+std::string Config::getSecretPhrase() const {
+    return m_secretPhrase;
+}
+
+std::string Config::getLogPath() const {
+    return m_logPath;
+}
+
+int Config::getMaxLogSize() const {
+    return m_maxLogSize;
+}
+
+int Config::getMaxLogAge() const {
+    return m_maxLogAge;
+}
+
+void Config::logConfig() {
+
+    if (!m_configNode["logger"] || !m_configNode["logger"]["max_log_size_mb"] ||
+        !m_configNode["logger"]["max_log_size_mb"].IsScalar()) {
+        throw std::runtime_error("Max log size in config file is not set or is not a valid number");
     }
-    m_secretPhrase = m_configNode["security"]["unlock_secret_phrase"].as<std::string>();
-    if (m_secretPhrase.empty()) {
-        throw std::runtime_error("Secret phrase is not set in config file");
+    m_maxLogSize = m_configNode["logger"]["max_log_size_mb"].as<int>();
+    if (m_maxLogSize <= 0) {
+        throw std::runtime_error("Max log size in config file must be a positive greater than zero integer");
     }
 
-    if (!m_configNode["database"] || !m_configNode["database"]["path"] ||
-        !m_configNode["database"]["path"].IsScalar()) {
-        throw std::runtime_error("Database path is not set in config file");
+    if (!m_configNode["logger"]["max_log_age_days"] || !m_configNode["logger"]["max_log_age_days"].IsScalar()) {
+        throw std::runtime_error("Max log age in config file is not set or is not a valid number");
     }
-    m_dbPath = m_configNode["database"]["path"].as<std::string>();
-    if (m_dbPath.empty()) {
-        throw std::runtime_error("Database path is not set in config file");
+    m_maxLogAge = m_configNode["logger"]["max_log_age_days"].as<int>();
+    if (m_maxLogAge <= 0) {
+        throw std::runtime_error("Max log age in config file must be a positive greater than zero integer");
     }
+
+    if (!m_configNode["logger"]["log_path"] || !m_configNode["logger"]["log_path"].IsScalar()) {
+        throw std::runtime_error("Log path in config file is not set or is not a valid string");
+    }
+    m_logPath = m_configNode["logger"]["log_path"].as<std::string>();
+    if (m_logPath.empty()) {
+        throw std::runtime_error("Log path in config file is not set or is empty");
+    }
+}
+
+void Config::serverConfig() {
 
     if (!m_configNode["server"] || !m_configNode["server"]["port"] || !m_configNode["server"]["port"].IsScalar()) {
         throw std::runtime_error("Port in config file is not set or is not a valid number");
@@ -62,25 +125,51 @@ Config::Config(const std::vector<std::string> &args) {
             }
         }
     }
+
+    if (!m_configNode["server"]["max_clients"] || !m_configNode["server"]["max_clients"].IsScalar()) {
+        throw std::runtime_error("Max clients in config file is not set or is not a valid number");
+    }
+    m_maxClients = m_configNode["server"]["max_clients"].as<int>();
+    if (m_maxClients <= 0) {
+        throw std::runtime_error("Max clients in config file must be a positive greater than zero integer");
+    }
+
+    if (!m_configNode["server"]["max_unix_connections"] || !m_configNode["server"]["max_unix_connections"].IsScalar()) {
+        throw std::runtime_error("Max unix connections in config file is not set or is not a valid number");
+    }
+    m_maxUnixConnections = m_configNode["server"]["max_unix_connections"].as<int>();
+    if (m_maxUnixConnections <= 0) {
+        throw std::runtime_error("Max unix connections in config file must be a positive greater than zero integer");
+    }
 }
 
-// for testing purposes only
-Config::Config(const YAML::Node &node)
-    : m_configNode(node) {
+void Config::databaseConfig() {
+    if (!m_configNode["database"] || !m_configNode["database"]["path"] ||
+        !m_configNode["database"]["path"].IsScalar()) {
+        throw std::runtime_error("Database path is not set in config file");
+    }
+    m_dbPath = m_configNode["database"]["path"].as<std::string>();
+    if (m_dbPath.empty()) {
+        throw std::runtime_error("Database path is not set in config file");
+    }
 }
 
-int Config::getTcpPort() const {
-    return m_tcpPort;
-}
+void Config::securityConfig() {
 
-int Config::getUdpPort() const {
-    return m_udpPort;
-}
+    if (!m_configNode["security"] || !m_configNode["security"]["unlock_secret_phrase"] ||
+        !m_configNode["security"]["unlock_secret_phrase"].IsScalar()) {
+        throw std::runtime_error("Secret phrase is not set in config file");
+    }
+    m_secretPhrase = m_configNode["security"]["unlock_secret_phrase"].as<std::string>();
+    if (m_secretPhrase.empty()) {
+        throw std::runtime_error("Secret phrase is not set in config file");
+    }
 
-std::string Config::getDbPath() const {
-    return m_dbPath;
-}
-
-std::string Config::getSecretPhrase() const {
-    return m_secretPhrase;
+    if (!m_configNode["security"]["block_time_seconds"] || !m_configNode["security"]["block_time_seconds"].IsScalar()) {
+        throw std::runtime_error("Block time seconds is not set in config file");
+    }
+    m_blockTimeSeconds = m_configNode["security"]["block_time_seconds"].as<int>();
+    if (m_blockTimeSeconds <= 0) {
+        throw std::runtime_error("Block time seconds must be a positive greater than zero integer");
+    }
 }

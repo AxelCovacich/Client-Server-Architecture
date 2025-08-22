@@ -2,6 +2,7 @@
 #define LOGGER_HPP
 
 #include "clock.hpp"
+#include "config.hpp"
 #include "storage.hpp"
 #include <fstream>
 #include <mutex>
@@ -10,12 +11,13 @@
 #include <string>
 
 #define DATE_BUFFER_SIZE 32
-#define LOG_PATH "./var/logs/server.log"
+#define BUFFER_CHUNK_RW_SIZE 16384 // 16KB buffer size for file I/O
+
 enum class LogLevel { DEBUG, INFO, WARNING, ERROR };
 
 class Logger {
   public:
-    Logger(Storage &storage, const IClock &clock, std::ostream &errorStream) noexcept;
+    Logger(Storage &storage, const IClock &clock, std::ostream &errorStream, const Config &config) noexcept;
 
     /**
      * @brief Logs a message to the console and persists it to the database.
@@ -45,10 +47,17 @@ class Logger {
 
     bool openLogFile(const std::string &filePath) noexcept;
 
+    void closeLogFile() noexcept;
+
+    void logRotation();
+
+    bool compressFileGzip(const std::string &srcPath, const std::string &destPath);
+
   private:
     std::ostream &m_errorStream;
     Storage &m_storage;
     const IClock &m_clock;
+    const Config &m_config;
 
     // File logging members
     std::ofstream m_logFile;

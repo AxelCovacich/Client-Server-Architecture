@@ -3,12 +3,14 @@
 #include <ctime>
 #include <filesystem>
 #include <iostream>
+#include <zlib.h>
 
-Logger::Logger(Storage &storage, const IClock &clock, std::ostream &errorStream) noexcept
+Logger::Logger(Storage &storage, const IClock &clock, std::ostream &errorStream, const Config &config) noexcept
     : m_storage(storage)
     , m_clock(clock)
     , m_errorStream(errorStream)
-    , m_fileEnabled(false) {
+    , m_fileEnabled(false)
+    , m_config(config) {
 }
 
 bool Logger::openLogFile(const std::string &filePath) noexcept {
@@ -93,4 +95,75 @@ std::string Logger::levelToString(LogLevel level) {
     }
 
     throw std::logic_error("Invalid or unhandled LogLevel in levelToString");
+}
+
+void Logger::closeLogFile() noexcept {
+    std::lock_guard<std::mutex> lock(m_fileMutex);
+    if (m_logFile.is_open()) {
+        m_logFile.close();
+        m_fileEnabled = false;
+    }
+}
+
+void Logger::logRotation() noexcept {
+    std::lock_guard<std::mutex> lock(m_fileMutex);
+
+    if (m_logFile.is_open()) { // Close current log file if open
+        m_logFile.close();
+        m_fileEnabled = false;
+    }
+
+    // Rotate log file by renaming it with a timestamp
+    std::string oldLogPath = m_config.getLogPath();
+    std::filesystem::path oldPath(oldLogPath);
+    if (std::filesystem::exists(oldPath)) {
+        std::string newLogPath = oldPath.parent_path().string() + "/server_" + std::to_string(m_clock.now()) +
+            ".log"; // e.g., server_1633036800.log
+        std::filesystem::rename(oldPath, newLogPath);
+
+        // Compress the rotated log
+        std::string compressedPath = newLogPath + ".gz";
+        if (compressFileGzip(newLogPath, compressedPath)) {
+            std::filesystem::remove(newLogPath); // Remove uncompressed log after compression
+            log(LogLevel::INFO, "Logger", "Rotated log compressed to " + compressedPath);
+        } else {
+            m_errorStream << "Logger: Failed to compress rotated log file.\n";
+        }
+    }
+
+    if (openLogFile(m_config.getLogPath())) { // Reopen the log file (a new file will be created)
+        log(LogLevel::INFO, "Logger", "Successfully rotated log file.");
+    } else {
+        m_errorStream << "Logger: Failed to reopen log file after rotation.\n";
+    }
+}
+
+bool Logger::compressFileGzip(const std::string &srcPath, const std::string &destPath) {
+
+    constexpr size_t BUFSIZE =
+        BUFFER_CHUNK_RW_SIZE; // 16 KB buffer size for gzip compression. Will be reading and writing in 16KB chunks
+    char buffer[BUFSIZE];
+
+    FILE *src = fopen(srcPath.c_str(), "rb");
+    if (!src)
+        return false;
+
+    gzFile dest = gzopen(destPath.c_str(), "wb");
+    if (!dest) {
+        fclose(src);
+        return false;
+    }
+
+    size_t bytes;
+    while ((bytes = fread(buffer, 1, BUFSIZE, src)) > 0) {
+        if (gzwrite(dest, buffer, bytes) != (int)bytes) {
+            gzclose(dest);
+            fclose(src);
+            return false;
+        }
+    }
+
+    gzclose(dest);
+    fclose(src);
+    return true;
 }
