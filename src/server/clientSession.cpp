@@ -122,7 +122,7 @@ clientSession::processResult clientSession::processMessage(const std::string &js
                 const std::string user = request.at("payload").at("hostname");
                 const std::string pass = request.at("payload").at("password");
                 // cout<< "DEBUG: Attempting login for user: " << user << " With password: " << pass << '\n';
-                AuthResult result = m_authenticator.authenticate(user, pass);
+                AuthResult result = m_authenticator.authenticate(user, pass, m_config.getBlockTimeSeconds());
                 json response;
 
                 switch (result) {

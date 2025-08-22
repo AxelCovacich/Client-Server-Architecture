@@ -42,8 +42,8 @@ int main(int argc, char *argv[]) {
         SystemClock clock;
         Storage storage(config.getDbPath());
         storage.initializeSchema();
-        Logger logger(storage, clock, std::cerr);
-        logger.openLogFile(LOG_PATH);
+        Logger logger(storage, clock, std::cerr, config);
+        logger.openLogFile(config.getLogPath());
         logger.log(LogLevel::INFO, "Main", "Core services initialized.");
 
         // making a server object on the heap, controlled by smart pointer server

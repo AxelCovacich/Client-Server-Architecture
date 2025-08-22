@@ -7,8 +7,6 @@
 #include <mutex>
 #include <string>
 
-#define BLOCK_DURATION_SECONDS 900 // 15 minutes in seconds
-
 enum class AuthResult {
     SUCCESS,
     FAILED_USER_NOT_FOUND,
@@ -29,7 +27,7 @@ class Authenticator {
      * @param password The client's password.
      * @return True if authentication is successful, false otherwise.
      */
-    AuthResult authenticate(const std::string &hostname, const std::string &password) const;
+    AuthResult authenticate(const std::string &hostname, const std::string &password, int blockDuration) const;
 
   private:
     const IClock &m_clock;

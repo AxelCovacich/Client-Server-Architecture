@@ -14,8 +14,6 @@
 #include <utility>
 
 #define BUFFER_SIZE 256
-#define MAX_CLIENTS_PERMITTED 1000
-#define MAX_UNIX_CLIENTS 100
 
 /**
  * @class Server

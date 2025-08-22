@@ -12,7 +12,8 @@ Authenticator::Authenticator(Storage &storage, const IClock &clock, Logger &logg
     , m_logger(logger) {
 }
 
-AuthResult Authenticator::authenticate(const std::string &hostname, const std::string &password) const {
+AuthResult Authenticator::authenticate(const std::string &hostname, const std::string &password,
+                                       int blockDuration) const {
 
     std::lock_guard<std::mutex> lock(m_mutex); // mutex here to make the secuence of select--> update atomic
 
@@ -29,7 +30,7 @@ AuthResult Authenticator::authenticate(const std::string &hostname, const std::s
 
     std::time_t currentTime = m_clock.now();
 
-    if (authData->failedAttempts >= 3 && (currentTime - authData->lastFailedTimestamp) < BLOCK_DURATION_SECONDS) {
+    if (authData->failedAttempts >= 3 && (currentTime - authData->lastFailedTimestamp) < blockDuration) {
 
         // cerr << "Login temporally blocked for " << hostname << ". Try again later.\n";
         m_logger.log(LogLevel::WARNING, "Authenticator",
