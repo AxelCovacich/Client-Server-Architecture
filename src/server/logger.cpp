@@ -16,6 +16,13 @@ bool Logger::openLogFile(const std::string &filePath) noexcept {
         std::filesystem::path path(filePath);
         if (path.has_parent_path()) {
             std::filesystem::create_directories(path.parent_path());
+            // Set permissions to 0755 (rwxr-xr-x) for the directory
+
+            std::filesystem::permissions(path.parent_path(),
+                                         std::filesystem::perms::owner_all | std::filesystem::perms::group_read |
+                                             std::filesystem::perms::group_exec | std::filesystem::perms::others_read |
+                                             std::filesystem::perms::others_exec,
+                                         std::filesystem::perm_options::replace);
         }
         // open in append mode so existing logs are preserved
         m_logFile.open(filePath, std::ios::out | std::ios::app);

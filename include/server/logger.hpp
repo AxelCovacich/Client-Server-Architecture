@@ -53,7 +53,7 @@ class Logger {
     // File logging members
     std::ofstream m_logFile;
     std::mutex m_fileMutex;
-    bool m_fileEnabled{false};
+    bool m_fileEnabled;
 };
 
 #endif // LOGGER_HPP
