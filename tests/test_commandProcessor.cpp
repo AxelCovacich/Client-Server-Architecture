@@ -32,7 +32,7 @@ void testProcessCommandStatusAsJSON() {
     Storage storage(":memory:");
 
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     std::string clientId = "warehouse-A";
     SessionManager sessionManager(storage, logger);
@@ -53,7 +53,7 @@ void testProcessCommandEndAsJSON() {
     Storage storage(":memory:");
     Config dummyConfig = createDummyConfig();
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     std::string clientId = "warehouse-A";
     SessionManager session(storage, logger);
@@ -71,12 +71,13 @@ void testProcessCommandUnknownAsJSON() {
     std::string json_request = "{\"command\": \"unknown\"}";
     json request_object = json::parse(json_request);
     Storage storage(":memory:");
+    Config dummyConfig = createDummyConfig();
 
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     std::string clientId = "warehouse-A";
-    Config dummyConfig = createDummyConfig();
+
     SessionManager session(storage, logger);
 
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
@@ -95,13 +96,13 @@ void testProcessCommandUpdateStockAsJSON() {
     json request_object = json::parse(json_request);
     Storage storage(":memory:");
     storage.initializeSchema();
+    Config dummyConfig = createDummyConfig();
 
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     std::string clientId = "warehouse-A";
     storage.createUser(clientId, "pass123");
-    Config dummyConfig = createDummyConfig();
     SessionManager session(storage, logger);
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
                                                    dummyConfig);
@@ -119,11 +120,10 @@ void testProcessCommandSrvrInMaintenance() {
     json request_object = json::parse(json_request);
 
     Storage storage(":memory:");
-
-    SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
-    Inventory inventory(storage, logger);
     Config dummyConfig = createDummyConfig();
+    SystemClock clock;
+    Logger logger(storage, clock, std::cerr, dummyConfig);
+    Inventory inventory(storage, logger);
     SessionManager session(storage, logger);
     auto result = commandProcessor::processCommand(request_object, clientId, true, inventory, logger, storage, session,
                                                    dummyConfig);
@@ -140,11 +140,11 @@ void testProcessCommandNoCommand() {
 
     std::string clientId = "warehouse-A";
     Storage storage(":memory:");
+    Config dummyConfig = createDummyConfig();
 
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
-    Config dummyConfig = createDummyConfig();
     SessionManager session(storage, logger);
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
                                                    dummyConfig);
@@ -160,15 +160,12 @@ void testProcessCommandNoPayloadForUpload() {
                                "\"water\", \"quantity\": 500}";
 
     json request_object = json::parse(json_request);
-
     std::string clientId = "warehouse-A";
-
     Storage storage(":memory:");
-
-    SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
-    Inventory inventory(storage, logger);
     Config dummyConfig = createDummyConfig();
+    SystemClock clock;
+    Logger logger(storage, clock, std::cerr, dummyConfig);
+    Inventory inventory(storage, logger);
     SessionManager session(storage, logger);
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
                                                    dummyConfig);
@@ -187,11 +184,10 @@ void testProcessCommandNoQuantityForUpload() {
     json request_object = json::parse(json_request);
     std::string clientId = "warehouse-A";
     Storage storage(":memory:");
-
-    SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
-    Inventory inventory(storage, logger);
     Config dummyConfig = createDummyConfig();
+    SystemClock clock;
+    Logger logger(storage, clock, std::cerr, dummyConfig);
+    Inventory inventory(storage, logger);
     SessionManager session(storage, logger);
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
                                                    dummyConfig);
@@ -210,11 +206,11 @@ void testProcessCommandNoItemForUpload() {
     json request_object = json::parse(json_request);
     std::string clientId = "warehouse-A";
     Storage storage(":memory:");
+    Config dummyConfig = createDummyConfig();
 
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
-    Config dummyConfig = createDummyConfig();
     SessionManager session(storage, logger);
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
                                                    dummyConfig);
@@ -232,11 +228,11 @@ void testProcessCommandNoCategoryForUpload() {
     json request_object = json::parse(json_request);
     std::string clientId = "warehouse-A";
     Storage storage(":memory:");
+    Config dummyConfig = createDummyConfig();
 
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
-    Config dummyConfig = createDummyConfig();
     SessionManager session(storage, logger);
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
                                                    dummyConfig);
@@ -258,10 +254,10 @@ void testProcessCommandUpdateStockInvalidQuantityType() {
     Storage storage(":memory:");
     storage.initializeSchema();
     storage.createUser(clientId, "pass123");
-    SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
-    Inventory inventory(storage, logger);
     Config dummyConfig = createDummyConfig();
+    SystemClock clock;
+    Logger logger(storage, clock, std::cerr, dummyConfig);
+    Inventory inventory(storage, logger);
     SessionManager session(storage, logger);
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
                                                    dummyConfig);
@@ -284,9 +280,9 @@ void testProcessCommandUpdateStockNegativeQuantity() {
     storage.initializeSchema();
     storage.createUser(clientId, "pass123");
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
-    Inventory inventory(storage, logger);
     Config dummyConfig = createDummyConfig();
+    Logger logger(storage, clock, std::cerr, dummyConfig);
+    Inventory inventory(storage, logger);
     SessionManager session(storage, logger);
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
                                                    dummyConfig);
@@ -304,11 +300,11 @@ void testProcessCommandgetInventory() {
     Storage storage(":memory:");
     storage.initializeSchema();
     storage.createUser(clientId, "pass123");
+    Config dummyConfig = createDummyConfig();
 
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
-    Config dummyConfig = createDummyConfig();
     SessionManager session(storage, logger);
 
     inventory.updateStock(clientId, "food", "meat", 100);
@@ -340,14 +336,14 @@ void testProcessCommandgGetEmptyInventory() {
     std::string clientId = "warehouse-A";
     Storage storage(":memory:");
     storage.initializeSchema();
+    Config dummyConfig = createDummyConfig();
 
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     std::string request_str = "{\"command\":\"get_inventory\"}";
     storage.createUser(clientId, "pass123");
     json request_object = json::parse(request_str);
-    Config dummyConfig = createDummyConfig();
     SessionManager session(storage, logger);
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
                                                    dummyConfig);
@@ -368,10 +364,11 @@ void testProcessCommandGetStockSuccessfully() {
     Storage storage(":memory:");
     storage.initializeSchema();
     storage.createUser(clientId, "pass123");
-    SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
-    Inventory inventory(storage, logger);
     Config dummyConfig = createDummyConfig();
+
+    SystemClock clock;
+    Logger logger(storage, clock, std::cerr, dummyConfig);
+    Inventory inventory(storage, logger);
     SessionManager session(storage, logger);
 
     inventory.updateStock(clientId, "food", "meat", 100);
@@ -395,11 +392,11 @@ void testProcessCommandGetStockNoItemFound() {
     std::string clientId = "warehouse-A";
     Storage storage(":memory:");
     storage.initializeSchema();
+    Config dummyConfig = createDummyConfig();
 
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
-    Config dummyConfig = createDummyConfig();
     SessionManager session(storage, logger);
     storage.createUser(clientId, "pass123");
     // inventory.updateStock(clientId, "food", "water", 100);
@@ -422,11 +419,11 @@ void testProcessCommandInvalidPayloadForGetStock() {
     std::string clientId = "warehouse-A";
     Storage storage(":memory:");
     storage.initializeSchema();
+    Config dummyConfig = createDummyConfig();
 
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
-    Config dummyConfig = createDummyConfig();
     SessionManager session(storage, logger);
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
                                                    dummyConfig);
@@ -443,11 +440,11 @@ void testCommnadGetHistory() {
     Storage storage(":memory:");
     storage.initializeSchema();
     storage.createUser(clientId, "pass123");
+    Config dummyConfig = createDummyConfig();
 
     MockClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
-    Config dummyConfig = createDummyConfig();
     SessionManager session(storage, logger);
 
     clock.set_time(100);
@@ -494,11 +491,11 @@ void testCommnadGetHistoryNoLogsEmptyData() {
     Storage storage(":memory:");
     storage.initializeSchema();
     storage.createUser(clientId, "pass123");
+    Config dummyConfig = createDummyConfig();
 
     MockClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
-    Config dummyConfig = createDummyConfig();
     SessionManager session(storage, logger);
 
     std::string request_str = "{\"command\":\"get_history\"}";
@@ -525,22 +522,28 @@ void testUnlockClientWithCorrectSecretPhrase() {
     storage.initializeSchema();
     storage.createUser(clientId, "pass123");
     storage.createUser("blocked_user", "pass123");
-
-    MockClock clock;
-    Logger logger(storage, clock, std::cerr);
-    Inventory inventory(storage, logger);
-    SessionManager sessionManager(storage, logger);
     createTempYamlFile(R"(
 server:
-  port: 9999
+    port: 9999
+    max_clients: 10
+    max_unix_connections: 5
+logger:
+    max_log_size_mb: 10
+    log_path: "./var/logs/server.log"
 database:
-  path: ":memory:"
+    path: ":memory:"
 security:
-  unlock_secret_phrase: "secret_phrase"
+    unlock_secret_phrase: "secret_phrase"
+    block_time_seconds: 60
 )");
     const std::vector<std::string> args = {"./server", "./temp_config.yaml"};
 
     Config config(args);
+
+    MockClock clock;
+    Logger logger(storage, clock, std::cerr, config);
+    Inventory inventory(storage, logger);
+    SessionManager sessionManager(storage, logger);
 
     std::string request_str = R"({
         "command": "unlock_client",
@@ -571,22 +574,28 @@ void testUnlockClientWrongClient() {
     storage.initializeSchema();
     storage.createUser(clientId, "pass123");
     // storage.createUser("blocked_user","pass123");
-
-    MockClock clock;
-    Logger logger(storage, clock, std::cerr);
-    Inventory inventory(storage, logger);
-    SessionManager sessionManager(storage, logger);
     createTempYamlFile(R"(
 server:
-  port: 9999
+    port: 9999
+    max_clients: 10
+    max_unix_connections: 5
+logger:
+    max_log_size_mb: 10
+    log_path: "./var/logs/server.log"
 database:
-  path: ":memory:"
+    path: ":memory:"
 security:
-  unlock_secret_phrase: "secret_phrase"
+    unlock_secret_phrase: "secret_phrase"
+    block_time_seconds: 60
 )");
     const std::vector<std::string> args = {"./server", "./temp_config.yaml"};
 
     Config config(args);
+    MockClock clock;
+    Logger logger(storage, clock, std::cerr, config);
+    Inventory inventory(storage, logger);
+    SessionManager sessionManager(storage, logger);
+
     std::string request_str = R"({
         "command": "unlock_client",
         "payload": {
@@ -615,21 +624,28 @@ void testUnlockClientWrongPhrase() {
     storage.createUser(clientId, "pass123");
     // storage.createUser("blocked_user","pass123");
 
-    MockClock clock;
-    Logger logger(storage, clock, std::cerr);
-    Inventory inventory(storage, logger);
-    SessionManager sessionManager(storage, logger);
     createTempYamlFile(R"(
 server:
-  port: 9999
+    port: 9999
+    max_clients: 10
+    max_unix_connections: 5
+logger:
+    max_log_size_mb: 10
+    log_path: "./var/logs/server.log"
 database:
-  path: ":memory:"
+    path: ":memory:"
 security:
-  unlock_secret_phrase: "secret_phrase"
+    unlock_secret_phrase: "secret_phrase"
+    block_time_seconds: 60
 )");
     const std::vector<std::string> args = {"./server", "./temp_config.yaml"};
 
     Config config(args);
+
+    MockClock clock;
+    Logger logger(storage, clock, std::cerr, config);
+    Inventory inventory(storage, logger);
+    SessionManager sessionManager(storage, logger);
 
     std::string request_str = R"({
         "command": "unlock_client",
@@ -657,12 +673,11 @@ void testUnlockClientWrongPayload() {
     storage.initializeSchema();
     storage.createUser(clientId, "pass123");
     // storage.createUser("blocked_user","pass123");
-
+    Config dummyConfig = createDummyConfig();
     MockClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     SessionManager sessionManager(storage, logger);
-    Config dummyConfig = createDummyConfig();
 
     std::string request_str = R"({
         "command": "unlock_client",
@@ -690,12 +705,12 @@ void testUnlockClientNotAdminUser() {
     storage.initializeSchema();
     storage.createUser(clientId, "pass123");
     storage.createUser("blocked_user", "pass123");
+    Config dummyConfig = createDummyConfig();
 
     MockClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     SessionManager sessionManager(storage, logger);
-    Config dummyConfig = createDummyConfig();
 
     std::string request_str = R"({
         "command": "unlock_client",

@@ -10,12 +10,23 @@ inline Config createDummyConfig() {
     YAML::Node dummyNode = YAML::Load(R"(
         server:
             port: 8080
+            max_clients: 10
+            max_unix_connections: 5
+        logger:
+            max_log_size_mb: 10
+            log_path: "./var/logs/server.log"
         database:
             path: ":memory:"
         security:
             unlock_secret_phrase: "dummy_phrase"
+            block_time_seconds: 900
     )");
-    return Config(dummyNode);
+    Config cfg(dummyNode);
+    cfg.securityConfig();
+    cfg.databaseConfig();
+    cfg.serverConfig({});
+    cfg.logConfig();
+    return cfg;
 }
 
 inline void createTempYamlFile(const std::string &content) {

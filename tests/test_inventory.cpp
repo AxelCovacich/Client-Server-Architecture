@@ -2,6 +2,7 @@
 #include "inventory.hpp"
 #include "logger.hpp"
 #include "storage.hpp"
+#include "test_helper.hpp"
 #include "unity.h"
 #include <iostream>
 #include <optional>
@@ -16,7 +17,8 @@ void testUpdateStockAddsNewItem() {
     storage.initializeSchema();
     std::string clientId = "warehouse-A";
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Config dummyConfig = createDummyConfig();
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     storage.createUser(clientId, "pass123");
     // Check inicial stock is empty
@@ -47,7 +49,8 @@ void testUpdateStockModifiesExistingItem() {
     storage.initializeSchema();
     std::string clientId = "warehouse-A";
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Config dummyConfig = createDummyConfig();
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     storage.createUser(clientId, "pass123");
     //  inicial stock
@@ -66,7 +69,8 @@ void testGetInventorySummaryReturnsCorrectMapFromDataBase() {
     storage.initializeSchema();
     std::string clientId = "warehouse-A";
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Config dummyConfig = createDummyConfig();
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     storage.createUser(clientId, "pass123");
     // first we add items to inventory
@@ -87,7 +91,8 @@ void testgetInventorySummaryFromCacheHit() {
     Storage storage(":memory:");
     storage.initializeSchema();
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Config dummyConfig = createDummyConfig();
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     std::string clientId = "warehouse-A";
     storage.createUser(clientId, "pass123");
@@ -120,7 +125,8 @@ void testGetInventorySummaryForUnknownClientReturnsEmpty() {
     storage.initializeSchema();
     std::string clientId = "warehouse-A";
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Config dummyConfig = createDummyConfig();
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     storage.createUser(clientId, "pass123");
     auto result = inventory.getInventorySummary("warehouse-B");
@@ -132,7 +138,8 @@ void testUpdateStockNegativeQuantity() {
     storage.initializeSchema();
     std::string clientId = "warehouse-A";
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Config dummyConfig = createDummyConfig();
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     storage.createUser(clientId, "pass123");
     inventory.updateStock("warehouse-A", "food", "meat", 0);
@@ -157,7 +164,8 @@ void testGetStockRetrievesFromDatabaseOnCacheMiss() {
     Storage storage(":memory:");
     storage.initializeSchema();
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Config dummyConfig = createDummyConfig();
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     std::string clientId = "warehouse-A";
     storage.createUser(clientId, "pass123");
@@ -174,7 +182,8 @@ void testUpdateStockInvalidCategory() {
     storage.initializeSchema();
     std::string clientId = "warehouse-A";
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Config dummyConfig = createDummyConfig();
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     storage.createUser(clientId, "pass123");
     auto result = inventory.updateStock("warehouse-A", "something", "meat", 50);
@@ -188,7 +197,8 @@ void testUpdateStockInvalidItem() {
     storage.initializeSchema();
     std::string clientId = "warehouse-A";
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Config dummyConfig = createDummyConfig();
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     storage.createUser(clientId, "pass123");
     auto result = inventory.updateStock("warehouse-A", "food", "something", 50);

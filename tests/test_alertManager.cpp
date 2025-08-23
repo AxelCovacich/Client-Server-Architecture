@@ -5,6 +5,7 @@
 #include "logger.hpp"
 #include "sessionManager.hpp"
 #include "storage.hpp"
+#include "test_helper.hpp"
 #include "udpHandler.hpp"
 #include "unity.h"
 #include <iostream>
@@ -19,7 +20,8 @@ void testProcessAlertLocksClientOnValidAlert() {
     storage.initializeSchema();
     storage.createUser("warehouse-A", "pass123");
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Config dummyConfig = createDummyConfig();
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     SessionManager sessionManager(storage, logger);
     UdpHandler udpHandler(-1, logger, sessionManager);
     AlertManager alertManager(logger, sessionManager, udpHandler);
@@ -44,7 +46,8 @@ void testProcessAlertHandlesMalformedJsonGracefully() {
     Storage storage(":memory:");
     storage.initializeSchema();
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Config dummyConfig = createDummyConfig();
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     SessionManager sessionManager(storage, logger);
     UdpHandler udpHandler(-1, logger, sessionManager);
     AlertManager alertManager(logger, sessionManager, udpHandler);

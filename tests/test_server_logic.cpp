@@ -17,19 +17,29 @@ void testServerConstructorFailsOnPrivilegedPort() {
 
     try {
         createTempYamlFile(R"(
-            server:
-              port: 80
             database:
-              path: ":memory:"
+                path: ":memory:"
+
             security:
-              unlock_secret_phrase: "test"
-        )");
+                unlock_secret_phrase: "test"
+                block_time_seconds: 900
+
+            server:
+                port: 80
+                max_clients: 10
+                max_unix_connections: 5
+
+            logger:
+                max_log_size_mb: 10
+                log_path: "./var/logs/server.log"
+            )");
 
         const std::vector<std::string> args = {"./server", "./temp_config.yaml"};
         Config config(args);
+        std::cout << "max_log_size_mb: " << config.getMaxLogSize() << "\n";
         SystemClock clock;
         Storage storage(":memory:");
-        Logger logger(storage, clock, std::cerr);
+        Logger logger(storage, clock, std::cerr, config);
         Server s(config, clock, storage, logger);
 
         TEST_FAIL_MESSAGE("Expected std::runtime_error, but no exception was thrown.");

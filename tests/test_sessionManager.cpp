@@ -15,12 +15,12 @@
  * @brief Tests the full lock and unlock lifecycle of a client.
  */
 void testLockAndUnlockClient() {
-
+    Config dummyConfig = createDummyConfig();
     Storage storage(":memory:");
     storage.initializeSchema();
     storage.createUser("warehouse-A", "pass123");
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     SessionManager sessionManager(storage, logger);
 
     TEST_ASSERT_FALSE(sessionManager.isClientLocked("warehouse-A"));
@@ -37,12 +37,12 @@ void testLockAndUnlockClient() {
 }
 
 void testLockNonExistentClient() {
-
+    Config dummyConfig = createDummyConfig();
     Storage storage(":memory:");
     storage.initializeSchema();
     storage.createUser("warehouse-A", "pass123");
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     SessionManager sessionManager(storage, logger);
 
     bool success = sessionManager.lockClient("Non_existent_user");
@@ -53,6 +53,7 @@ void testLockNonExistentClient() {
  */
 void testIsClientLockedHandlesCacheMiss() {
 
+    Config dummyConfig = createDummyConfig();
     Storage storage(":memory:");
     storage.initializeSchema();
     storage.createUser("warehouse-B", "pass123");
@@ -60,7 +61,7 @@ void testIsClientLockedHandlesCacheMiss() {
     storage.setClientLockStatus("warehouse-B", true);
 
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     SessionManager sessionManager(storage, logger);
 
     TEST_ASSERT_TRUE(sessionManager.isClientLocked("warehouse-B"));
@@ -74,7 +75,7 @@ void testRegisterAndUnregisterSession() {
     storage.initializeSchema();
     SystemClock clock;
     Config dummyConfig = createDummyConfig();
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
     SessionManager sessionManager(storage, logger);
@@ -99,7 +100,7 @@ void testgetActiveUdpAddresses() {
     storage.initializeSchema();
     SystemClock clock;
     Config dummyConfig = createDummyConfig();
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
     SessionManager sessionManager(storage, logger);
@@ -158,7 +159,7 @@ void testSessionManagerGetClientSession() {
     storage.initializeSchema();
     SystemClock clock;
     Config dummyConfig = createDummyConfig();
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
     SessionManager sessionManager(storage, logger);

@@ -19,7 +19,7 @@ void testSessionStartsUnauthenticated() {
     storage.initializeSchema();
     Config dummyConfig = createDummyConfig();
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
     SessionManager sessionManager(storage, logger);
@@ -35,7 +35,7 @@ void testSessionAuthenticatesWithValidLogin() {
     storage.initializeSchema();
     SystemClock clock;
     Config dummyConfig = createDummyConfig();
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
     SessionManager sessionManager(storage, logger);
@@ -64,7 +64,7 @@ void testSessionAuthenticatesWithInvalidLogin() {
     storage.initializeSchema();
     Config dummyConfig = createDummyConfig();
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
     SessionManager sessionManager(storage, logger);
@@ -93,7 +93,7 @@ void testSessionRejectsOtherCommandsWhenUnauthenticated() {
     storage.initializeSchema();
     Config dummyConfig = createDummyConfig();
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
     SessionManager sessionManager(storage, logger);
@@ -120,7 +120,7 @@ void testProcessMessageHandlesMalformedJson() {
     storage.initializeSchema();
     Config dummyConfig = createDummyConfig();
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
     SessionManager sessionManager(storage, logger);
@@ -143,7 +143,7 @@ void testProcessMessageHandlesInvalidLoginRequest() {
     storage.initializeSchema();
     Config dummyConfig = createDummyConfig();
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
     SessionManager sessionManager(storage, logger);
@@ -167,7 +167,7 @@ void testProcessMessageAuthenticatedCommand() {
     storage.initializeSchema();
     Config dummyConfig = createDummyConfig();
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
     SessionManager sessionManager(storage, logger);
@@ -201,7 +201,7 @@ void testProcessMessageCatchExceptionFromAuthenticatedCommand() {
     storage.initializeSchema();
     Config dummyConfig = createDummyConfig();
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
     SessionManager sessionManager(storage, logger);
@@ -250,7 +250,7 @@ void testProcessMessageUserReachLimitFailedAttemps() {
     storage.initializeSchema();
     Config dummyConfig = createDummyConfig();
     SystemClock clock;
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
     SessionManager sessionManager(storage, logger);
@@ -280,7 +280,7 @@ void testProcessMessageUserLockedAlertTrigger() {
     storage.initializeSchema();
     SystemClock clock;
     Config dummyConfig = createDummyConfig();
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
     SessionManager sessionManager(storage, logger);
@@ -310,7 +310,7 @@ void testsetUdpAddress() {
     storage.initializeSchema();
     SystemClock clock;
     Config dummyConfig = createDummyConfig();
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
     SessionManager sessionManager(storage, logger);
@@ -339,7 +339,7 @@ void testClientSessionHandlesSQlExceptionOnLogin() {
     storage.initializeSchema();
     SystemClock clock;
     Config dummyConfig = createDummyConfig();
-    Logger logger(storage, clock, std::cerr);
+    Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
     SessionManager sessionManager(storage, logger);
