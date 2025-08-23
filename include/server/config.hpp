@@ -26,7 +26,6 @@ class Config {
     explicit Config(const YAML::Node &node);
 
     int getMaxLogSize() const;
-    int getMaxLogAge() const;
     std::string getLogPath() const;
     int getMaxClients() const;
     int getMaxUnixConnections() const;
@@ -37,14 +36,13 @@ class Config {
     std::string getSecretPhrase() const;
 
     void logConfig();
-    void serverConfig();
+    void serverConfig(const std::vector<std::string> &args);
     void databaseConfig();
     void securityConfig();
 
   private:
     YAML::Node m_configNode;
     int m_maxLogSize;
-    int m_maxLogAge;
     int m_maxClients;
     int m_maxUnixConnections;
     int m_blockTimeSeconds;

@@ -12,5 +12,4 @@ server:
     
 logger:
     max_log_size_mb: 10
-    max_log_age_days: 7
     log_path: "./var/logs/server.log"

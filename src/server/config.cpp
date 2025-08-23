@@ -13,9 +13,9 @@ Config::Config(const std::vector<std::string> &args) {
 
     m_configNode = YAML::LoadFile(configPath);
 
-    securityConfig();
+    serverConfig(args);
     databaseConfig();
-    serverConfig();
+    securityConfig();
     logConfig();
 }
 
@@ -60,10 +60,6 @@ int Config::getMaxLogSize() const {
     return m_maxLogSize;
 }
 
-int Config::getMaxLogAge() const {
-    return m_maxLogAge;
-}
-
 void Config::logConfig() {
 
     if (!m_configNode["logger"] || !m_configNode["logger"]["max_log_size_mb"] ||
@@ -75,14 +71,6 @@ void Config::logConfig() {
         throw std::runtime_error("Max log size in config file must be a positive greater than zero integer");
     }
 
-    if (!m_configNode["logger"]["max_log_age_days"] || !m_configNode["logger"]["max_log_age_days"].IsScalar()) {
-        throw std::runtime_error("Max log age in config file is not set or is not a valid number");
-    }
-    m_maxLogAge = m_configNode["logger"]["max_log_age_days"].as<int>();
-    if (m_maxLogAge <= 0) {
-        throw std::runtime_error("Max log age in config file must be a positive greater than zero integer");
-    }
-
     if (!m_configNode["logger"]["log_path"] || !m_configNode["logger"]["log_path"].IsScalar()) {
         throw std::runtime_error("Log path in config file is not set or is not a valid string");
     }
@@ -92,7 +80,7 @@ void Config::logConfig() {
     }
 }
 
-void Config::serverConfig() {
+void Config::serverConfig(const std::vector<std::string> &args) {
 
     if (!m_configNode["server"] || !m_configNode["server"]["port"] || !m_configNode["server"]["port"].IsScalar()) {
         throw std::runtime_error("Port in config file is not set or is not a valid number");
