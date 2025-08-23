@@ -204,6 +204,13 @@ void testConfigFailsOnMissingDbPathInYaml();
 void testConfigFailsOnMissingSecretPhraseInYaml();
 void testIpcHandlerReadError();
 void testConfigLoadsFromDefaultWhenNoArgs();
+void testOpenLogFileSuccess();
+void testOpenLogFileFailure();
+void testLoggerWritesToFile();
+void testLoggerCloseLogFile();
+void testLoggerLogRotation();
+void testCompressFileGzipFailsOnInvalidPath();
+void testShouldRotateTrue();
 /**
  * @brief Runs all the tests.
  *
@@ -398,5 +405,12 @@ int main() {
     RUN_TEST(testIpcHandlerReadError);
     RUN_TEST(test_launch_dashboard_fails_without_clientID);
     RUN_TEST(testConfigLoadsFromDefaultWhenNoArgs);
+    RUN_TEST(testOpenLogFileSuccess);
+    RUN_TEST(testOpenLogFileFailure);
+    RUN_TEST(testLoggerWritesToFile);
+    RUN_TEST(testLoggerCloseLogFile);
+    RUN_TEST(testLoggerLogRotation);
+    RUN_TEST(testCompressFileGzipFailsOnInvalidPath);
+    RUN_TEST(testShouldRotateTrue);
     return UNITY_END();
 }
