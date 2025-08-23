@@ -85,6 +85,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib) # for .a libs
 
 
 # --- Dependencies ---
+find_package(ZLIB REQUIRED)
 
 # --- YAML Configuration Library ---
 include(FetchContent)
@@ -158,6 +159,7 @@ target_include_directories(ServerLib PUBLIC
 
 target_link_libraries(ServerLib PUBLIC nlohmann_json::nlohmann_json)
 target_link_libraries(ServerLib PUBLIC SQLiteCpp bcrypt yaml-cpp)
+target_link_libraries(ServerLib PRIVATE ZLIB::ZLIB)
 
 # 2. ClientLib
 add_library(ClientLib SHARED

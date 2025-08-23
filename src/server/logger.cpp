@@ -55,6 +55,10 @@ void Logger::log(LogLevel level, const std::string &component, const std::string
 
     // std::cout << "[" << date << "] [" << component << "] [" << level_str << "] " << message << '\n';
 
+    if (shouldRotate()) {
+        logRotation();
+    }
+
     try {
         std::string level_str = levelToString(level);
         m_storage.saveLogEntry(date, level_str, component, message, clientId);
@@ -105,7 +109,7 @@ void Logger::closeLogFile() noexcept {
     }
 }
 
-void Logger::logRotation() noexcept {
+void Logger::logRotation() {
     std::lock_guard<std::mutex> lock(m_fileMutex);
 
     if (m_logFile.is_open()) { // Close current log file if open
@@ -122,17 +126,16 @@ void Logger::logRotation() noexcept {
         std::filesystem::rename(oldPath, newLogPath);
 
         // Compress the rotated log
-        std::string compressedPath = newLogPath + ".gz";
+        std::string compressedPath = newLogPath + ".gz"; // e.g., server_1633036800.log.gz
         if (compressFileGzip(newLogPath, compressedPath)) {
             std::filesystem::remove(newLogPath); // Remove uncompressed log after compression
-            log(LogLevel::INFO, "Logger", "Rotated log compressed to " + compressedPath);
         } else {
             m_errorStream << "Logger: Failed to compress rotated log file.\n";
         }
     }
 
     if (openLogFile(m_config.getLogPath())) { // Reopen the log file (a new file will be created)
-        log(LogLevel::INFO, "Logger", "Successfully rotated log file.");
+        std::cout << "Logger: Log rotation completed successfully.\n";
     } else {
         m_errorStream << "Logger: Failed to reopen log file after rotation.\n";
     }
@@ -166,4 +169,22 @@ bool Logger::compressFileGzip(const std::string &srcPath, const std::string &des
     gzclose(dest);
     fclose(src);
     return true;
+}
+
+bool Logger::shouldRotate() const {
+
+    auto logSize = std::filesystem::file_size(m_config.getLogPath());
+    int thresholdSize = static_cast<uintmax_t>(m_config.getMaxLogSize()) * 1024 * 1024; // Convert MB to bytes
+    if (logSize >= thresholdSize) {
+        return true;
+    }
+    return false;
+}
+
+bool Logger::isFileEnabled() const {
+    return m_fileEnabled;
+}
+
+bool Logger::isLogFileOpen() const {
+    return m_logFile.is_open();
 }

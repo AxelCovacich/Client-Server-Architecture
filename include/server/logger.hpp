@@ -53,6 +53,10 @@ class Logger {
 
     bool compressFileGzip(const std::string &srcPath, const std::string &destPath);
 
+    bool shouldRotate() const;
+    bool isFileEnabled() const;
+    bool isLogFileOpen() const;
+
   private:
     std::ostream &m_errorStream;
     Storage &m_storage;
