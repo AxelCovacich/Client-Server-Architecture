@@ -9,7 +9,7 @@ using namespace std;
 
 Storage::Storage(const std::string &dbPath, int openFlags)
     : // constructor call of the db object, path to file and flags given. Read and write by default
-    m_db(dbPath, openFlags) {
+    m_db(dbPath, openFlags) { // NOLINT
     try {
         // Improve concurrency and reduce write contention:
         // - WAL allows concurrent readers with a writer and usually improves concurrency.
@@ -182,7 +182,7 @@ void Storage::createUser(const std::string &hostname, const std::string &passwor
         query.bind(1, hostname);
         query.bind(2, password_hash);
 
-        query.exec();
+        query.exec(); // NOLINT
 
         std::cout << "User '" << hostname << "' created or already exists.\n";
 
@@ -195,7 +195,7 @@ void Storage::createUser(const std::string &hostname, const std::string &passwor
 bool Storage::userExists(const std::string &hostname) {
     std::lock_guard<std::mutex> lock(m_dbMutex);
     try {
-        SQLite::Statement query(m_db, "SELECT COUNT(*) FROM users WHERE hostname = ?");
+        SQLite::Statement query(m_db, "SELECT COUNT(*) FROM users WHERE hostname = ?"); // NOLINT
         query.bind(1, hostname);
 
         query.executeStep();
@@ -211,9 +211,9 @@ std::optional<userAuthData> Storage::getUserLoginData(const std::string &hostnam
 
     std::lock_guard<std::mutex> lock(m_dbMutex);
     try {
-        SQLite::Statement query(
-            m_db,
-            "SELECT password_hash, failed_attempts, last_failed_timestamp, is_locked FROM users WHERE hostname = ?");
+        SQLite::Statement query(m_db,
+                                "SELECT password_hash, failed_attempts, last_failed_timestamp, is_locked FROM users "
+                                "WHERE hostname = ?"); // NOLINT
         query.bind(1, hostname);
 
         if (query.executeStep()) {
@@ -248,7 +248,7 @@ void Storage::updateLoginAttempts(const std::string &hostname, bool loginSuccess
                 "UPDATE users SET failed_attempts = failed_attempts + 1, last_failed_timestamp = ? WHERE hostname = ?");
             query.bind(1, static_cast<int64_t>(timeStamp));
             query.bind(2, hostname);
-            query.exec();
+            query.exec(); // NOLINT
         }
     } catch (const std::exception &e) {
         std::cerr << "Error updating login attempts for user '" << hostname << "': " << e.what() << '\n';
@@ -272,7 +272,7 @@ void Storage::saveLogEntry(const std::string &date, const std::string &level, co
         if (clientId.has_value()) {
             query.bind(5, clientId.value()); // NOLINT
         }
-        query.exec();
+        query.exec(); // NOLINT
     } catch (const std::exception &e) {
         throw; // logger function will attend the excep
     }
@@ -283,12 +283,12 @@ std::vector<LogEntry> Storage::getInventoryHistoryTransaction(const std::string 
     std::vector<LogEntry> history;
     std::lock_guard<std::mutex> lock(m_dbMutex);
     try {
-        SQLite::Statement query(m_db, R"(
+        SQLite::Statement query(m_db, R"(                                                   
                                         SELECT timestamp, level, component, message 
                                         FROM logs
                                         WHERE client_id = ? AND component = 'Inventory'
                                         ORDER BY timestamp DESC
-                                        )");
+                                        )"); // NOLINT
 
         query.bind(1, clientId);
         bool client_found = false;
@@ -311,7 +311,7 @@ std::vector<LogEntry> Storage::getInventoryHistoryTransaction(const std::string 
 bool Storage::setClientLockStatus(const std::string &hostname, bool isLocked) {
     std::lock_guard<std::mutex> lock(m_dbMutex);
     try {
-        SQLite::Statement query(m_db, "UPDATE users SET is_locked = ? WHERE hostname = ?");
+        SQLite::Statement query(m_db, "UPDATE users SET is_locked = ? WHERE hostname = ?"); // NOLINT
         query.bind(
             1, isLocked ? 1 : 0); // based on bool isLocked, if got to lock, will write 1, if have to unlock, write a 0
         query.bind(2, hostname);
@@ -328,7 +328,7 @@ bool Storage::setClientLockStatus(const std::string &hostname, bool isLocked) {
 bool Storage::isClientLocked(const std::string &hostname) {
     std::lock_guard<std::mutex> lock(m_dbMutex);
     try {
-        SQLite::Statement query(m_db, "SELECT is_locked FROM users WHERE hostname = ?");
+        SQLite::Statement query(m_db, "SELECT is_locked FROM users WHERE hostname = ?"); // NOLINT
         query.bind(1, hostname);
         if (query.executeStep()) {
             return (query.getColumn(0).getInt() == 1);

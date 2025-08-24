@@ -145,40 +145,37 @@ bool Logger::compressFileGzip(const std::string &srcPath, const std::string &des
 
     constexpr size_t BUFSIZE =
         BUFFER_CHUNK_RW_SIZE; // 16 KB buffer size for gzip compression. Will be reading and writing in 16KB chunks
-    char buffer[BUFSIZE];
+    std::array<char, BUFSIZE> readBuffer{};
 
-    FILE *src = fopen(srcPath.c_str(), "rb");
-    if (!src)
+    FILE *src = fopen(srcPath.c_str(), "rb"); // NOLINT
+    if (src == nullptr) {
         return false;
-
+    }
     gzFile dest = gzopen(destPath.c_str(), "wb");
-    if (!dest) {
-        fclose(src);
+    if (dest == nullptr) {
+        fclose(src); // NOLINT
         return false;
     }
 
-    size_t bytes;
-    while ((bytes = fread(buffer, 1, BUFSIZE, src)) > 0) {
-        if (gzwrite(dest, buffer, bytes) != (int)bytes) {
+    size_t bytes = 0;
+    while ((bytes = fread(readBuffer.data(), 1, BUFSIZE, src)) > 0) {
+        if (gzwrite(dest, readBuffer.data(), bytes) != (int)bytes) {
             gzclose(dest);
-            fclose(src);
+            fclose(src); // NOLINT
             return false;
         }
     }
 
     gzclose(dest);
-    fclose(src);
+    fclose(src); // NOLINT
     return true;
 }
 
 bool Logger::shouldRotate() const {
 
     auto logSize = std::filesystem::file_size(m_config.getLogPath());
-    int thresholdSize = static_cast<uintmax_t>(m_config.getMaxLogSize()) * 1024 * 1024; // Convert MB to bytes
-    if (logSize >= thresholdSize) {
-        return true;
-    }
-    return false;
+    uintmax_t thresholdSize = static_cast<uintmax_t>(m_config.getMaxLogSize()) * MB_MULTIPLIER; // Convert MB to bytes
+    return logSize >= thresholdSize;
 }
 
 bool Logger::isFileEnabled() const {

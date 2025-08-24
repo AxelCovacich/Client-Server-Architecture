@@ -86,4 +86,4 @@ else
 fi
 
 echo "==== All reports generated correctly ===="
-sonar-scanner -Dsonar.token=sqp_31871915cad95a280353f845ccf115cfd7f8ef3e
+sonar-scanner -Dsonar.token=sqp_5dc7619afa86f151de580be6a906ff3012d4c860

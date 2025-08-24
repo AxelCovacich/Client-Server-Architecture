@@ -12,6 +12,7 @@
 
 #define DATE_BUFFER_SIZE 32
 #define BUFFER_CHUNK_RW_SIZE 16384 // 16KB buffer size for file I/O
+#define MB_MULTIPLIER 1048576      // 1024 * 1024
 
 enum class LogLevel { DEBUG, INFO, WARNING, ERROR };
 
@@ -51,7 +52,7 @@ class Logger {
 
     void logRotation();
 
-    bool compressFileGzip(const std::string &srcPath, const std::string &destPath);
+    static bool compressFileGzip(const std::string &srcPath, const std::string &destPath);
 
     bool shouldRotate() const;
     bool isFileEnabled() const;

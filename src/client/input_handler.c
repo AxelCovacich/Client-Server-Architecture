@@ -135,6 +135,7 @@ json_build_result build_json_for_update_stock(char *command) {
     if (*endptr != '\0' || endptr == quantity_str) {
 
         fprintf(stderr, "Error: quantity must be a valid number.\n"); // NOLINT
+        cJSON_Delete(root);
         return (json_build_result){.json_string = NULL, .status = JSON_BUILD_ERROR_SYNTAX};
     }
 

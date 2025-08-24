@@ -90,7 +90,9 @@ bool ipc_exit(ClientContext *context) {
     }
     cJSON_AddStringToObject(message, "category", "exit");
     cJSON_AddStringToObject(message, "message", "Closing client, goodbye!");
-    bool result = ipc_send_message(context, cJSON_Print(message));
+    char *messageString = cJSON_Print(message);
+    bool result = ipc_send_message(context, messageString);
     cJSON_Delete(message);
+    free(messageString);
     return result;
 }

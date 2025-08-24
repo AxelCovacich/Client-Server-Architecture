@@ -1,4 +1,3 @@
-version: "3.8"
 
 services:
   sonarqube:
@@ -23,8 +22,8 @@ services:
       POSTGRES_USER: sonar
       POSTGRES_PASSWORD: sonar
     volumes:
-      - ./postgresql:/var/lib/postgresql
-      - ./postgresql_data:/var/lib/postgresql/data
+      - postgresql:/var/lib/postgresql
+      - postgresql_data:/var/lib/postgresql/data
 
 volumes:
   sonarqube_data:

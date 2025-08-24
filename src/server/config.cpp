@@ -20,7 +20,7 @@ Config::Config(const std::vector<std::string> &args) {
 }
 
 // for testing purposes only
-Config::Config(const YAML::Node &node)
+Config::Config(const YAML::Node &node) // NOLINT
     : m_configNode(node) {
 }
 
