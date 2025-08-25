@@ -8,13 +8,22 @@
 void testConfigLoadsPortFromYaml() {
 
     createTempYamlFile(R"(
-server:
-  port: 9999
-database:
-  path: "./db_from_test.sqlite3"
-security:
-  unlock_secret_phrase: "test_phrase"
-)");
+            database:
+                path: ":memory:"
+
+            security:
+                unlock_secret_phrase: "test"
+                block_time_seconds: 900
+
+            server:
+                port: 9999
+                max_clients: 10
+                max_unix_connections: 5
+
+            logger:
+                max_log_size_mb: 10
+                log_path: "./var/logs/server.log"
+            )");
     const std::vector<std::string> args = {"./server", "./temp_config.yaml"};
 
     Config config(args);
@@ -27,13 +36,22 @@ security:
 void testConfigPrioritizesCliArgumentOverYaml() {
 
     createTempYamlFile(R"(
-server:
-  port: 9999
-database:
-  path: "./db_from_test.sqlite3"
-security:
-  unlock_secret_phrase: "test_phrase"
-)");
+            database:
+                path: ":memory:"
+
+            security:
+                unlock_secret_phrase: "test"
+                block_time_seconds: 900
+
+            server:
+                port: 9999
+                max_clients: 10
+                max_unix_connections: 5
+
+            logger:
+                max_log_size_mb: 10
+                log_path: "./var/logs/server.log"
+            )");
     const std::vector<std::string> args = {"./server", "./temp_config.yaml", "8080"};
 
     Config config(args);
@@ -49,13 +67,22 @@ void testConfigPrioritizesEnvVariableOverYaml() {
 
     setenv("SERVER_PORT", "7777", 1);
     createTempYamlFile(R"(
-server:
-  port: 9999
-database:
-  path: "./db_from_test.sqlite3"
-security:
-  unlock_secret_phrase: "test_phrase"
-)");
+            database:
+                path: ":memory:"
+
+            security:
+                unlock_secret_phrase: "test"
+                block_time_seconds: 900
+
+            server:
+                port: 9999
+                max_clients: 10
+                max_unix_connections: 5
+
+            logger:
+                max_log_size_mb: 10
+                log_path: "./var/logs/server.log"
+            )");
     const std::vector<std::string> args = {"./server", "./temp_config.yaml"};
 
     Config config(args);
@@ -72,13 +99,22 @@ security:
 void testConfigLoadsdbPathFromYaml() {
 
     createTempYamlFile(R"(
-server:
-  port: 9999
-database:
-  path: "./test/db/from_yaml.sqlite3"
-security:
-  unlock_secret_phrase: "test_phrase"
-)");
+            database:
+                path: "./test/db/from_yaml.sqlite3"
+
+            security:
+                unlock_secret_phrase: "test"
+                block_time_seconds: 900
+
+            server:
+                port: 80
+                max_clients: 10
+                max_unix_connections: 5
+
+            logger:
+                max_log_size_mb: 10
+                log_path: "./var/logs/server.log"
+            )");
     const std::vector<std::string> args = {"./server", "./temp_config.yaml"};
 
     Config config(args);
@@ -91,13 +127,22 @@ security:
 void testConfigSecretPhraseFromYaml() {
 
     createTempYamlFile(R"(
-server:
-  port: 9999
-database:
-  path: "./db_from_test.sqlite3"
-security:
-  unlock_secret_phrase: "test_phrase"
-)");
+            database:
+                path: ":memory:"
+
+            security:
+                unlock_secret_phrase: "test_phrase"
+                block_time_seconds: 900
+
+            server:
+                port: 80
+                max_clients: 10
+                max_unix_connections: 5
+
+            logger:
+                max_log_size_mb: 10
+                log_path: "./var/logs/server.log"
+            )");
     const std::vector<std::string> args = {"./server", "./temp_config.yaml"};
 
     Config config(args);
@@ -109,13 +154,22 @@ security:
 
 void testConfigPrioritizesCliArgumentsTcpAndUdp() {
     createTempYamlFile(R"(
-server:
-  port: 9999
-database:
-  path: "./db_from_test.sqlite3"
-security:
-  unlock_secret_phrase: "test_phrase"
-)");
+            database:
+                path: ":memory:"
+
+            security:
+                unlock_secret_phrase: "test"
+                block_time_seconds: 900
+
+            server:
+                port: 9999
+                max_clients: 10
+                max_unix_connections: 5
+
+            logger:
+                max_log_size_mb: 10
+                log_path: "./var/logs/server.log"
+            )");
     const std::vector<std::string> args = {"./server", "./temp_config.yaml", "8080", "8081"};
 
     Config config(args);
@@ -128,13 +182,22 @@ security:
 
 void testConfigFailsOnInvalidPortInYaml() {
     createTempYamlFile(R"(
-server:
-  port: -1
-database:
-  path: "./db_from_test.sqlite3"
-security:
-  unlock_secret_phrase: "test_phrase"
-)");
+            database:
+                path: ":memory:"
+
+            security:
+                unlock_secret_phrase: "test"
+                block_time_seconds: 900
+
+            server:
+                port: -1
+                max_clients: 10
+                max_unix_connections: 5
+
+            logger:
+                max_log_size_mb: 10
+                log_path: "./var/logs/server.log"
+            )");
     const std::vector<std::string> args = {"./server", "./temp_config.yaml"};
 
     try {
@@ -148,13 +211,22 @@ security:
 void testConfigFailsOnInvalidEnvPort() {
     setenv("SERVER_PORT", "not_a_number", 1);
     createTempYamlFile(R"(
-server:
-  port: 9999
-database:
-  path: "./db_from_test.sqlite3"
-security:
-  unlock_secret_phrase: "test_phrase"
-)");
+            database:
+                path: ":memory:"
+
+            security:
+                unlock_secret_phrase: "test"
+                block_time_seconds: 900
+
+            server:
+                port: 9999
+                max_clients: 10
+                max_unix_connections: 5
+
+            logger:
+                max_log_size_mb: 10
+                log_path: "./var/logs/server.log"
+            )");
     const std::vector<std::string> args = {"./server", "./temp_config.yaml"};
 
     try {
@@ -173,13 +245,22 @@ security:
 void testConfigCliArgumentHasPriorityOverEnv() {
     setenv("SERVER_PORT", "7777", 1);
     createTempYamlFile(R"(
-server:
-  port: 9999
-database:
-  path: "./db_from_test.sqlite3"
-security:
-  unlock_secret_phrase: "test_phrase"
-)");
+            database:
+                path: ":memory:"
+
+            security:
+                unlock_secret_phrase: "test"
+                block_time_seconds: 900
+
+            server:
+                port: 5555
+                max_clients: 10
+                max_unix_connections: 5
+
+            logger:
+                max_log_size_mb: 10
+                log_path: "./var/logs/server.log"
+            )");
     const std::vector<std::string> args = {"./server", "./temp_config.yaml", "8080"};
 
     Config config(args);
@@ -192,11 +273,19 @@ security:
 
 void testConfigFailsOnMissingDbPathInYaml() {
     createTempYamlFile(R"(
-server:
-  port: 9999
-security:
-  unlock_secret_phrase: "test_phrase"
-)");
+            security:
+                unlock_secret_phrase: "test"
+                block_time_seconds: 900
+
+            server:
+                port: 80
+                max_clients: 10
+                max_unix_connections: 5
+
+            logger:
+                max_log_size_mb: 10
+                log_path: "./var/logs/server.log"
+            )");
     const std::vector<std::string> args = {"./server", "./temp_config.yaml"};
 
     try {
@@ -213,11 +302,21 @@ security:
 
 void testConfigFailsOnMissingSecretPhraseInYaml() {
     createTempYamlFile(R"(
-server:
-  port: 9999
-database:
-  path: "./db_from_test.sqlite3"
-)");
+            database:
+                path: ":memory:"
+
+            security:
+                block_time_seconds: 900
+
+            server:
+                port: 80
+                max_clients: 10
+                max_unix_connections: 5
+
+            logger:
+                max_log_size_mb: 10
+                log_path: "./var/logs/server.log"
+            )");
 
     const std::vector<std::string> args = {"./server", "./temp_config.yaml"};
 
