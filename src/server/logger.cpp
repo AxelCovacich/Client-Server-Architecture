@@ -173,9 +173,15 @@ bool Logger::compressFileGzip(const std::string &srcPath, const std::string &des
 
 bool Logger::shouldRotate() const {
 
-    auto logSize = std::filesystem::file_size(m_config.getLogPath());
-    uintmax_t thresholdSize = static_cast<uintmax_t>(m_config.getMaxLogSize()) * MB_MULTIPLIER; // Convert MB to bytes
-    return logSize >= thresholdSize;
+    try {
+        auto logSize = std::filesystem::file_size(m_config.getLogPath());
+        uintmax_t thresholdSize =
+            static_cast<uintmax_t>(m_config.getMaxLogSize()) * MB_MULTIPLIER; // Convert MB to bytes
+        return logSize >= thresholdSize;
+    } catch (const std::exception &e) {
+        m_errorStream << "Logger: Failed to check log file size: " << e.what() << '\n';
+        return false;
+    }
 }
 
 bool Logger::isFileEnabled() const {
