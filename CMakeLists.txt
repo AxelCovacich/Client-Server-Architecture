@@ -150,6 +150,7 @@ target_sources(ServerLib PRIVATE
     src/server/configValidator.cpp
     src/server/udpHandler.cpp
     src/server/ipcHandler.cpp
+    src/server/trafficReporter.cpp
 )
 
 # Add the path to ServerLib's PUBLIC headers
