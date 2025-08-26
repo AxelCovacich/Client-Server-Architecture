@@ -12,20 +12,20 @@ namespace commandProcessor {
 static commandResult handleStatusCommand(const json &request, bool IsInMaintenance, json &response);
 static commandResult handleEndCommand(const json &request, json &response, Logger &logger, const std::string &clientId);
 static commandResult handleGetInventoryCommand(const json &request, const std::string &clientId, Inventory &inventory,
-                                               Logger &logger, json &response);
+                                               Logger &logger, json &response, TrafficReporter &trafficReporter);
 static commandResult handleUpdateStockCommand(const json &request, const std::string &clientId, Inventory &inventory,
-                                              Logger &logger, json &response);
+                                              Logger &logger, json &response, TrafficReporter &trafficReporter);
 static commandResult handleGetStockCommand(const json &request, const std::string &clientId, Inventory &inventory,
-                                           Logger &logger, json &response);
+                                           Logger &logger, json &response, TrafficReporter &trafficReporter);
 static commandResult handleGetHistoryCommand(const json &request, const std::string &clientId, Storage &storage,
                                              Logger &logger, json &response);
 static commandResult handleUnlockClientCommand(const json &request, const std::string &clientId,
                                                SessionManager &sessionManager, const Config &config, Logger &logger,
-                                               json &response);
+                                               json &response, TrafficReporter &trafficReporter);
 
 commandResult processCommand(const json &request, const std::string &clientId, bool isInMaintenance,
                              Inventory &inventory, Logger &logger, Storage &storage, SessionManager &sessionManager,
-                             const Config &config) {
+                             const Config &config, TrafficReporter &trafficReporter) {
 
     json response;
 
@@ -35,6 +35,7 @@ commandResult processCommand(const json &request, const std::string &clientId, b
                    "Request from client " + clientId + " is missing 'command' field.", clientId);
         response["status"] = "error";
         response["message"] = "Missing 'command' field in request.";
+        trafficReporter.onError();
         return {response.dump(), true}; // Keep waiting for valid command
     }
 
@@ -63,16 +64,16 @@ commandResult processCommand(const json &request, const std::string &clientId, b
 
     if (cmd == "get_inventory") {
 
-        return handleGetInventoryCommand(request, clientId, inventory, logger, response);
+        return handleGetInventoryCommand(request, clientId, inventory, logger, response, trafficReporter);
     }
 
     if (cmd == "update_stock") {
 
-        return handleUpdateStockCommand(request, clientId, inventory, logger, response);
+        return handleUpdateStockCommand(request, clientId, inventory, logger, response, trafficReporter);
     }
 
     if (cmd == "get_stock") {
-        return handleGetStockCommand(request, clientId, inventory, logger, response);
+        return handleGetStockCommand(request, clientId, inventory, logger, response, trafficReporter);
     }
 
     if (cmd == "get_history") {
@@ -80,7 +81,7 @@ commandResult processCommand(const json &request, const std::string &clientId, b
     }
 
     if (cmd == "unlock_client") {
-        return handleUnlockClientCommand(request, clientId, sessionManager, config, logger, response);
+        return handleUnlockClientCommand(request, clientId, sessionManager, config, logger, response, trafficReporter);
     }
 
     // for unknown command
@@ -107,7 +108,7 @@ static commandResult handleEndCommand(const json &request, json &response, Logge
 }
 
 static commandResult handleGetInventoryCommand(const json &request, const std::string &clientId, Inventory &inventory,
-                                               Logger &logger, json &response) {
+                                               Logger &logger, json &response, TrafficReporter &trafficReporter) {
 
     auto inventoryMap = inventory.getInventorySummary(clientId);
 
@@ -118,13 +119,14 @@ static commandResult handleGetInventoryCommand(const json &request, const std::s
         response["data"] = inventoryData;
     } else {
         response["status"] = "error";
+        trafficReporter.onError();
         response["message"] = "Inventory data for client " + clientId + " is empty.";
     }
     return {response.dump(), true};
 }
 
 static commandResult handleUpdateStockCommand(const json &request, const std::string &clientId, Inventory &inventory,
-                                              Logger &logger, json &response) {
+                                              Logger &logger, json &response, TrafficReporter &trafficReporter) {
 
     try {
 
@@ -141,6 +143,7 @@ static commandResult handleUpdateStockCommand(const json &request, const std::st
         } else {
 
             response["status"] = "error";
+            trafficReporter.onError();
         }
         response["message"] = result.message;
         return {response.dump(), true};
@@ -151,6 +154,7 @@ static commandResult handleUpdateStockCommand(const json &request, const std::st
         // cerr << "Invalid payload for update_stock: " << e.what() << '\n';
         response["status"] = "error";
         response["message"] = "Invalid or missing field in update_stock payload.";
+        trafficReporter.onError();
         logger.log(LogLevel::WARNING, "CommandProcessor", "Invalid or missing field in update_stock payload.",
                    clientId);
 
@@ -159,7 +163,7 @@ static commandResult handleUpdateStockCommand(const json &request, const std::st
 }
 
 static commandResult handleGetStockCommand(const json &request, const std::string &clientId, Inventory &inventory,
-                                           Logger &logger, json &response) {
+                                           Logger &logger, json &response, TrafficReporter &trafficReporter) {
 
     try {
         const json &payload = request.at("payload");
@@ -183,6 +187,7 @@ static commandResult handleGetStockCommand(const json &request, const std::strin
         }
         response["status"] = "error";
         response["message"] = "Item not found for the specified client/category.";
+        trafficReporter.onError();
         return {response.dump(), true};
 
     } catch (const json::exception &e) {
@@ -190,6 +195,7 @@ static commandResult handleGetStockCommand(const json &request, const std::strin
         // cerr << "Invalid payload for get_stock: " << e.what() << '\n';
         response["status"] = "error";
         response["message"] = "Invalid or missing field in get_stock payload.";
+        trafficReporter.onError();
         logger.log(LogLevel::WARNING, "CommandProcessor", "Invalid or missing field in get_stock payload.", clientId);
         return {response.dump(), true};
     }
@@ -221,7 +227,7 @@ static commandResult handleGetHistoryCommand(const json &request, const std::str
 
 static commandResult handleUnlockClientCommand(const json &request, const std::string &clientId,
                                                SessionManager &sessionManager, const Config &config, Logger &logger,
-                                               json &response) {
+                                               json &response, TrafficReporter &trafficReporter) {
     if (clientId == "admin") {
 
         try {
@@ -240,14 +246,22 @@ static commandResult handleUnlockClientCommand(const json &request, const std::s
                 response["status"] = "error";
                 response["message"] =
                     "Couldn't unlock Client `" + clientToUnlock + "`. Client didn't found or misspelled.";
+                trafficReporter.onError();
+                logger.log(LogLevel::WARNING, "CommandProcessor",
+                           "Couldn't unlock Client `" + clientToUnlock + "`. Client didn't found or misspelled.",
+                           clientId);
                 return {response.dump(), true};
             }
             response["status"] = "error";
             response["message"] = "Wrong secret phrase. Try again.";
+            trafficReporter.onError();
+            logger.log(LogLevel::WARNING, "CommandProcessor", "Wrong secret phrase provided for unlock_client command.",
+                       clientId);
             return {response.dump(), true};
         } catch (const json::exception &e) {
             response["status"] = "error";
             response["message"] = "Invalid or missing field in unlock_client payload.";
+            trafficReporter.onError();
             logger.log(LogLevel::WARNING, "CommandProcessor", "Invalid or missing field in unlock_client payload.",
                        clientId);
             return {response.dump(), true};
@@ -255,6 +269,7 @@ static commandResult handleUnlockClientCommand(const json &request, const std::s
     } else {
         response["status"] = "error";
         response["message"] = "Command only available for admin user.";
+        trafficReporter.onError();
         logger.log(LogLevel::WARNING, "CommandProcessor", "Trying to execute admin commands with a invalid user.",
                    clientId);
         return {response.dump(), true};

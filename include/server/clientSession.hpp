@@ -6,6 +6,7 @@
 #include "inventory.hpp"
 #include "logger.hpp"
 #include "sessionManager.hpp"
+#include "trafficReporter.hpp"
 #include <memory>
 #include <mutex>
 #include <nlohmann/json.hpp>
@@ -33,6 +34,7 @@ class clientSession : public std::enable_shared_from_this<clientSession> {
     mutable std::mutex m_sessionMutex;
 
     // need to be by reference for mutex use. Can't be copies of the object
+    TrafficReporter &m_trafficReporter;
     Inventory &m_inventory;
     Authenticator &m_authenticator;
     Logger &m_logger;
@@ -50,7 +52,8 @@ class clientSession : public std::enable_shared_from_this<clientSession> {
      * @param clientIP The IP from the connected client.
      */
     clientSession(int clientSocket, Inventory &inventory, Authenticator &autenthicator, Logger &logger,
-                  Storage &storage, const std::string &clientIP, SessionManager &sessionManager, const Config &config);
+                  Storage &storage, const std::string &clientIP, SessionManager &sessionManager, const Config &config,
+                  TrafficReporter &trafficReporter);
 
     ~clientSession();
 

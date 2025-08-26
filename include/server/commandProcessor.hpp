@@ -6,6 +6,7 @@
 #include "logger.hpp"
 #include "sessionManager.hpp"
 #include "storage.hpp"
+#include "trafficReporter.hpp"
 #include <nlohmann/json.hpp>
 #include <string>
 #include <utility>
@@ -41,7 +42,7 @@ using commandResult = std::pair<std::string, bool>;
  */
 commandResult processCommand(const json &request, const std::string &clientId, bool is_in_maintenance,
                              Inventory &inventory, Logger &logger, Storage &storage, SessionManager &session,
-                             const Config &config);
+                             const Config &config, TrafficReporter &trafficReporter);
 
 } // namespace commandProcessor
 

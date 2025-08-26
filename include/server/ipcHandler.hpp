@@ -3,6 +3,7 @@
 
 #include "alertManager.hpp"
 #include "logger.hpp"
+#include "trafficReporter.hpp"
 #include <array>
 #include <string>
 
@@ -21,8 +22,9 @@ class IpcHandler {
      * @param ipcSocketFd The server's listening IPC socket file descriptor.
      * @param logger A reference to the shared server logger.
      * @param alertManager A reference to the alert management module.
+     * @param trafficReporter A reference to the traffic reporting module.
      */
-    IpcHandler(Logger &logger, AlertManager &alertManager);
+    IpcHandler(Logger &logger, AlertManager &alertManager, TrafficReporter &trafficReporter);
 
     /**
      * @brief The main entry point for handling an IPC connection.
@@ -35,6 +37,7 @@ class IpcHandler {
   private:
     Logger &m_logger;
     AlertManager &m_alertManager;
+    TrafficReporter &m_trafficReporter;
 };
 
 #endif // IPC_HANDLER_HPP

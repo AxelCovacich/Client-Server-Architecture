@@ -4,6 +4,7 @@
 #include "clientSession.hpp"
 #include "logger.hpp"
 #include "sessionManager.hpp"
+#include "trafficReporter.hpp"
 #include <array>
 #include <nlohmann/json.hpp>
 #include <string>
@@ -27,8 +28,9 @@ class UdpHandler {
      * @param udpSocketFd The server's listening UDP socket file descriptor.
      * @param logger A reference to the shared server logger.
      * @param sessionManager A reference to the shared session manager.
+     * @param trafficReporter A reference to the shared traffic reporter.
      */
-    UdpHandler(int udpSocketFd, Logger &logger, SessionManager &sessionManager);
+    UdpHandler(int udpSocketFd, Logger &logger, SessionManager &sessionManager, TrafficReporter &trafficReporter);
 
     /**
      * @brief The main entry point for processing a UDP message.
@@ -55,6 +57,7 @@ class UdpHandler {
     int m_udpSocketFd;
     Logger &m_logger;
     SessionManager &m_sessionManager;
+    TrafficReporter &m_trafficReporter;
 };
 
 #endif // UDP_HANDLER_HPP

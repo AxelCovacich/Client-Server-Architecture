@@ -9,6 +9,7 @@
 #include "ipcHandler.hpp"
 #include "logger.hpp"
 #include "sessionManager.hpp"
+#include "trafficReporter.hpp"
 #include "udpHandler.hpp"
 #include <string>
 #include <utility>
@@ -33,7 +34,8 @@ class Server {
      * @param logger A reference to the logging module.
      * @throw std::exception if a critical setup step fails (e.g., socket bind, DB open).
      */
-    Server(const Config &config, const IClock &clock, Storage &storage, Logger &logger);
+    Server(const Config &config, const IClock &clock, Storage &storage, Logger &logger,
+           TrafficReporter &trafficReporter);
 
     /**
      * @brief Destroys the Server object.
@@ -61,6 +63,7 @@ class Server {
     const IClock &m_clock;
     Storage &m_storage;
     Logger &m_logger;
+    TrafficReporter &m_trafficReporter;
 
     Inventory m_inventory;
     Authenticator m_authenticator;

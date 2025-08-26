@@ -2,6 +2,7 @@
 #include "configValidator.hpp"
 #include "server.hpp"
 #include "storage.hpp"
+#include "trafficReporter.hpp"
 #include <csignal>
 #include <cstdlib> // For atoi
 #include <iostream>
@@ -39,6 +40,7 @@ int main(int argc, char *argv[]) {
     try {
 
         Config config(args);
+        TrafficReporter trafficReporter;
         SystemClock clock;
         Storage storage(config.getDbPath());
         storage.initializeSchema();
@@ -47,7 +49,7 @@ int main(int argc, char *argv[]) {
         logger.log(LogLevel::INFO, "Main", "Core services initialized.");
 
         // making a server object on the heap, controlled by smart pointer server
-        server = std::make_unique<Server>(config, clock, storage, logger);
+        server = std::make_unique<Server>(config, clock, storage, logger, trafficReporter);
         logger.log(LogLevel::INFO, "Main", "Server successfully started. Running loop...");
 
         server->run();

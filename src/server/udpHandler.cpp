@@ -5,10 +5,12 @@
 
 using namespace std;
 
-UdpHandler::UdpHandler(int udpSocketFd, Logger &logger, SessionManager &sessionManager)
+UdpHandler::UdpHandler(int udpSocketFd, Logger &logger, SessionManager &sessionManager,
+                       TrafficReporter &trafficReporter)
     : m_udpSocketFd(udpSocketFd)
     , m_logger(logger)
-    , m_sessionManager(sessionManager) {
+    , m_sessionManager(sessionManager)
+    , m_trafficReporter(trafficReporter) {
 }
 void UdpHandler::handleMessage() {
 
@@ -24,12 +26,14 @@ void UdpHandler::handleMessage() {
         perror("recvfrom");
         // cout << "Error receiving UDP message.\n";
         m_logger.log(LogLevel::ERROR, "UdpHandler", "UDP recvfrom error");
+        m_trafficReporter.onError();
         return;
     }
     buffer[bytes_read] = '\0'; // NOLINT bytes_read will always be at max buffer.size - 1
 
     // cout << "Received UDP message: " + std::string(buffer.data()) << '\n';
     m_logger.log(LogLevel::INFO, "UdpHandler", "Received UDP message: " + std::string(buffer.data()));
+    m_trafficReporter.onMessageReceived();
 
     json request = json::parse(std::string(buffer.data()), nullptr, false);
     if (request.is_discarded()) {

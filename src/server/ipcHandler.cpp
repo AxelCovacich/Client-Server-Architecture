@@ -2,9 +2,10 @@
 #include <string>
 #include <unistd.h>
 
-IpcHandler::IpcHandler(Logger &logger, AlertManager &alertManager)
+IpcHandler::IpcHandler(Logger &logger, AlertManager &alertManager, TrafficReporter &trafficReporter)
     : m_logger(logger)
-    , m_alertManager(alertManager) {
+    , m_alertManager(alertManager)
+    , m_trafficReporter(trafficReporter) {
 }
 
 bool IpcHandler::handleConnection(int acceptedSocketFd) {
@@ -15,9 +16,9 @@ bool IpcHandler::handleConnection(int acceptedSocketFd) {
     bytes_read = read(acceptedSocketFd, buffer.data(), buffer.size() - 1);
 
     if (bytes_read <= 0) {
-
         perror("Error reading from unix socket");
         m_logger.log(LogLevel::ERROR, "IpcHandler", "IPC read error");
+        m_trafficReporter.onError();
         return false;
     }
 
@@ -28,5 +29,6 @@ bool IpcHandler::handleConnection(int acceptedSocketFd) {
     m_alertManager.processAlert(alertMessage); // Process the alert message
     close(acceptedSocketFd);                   // Close the socket after processing the message
     m_logger.log(LogLevel::INFO, "IpcHandler", "UNIX message processed successfully");
+    m_trafficReporter.onMessageReceived();
     return true;
 }
