@@ -6,6 +6,7 @@
 #include "sessionManager.hpp"
 #include "storage.hpp"
 #include "test_helper.hpp"
+#include "trafficReporter.hpp"
 #include "unity.h"
 #include <arpa/inet.h>
 #include <iostream>
@@ -79,9 +80,9 @@ void testRegisterAndUnregisterSession() {
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
     SessionManager sessionManager(storage, logger);
-
+    TrafficReporter trafficReporter;
     auto session = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP",
-                                                   sessionManager, dummyConfig);
+                                                   sessionManager, dummyConfig, trafficReporter);
     std::string clientId = "warehouse-A";
 
     TEST_ASSERT_FALSE(sessionManager.isClientRegistered(clientId));
@@ -104,10 +105,10 @@ void testgetActiveUdpAddresses() {
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
     SessionManager sessionManager(storage, logger);
-
+    TrafficReporter trafficReporter;
     // first session
     auto session1 = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "192.168.0.10",
-                                                    sessionManager, dummyConfig);
+                                                    sessionManager, dummyConfig, trafficReporter);
 
     struct sockaddr_in addr1 {};
     addr1.sin_family = AF_INET;
@@ -120,7 +121,7 @@ void testgetActiveUdpAddresses() {
 
     // second session
     auto session2 = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "10.0.0.5",
-                                                    sessionManager, dummyConfig);
+                                                    sessionManager, dummyConfig, trafficReporter);
 
     struct sockaddr_in addr2 {};
     addr2.sin_family = AF_INET;
@@ -163,9 +164,9 @@ void testSessionManagerGetClientSession() {
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
     SessionManager sessionManager(storage, logger);
-
+    TrafficReporter trafficReporter;
     auto session = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP",
-                                                   sessionManager, dummyConfig);
+                                                   sessionManager, dummyConfig, trafficReporter);
 
     sessionManager.registerSession("warehouse-1", session);
 

@@ -4,6 +4,7 @@
 #include "config.hpp"
 #include "inventory.hpp"
 #include "test_helper.hpp"
+#include "trafficReporter.hpp"
 #include "unity.h"
 #include <SQLiteCpp/Statement.h>
 #include <arpa/inet.h>
@@ -23,8 +24,10 @@ void testSessionStartsUnauthenticated() {
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
     SessionManager sessionManager(storage, logger);
+    TrafficReporter trafficReporter;
 
-    clientSession session(-1, inventory, authenticator, logger, storage, "Some IP", sessionManager, dummyConfig);
+    clientSession session(-1, inventory, authenticator, logger, storage, "Some IP", sessionManager, dummyConfig,
+                          trafficReporter);
 
     TEST_ASSERT_FALSE(session.isAuthenticated());
 }
@@ -39,9 +42,10 @@ void testSessionAuthenticatesWithValidLogin() {
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
     SessionManager sessionManager(storage, logger);
+    TrafficReporter trafficReporter;
 
     auto session = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP",
-                                                   sessionManager, dummyConfig);
+                                                   sessionManager, dummyConfig, trafficReporter);
 
     storage.createUser("warehouse-A", "pass123");
     std::string login_request =
@@ -68,8 +72,9 @@ void testSessionAuthenticatesWithInvalidLogin() {
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
     SessionManager sessionManager(storage, logger);
+    TrafficReporter trafficReporter;
     auto session = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP",
-                                                   sessionManager, dummyConfig);
+                                                   sessionManager, dummyConfig, trafficReporter);
     storage.createUser("warehouse-A", "pass123");
 
     // wrong password
@@ -97,8 +102,9 @@ void testSessionRejectsOtherCommandsWhenUnauthenticated() {
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
     SessionManager sessionManager(storage, logger);
+    TrafficReporter trafficReporter;
     auto session = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP",
-                                                   sessionManager, dummyConfig);
+                                                   sessionManager, dummyConfig, trafficReporter);
     std::string status_request = "{\"command\":\"status\"}";
 
     clientSession::processResult result = session->processMessage(status_request);
@@ -124,8 +130,9 @@ void testProcessMessageHandlesMalformedJson() {
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
     SessionManager sessionManager(storage, logger);
+    TrafficReporter trafficReporter;
     auto session = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP",
-                                                   sessionManager, dummyConfig);
+                                                   sessionManager, dummyConfig, trafficReporter);
 
     std::string malformed_request = "totally not a json format}";
 
@@ -147,8 +154,9 @@ void testProcessMessageHandlesInvalidLoginRequest() {
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
     SessionManager sessionManager(storage, logger);
+    TrafficReporter trafficReporter;
     auto session = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP",
-                                                   sessionManager, dummyConfig);
+                                                   sessionManager, dummyConfig, trafficReporter);
 
     std::string malformed_request = "{\"command\":\"login\",\"payload\":{\"hostname\":\"warehouse-A\"}}";
 
@@ -171,9 +179,10 @@ void testProcessMessageAuthenticatedCommand() {
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
     SessionManager sessionManager(storage, logger);
+    TrafficReporter trafficReporter;
 
     auto session = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP",
-                                                   sessionManager, dummyConfig);
+                                                   sessionManager, dummyConfig, trafficReporter);
     storage.createUser("warehouse-A", "pass123");
     std::string login_request =
         "{\"command\":\"login\",\"payload\":{\"hostname\":\"warehouse-A\",\"password\":\"pass123\"}}";
@@ -205,9 +214,9 @@ void testProcessMessageCatchExceptionFromAuthenticatedCommand() {
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
     SessionManager sessionManager(storage, logger);
-
+    TrafficReporter trafficReporter;
     auto session = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP",
-                                                   sessionManager, dummyConfig);
+                                                   sessionManager, dummyConfig, trafficReporter);
 
     storage.createUser("warehouse-A", "pass123");
     std::string login_request =
@@ -254,8 +263,9 @@ void testProcessMessageUserReachLimitFailedAttemps() {
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
     SessionManager sessionManager(storage, logger);
+    TrafficReporter trafficReporter;
     auto session = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP",
-                                                   sessionManager, dummyConfig);
+                                                   sessionManager, dummyConfig, trafficReporter);
 
     storage.createUser("warehouse-A", "pass123");
     std::string login_request =
@@ -284,8 +294,9 @@ void testProcessMessageUserLockedAlertTrigger() {
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
     SessionManager sessionManager(storage, logger);
+    TrafficReporter trafficReporter;
     auto session = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP",
-                                                   sessionManager, dummyConfig);
+                                                   sessionManager, dummyConfig, trafficReporter);
 
     storage.createUser("warehouse-A", "pass123");
     std::string login_request =
@@ -314,8 +325,9 @@ void testsetUdpAddress() {
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
     SessionManager sessionManager(storage, logger);
+    TrafficReporter trafficReporter;
     auto session = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP",
-                                                   sessionManager, dummyConfig);
+                                                   sessionManager, dummyConfig, trafficReporter);
     sockaddr_storage testAddr{};
     sockaddr_in *ipv4 = reinterpret_cast<sockaddr_in *>(&testAddr);
     ipv4->sin_family = AF_INET;
@@ -343,8 +355,9 @@ void testClientSessionHandlesSQlExceptionOnLogin() {
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
     SessionManager sessionManager(storage, logger);
+    TrafficReporter trafficReporter;
     auto session = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP",
-                                                   sessionManager, dummyConfig);
+                                                   sessionManager, dummyConfig, trafficReporter);
 
     // Simulate a database error by dropping the users table
     storage.getDb().exec("DROP TABLE IF EXISTS users;");

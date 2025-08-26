@@ -2,6 +2,7 @@
 #include "server.hpp"
 #include "sessionManager.hpp"
 #include "test_helper.hpp"
+#include "trafficReporter.hpp"
 #include "unity.h"
 #include <arpa/inet.h>
 #include <cstring>
@@ -40,7 +41,8 @@ void testServerConstructorFailsOnPrivilegedPort() {
         SystemClock clock;
         Storage storage(":memory:");
         Logger logger(storage, clock, std::cerr, config);
-        Server s(config, clock, storage, logger);
+        TrafficReporter trafficReporter;
+        Server s(config, clock, storage, logger, trafficReporter);
 
         TEST_FAIL_MESSAGE("Expected std::runtime_error, but no exception was thrown.");
 

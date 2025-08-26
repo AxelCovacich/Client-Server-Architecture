@@ -6,6 +6,7 @@
 #include "sessionManager.hpp"
 #include "storage.hpp"
 #include "test_helper.hpp"
+#include "trafficReporter.hpp"
 #include "udpHandler.hpp"
 #include "unity.h"
 #include <iostream>
@@ -23,7 +24,8 @@ void testProcessAlertLocksClientOnValidAlert() {
     Config dummyConfig = createDummyConfig();
     Logger logger(storage, clock, std::cerr, dummyConfig);
     SessionManager sessionManager(storage, logger);
-    UdpHandler udpHandler(-1, logger, sessionManager);
+    TrafficReporter trafficreporter;
+    UdpHandler udpHandler(-1, logger, sessionManager, trafficreporter);
     AlertManager alertManager(logger, sessionManager, udpHandler);
 
     std::string valid_alert = R"({
@@ -49,7 +51,8 @@ void testProcessAlertHandlesMalformedJsonGracefully() {
     Config dummyConfig = createDummyConfig();
     Logger logger(storage, clock, std::cerr, dummyConfig);
     SessionManager sessionManager(storage, logger);
-    UdpHandler udpHandler(-1, logger, sessionManager);
+    TrafficReporter trafficreporter;
+    UdpHandler udpHandler(-1, logger, sessionManager, trafficreporter);
     AlertManager alertManager(logger, sessionManager, udpHandler);
 
     std::string malformed_alert = "not a json message";
