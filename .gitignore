@@ -38,6 +38,7 @@ sonarqube_extensions/
 postgresql/
 postgresql_data/
 .scannerwork/
+CDashSummary.log
 
 #sql db
 *.sqlite3
@@ -47,3 +48,10 @@ postgresql_data/
 
 #valgrind ignore issues
 sqlvalgrind.supp
+
+#docs
+docs/1_lab.pdf
+
+#build
+build/
+venv/
