@@ -291,7 +291,6 @@ std::vector<LogEntry> Storage::getInventoryHistoryTransaction(const std::string 
                                         )"); // NOLINT
 
         query.bind(1, clientId);
-        bool client_found = false;
 
         // Must iterate over all the rows found for client, pushback will add the logentry object with all elements at
         // the end of the vector history.
