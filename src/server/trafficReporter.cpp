@@ -1,4 +1,5 @@
 #include "trafficReporter.hpp"
+#include <iostream>
 #include <sstream>
 
 using namespace prometheus;
@@ -9,25 +10,39 @@ TrafficReporter::TrafficReporter()
     , m_api_reconnection_counter(nullptr)
     , m_message_counters()
     , m_error_counters()
-    , m_reconnection_counters() {
+    , m_reconnection_counters()
+    , m_registry(nullptr)
+    , m_exposer(nullptr) {
+
+    initPrometheusMetrics();
 }
 
-void TrafficReporter::initPrometheusMetrics(std::string metricHostPort) {
+void TrafficReporter::initPrometheusMetrics() {
 
-    Exposer exposer(metricHostPort);
-
-    auto registry = std::make_shared<Registry>();
+    m_registry = std::make_shared<Registry>();
 
     m_api_msg_counter =
-        &BuildCounter().Name("observed_messages_total").Help("Number of observed messages").Register(*registry);
+        &BuildCounter().Name("observed_messages_total").Help("Number of observed messages").Register(*m_registry);
 
     m_api_error_counter =
-        &BuildCounter().Name("observed_errors_total").Help("Number of observed errors").Register(*registry);
+        &BuildCounter().Name("observed_errors_total").Help("Number of observed errors").Register(*m_registry);
 
     m_api_reconnection_counter = &BuildCounter()
                                       .Name("observed_reconnections_total")
                                       .Help("Number of observed reconnections")
-                                      .Register(*registry);
+                                      .Register(*m_registry);
+}
+
+int TrafficReporter::startPrometheusExposer(std::string metricHostPort) {
+    // Start the Prometheus HTTP server
+    try {
+        m_exposer = std::make_unique<prometheus::Exposer>(metricHostPort);
+        m_exposer->RegisterCollectable(m_registry);
+        return 0;
+    } catch (const std::exception &e) {
+        std::cerr << "Error initializing Prometheus Exposer: " << e.what() << '\n';
+        return -1;
+    }
 }
 
 void TrafficReporter::incrementMessage(std::string protocol, std::string direction) {

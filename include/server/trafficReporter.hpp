@@ -20,7 +20,8 @@ using LabelKey = std::tuple<std::string, std::string>; // protocol, direction
 class TrafficReporter {
   public:
     TrafficReporter();
-    void initPrometheusMetrics(std::string metricHostPort);
+    void initPrometheusMetrics();
+    int startPrometheusExposer(std::string metricHostPort);
     void incrementMessage(std::string protocol, std::string direction);
     void incrementError(std::string protocol, std::string direction);
     void incrementReconnection(std::string protocol, std::string direction);
@@ -30,6 +31,8 @@ class TrafficReporter {
     int getReconnectionCount(std::string protocol, std::string direction);
 
   private:
+    std::shared_ptr<prometheus::Registry> m_registry;
+    std::unique_ptr<prometheus::Exposer> m_exposer;
     prometheus::Family<prometheus::Counter> *m_api_msg_counter;
     prometheus::Family<prometheus::Counter> *m_api_error_counter;
     prometheus::Family<prometheus::Counter> *m_api_reconnection_counter;
