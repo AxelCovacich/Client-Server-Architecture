@@ -55,7 +55,7 @@ Server::Server(const Config &config, const IClock &clock, Storage &storage, Logg
     , m_ipcHandler(m_logger, m_alert, m_trafficReporter) {
 
     setupServer();
-    m_trafficReporter.initPrometheusMetrics(m_config.getMetricHostPort());
+    m_trafficReporter.startPrometheusExposer(config.getMetricHostPort());
 }
 
 Server::~Server() {
