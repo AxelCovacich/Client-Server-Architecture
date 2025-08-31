@@ -28,6 +28,16 @@ jobs:
           packages: doxygen gcovr lcov cppcheck graphviz clang-format valgrind bc clang-tidy
           version: 1.0
 
+      - name: Install prometheus-cpp
+        run: |
+          git clone https://github.com/jupp0r/prometheus-cpp.git
+          cd prometheus-cpp
+          git submodule update --init --recursive
+          mkdir _build && cd _build
+          cmake .. -DBUILD_SHARED_LIBS=ON -DENABLE_PUSH=OFF -DENABLE_COMPRESSION=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/deps
+          cmake --build . --parallel 4
+          cmake --install .
+
       - name: Build project
         uses: ./.github/actions/build
 

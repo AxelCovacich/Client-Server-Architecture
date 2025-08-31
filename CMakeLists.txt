@@ -88,7 +88,6 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib) # for .a libs
 find_package(ZLIB REQUIRED)
 
 # --- YAML Configuration Library ---
-include(FetchContent)
 
 FetchContent_Declare(
   yaml-cpp
@@ -99,6 +98,10 @@ set(YAML_CPP_BUILD_TESTS OFF)
 
 FetchContent_MakeAvailable(yaml-cpp)
 
+# ---- Prometheus-cpp -----
+find_package(prometheus-cpp REQUIRED)
+
+# ---- JSON Library ----
 FetchContent_Declare(
   json
   GIT_REPOSITORY https://github.com/nlohmann/json
@@ -108,8 +111,6 @@ FetchContent_MakeAvailable(json)
 
 
 # --- SQLiteCpp Library ---
-include(FetchContent)
-
 FetchContent_Declare(
   sqlitecpp
   GIT_REPOSITORY https://github.com/SRombauts/SQLiteCpp.git
@@ -120,6 +121,7 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(sqlitecpp)
 
+
 # --- Bcrypt library ---
 FetchContent_Declare(
   bcrypt
@@ -129,6 +131,7 @@ FetchContent_Declare(
 set(BCRYPT_TESTS OFF)
 
 FetchContent_MakeAvailable(bcrypt)
+
 
 # --- Library Definitions ---
 
@@ -161,6 +164,8 @@ target_include_directories(ServerLib PUBLIC
 target_link_libraries(ServerLib PUBLIC nlohmann_json::nlohmann_json)
 target_link_libraries(ServerLib PUBLIC SQLiteCpp bcrypt yaml-cpp)
 target_link_libraries(ServerLib PRIVATE ZLIB::ZLIB)
+target_link_libraries(ServerLib PRIVATE prometheus-cpp::core prometheus-cpp::pull)
+
 
 # 2. ClientLib
 add_library(ClientLib SHARED
