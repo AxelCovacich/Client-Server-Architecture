@@ -45,8 +45,8 @@ Server::Server(const Config &config, const IClock &clock, Storage &storage, Logg
     , m_logger(logger)
     , m_inventory(m_storage, m_logger)
     , m_authenticator(m_storage, m_clock, m_logger)
-    , m_sessionManager(m_storage, m_logger)
     , m_trafficReporter(trafficReporter)
+    , m_sessionManager(m_storage, m_logger, m_trafficReporter)
     , m_serverTCPFD(-1)
     , m_serverUDPFD(-1)
     , m_serverUnixFD(-1)
@@ -55,7 +55,7 @@ Server::Server(const Config &config, const IClock &clock, Storage &storage, Logg
     , m_ipcHandler(m_logger, m_alert, m_trafficReporter) {
 
     setupServer();
-    // set sockets udp ipc
+    m_trafficReporter.initPrometheusMetrics(m_config.getMetricHostPort());
 }
 
 Server::~Server() {
