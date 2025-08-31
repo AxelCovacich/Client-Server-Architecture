@@ -9,7 +9,8 @@ runs:
       run: |
         cmake -S . -B build \
           -DENABLE_COVERAGE=ON \
-          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/deps
 
     - name: Build
       shell: bash
