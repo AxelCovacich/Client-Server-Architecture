@@ -26,14 +26,14 @@ void UdpHandler::handleMessage() {
         perror("recvfrom");
         // cout << "Error receiving UDP message.\n";
         m_logger.log(LogLevel::ERROR, "UdpHandler", "UDP recvfrom error");
-        m_trafficReporter.onError();
+        m_trafficReporter.incrementError("udp", "rx");
         return;
     }
     buffer[bytes_read] = '\0'; // NOLINT bytes_read will always be at max buffer.size - 1
 
     // cout << "Received UDP message: " + std::string(buffer.data()) << '\n';
     m_logger.log(LogLevel::INFO, "UdpHandler", "Received UDP message: " + std::string(buffer.data()));
-    m_trafficReporter.onMessageReceived();
+    m_trafficReporter.incrementMessage("udp", "rx");
 
     json request = json::parse(std::string(buffer.data()), nullptr, false);
     if (request.is_discarded()) {
@@ -71,8 +71,15 @@ void UdpHandler::handleKeepalive(const json &request, const struct sockaddr_stor
             socklen_t addr_len =
                 (client_addr.ss_family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
 
-            sendto(m_udpSocketFd, pongString.c_str(), pongString.length(), 0,
-                   reinterpret_cast<const struct sockaddr *>(&client_addr), addr_len); // NOLINT
+            size_t sent = sendto(m_udpSocketFd, pongString.c_str(), pongString.length(), 0,
+                                 reinterpret_cast<const struct sockaddr *>(&client_addr), addr_len); // NOLINT
+            if (sent < 0) {
+                m_logger.log(LogLevel::ERROR, "UdpHandler", "Error sending PONG message to client " + clientId);
+                m_trafficReporter.incrementError("udp", "tx");
+            } else {
+                m_trafficReporter.incrementMessage("udp", "tx");
+                m_logger.log(LogLevel::INFO, "UdpHandler", "Sent PONG message to client " + clientId);
+            }
         } else {
             // cout << "DEBUG: No session found for keepalive message from client " << clientId << '\n';
             m_logger.log(LogLevel::ERROR, "UdpHandler",
@@ -93,8 +100,15 @@ void UdpHandler::broadcastMessage(const json &alertMessage) {
     for (const auto &address : addresses) {
         socklen_t addr_len = (address.ss_family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
 
-        sendto(m_udpSocketFd, alert_str.c_str(), alert_str.length(), 0,
-               reinterpret_cast<const struct sockaddr *>(&address), addr_len); // NOLINT
+        ssize_t sent = sendto(m_udpSocketFd, alert_str.c_str(), alert_str.length(), 0,
+                              reinterpret_cast<const struct sockaddr *>(&address), addr_len); // NOLINT
+
+        if (sent < 0) {
+            m_logger.log(LogLevel::ERROR, "UdpHandler", "Error broadcasting alert message");
+            m_trafficReporter.incrementError("udp", "tx");
+        } else {
+            m_trafficReporter.incrementMessage("udp", "tx");
+        }
     }
     m_logger.log(LogLevel::INFO, "UdpHandler", "Broadcasted alert message to all connected clients: " + alert_str);
 }
