@@ -36,8 +36,8 @@ void testProcessCommandStatusAsJSON() {
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     std::string clientId = "warehouse-A";
-    SessionManager sessionManager(storage, logger);
     TrafficReporter trafficReporter;
+    SessionManager sessionManager(storage, logger, trafficReporter);
 
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage,
                                                    sessionManager, dummyConfig, trafficReporter);
@@ -58,9 +58,9 @@ void testProcessCommandEndAsJSON() {
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     std::string clientId = "warehouse-A";
-    SessionManager session(storage, logger);
-
     TrafficReporter trafficReporter;
+    SessionManager session(storage, logger, trafficReporter);
+
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
                                                    dummyConfig, trafficReporter);
     json response = json::parse(result.first);
@@ -80,10 +80,8 @@ void testProcessCommandUnknownAsJSON() {
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     std::string clientId = "warehouse-A";
-
-    SessionManager session(storage, logger);
-
     TrafficReporter trafficReporter;
+    SessionManager session(storage, logger, trafficReporter);
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
                                                    dummyConfig, trafficReporter);
     json response = json::parse(result.first);
@@ -107,8 +105,8 @@ void testProcessCommandUpdateStockAsJSON() {
     Inventory inventory(storage, logger);
     std::string clientId = "warehouse-A";
     storage.createUser(clientId, "pass123");
-    SessionManager session(storage, logger);
     TrafficReporter trafficReporter;
+    SessionManager session(storage, logger, trafficReporter);
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
                                                    dummyConfig, trafficReporter);
     json response = json::parse(result.first);
@@ -129,8 +127,8 @@ void testProcessCommandSrvrInMaintenance() {
     SystemClock clock;
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
-    SessionManager session(storage, logger);
     TrafficReporter trafficReporter;
+    SessionManager session(storage, logger, trafficReporter);
     auto result = commandProcessor::processCommand(request_object, clientId, true, inventory, logger, storage, session,
                                                    dummyConfig, trafficReporter);
     json response = json::parse(result.first);
@@ -151,8 +149,8 @@ void testProcessCommandNoCommand() {
     SystemClock clock;
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
-    SessionManager session(storage, logger);
     TrafficReporter trafficReporter;
+    SessionManager session(storage, logger, trafficReporter);
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
                                                    dummyConfig, trafficReporter);
     json response = json::parse(result.first);
@@ -173,8 +171,8 @@ void testProcessCommandNoPayloadForUpload() {
     SystemClock clock;
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
-    SessionManager session(storage, logger);
     TrafficReporter trafficReporter;
+    SessionManager session(storage, logger, trafficReporter);
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
                                                    dummyConfig, trafficReporter);
     json response = json::parse(result.first);
@@ -196,8 +194,8 @@ void testProcessCommandNoQuantityForUpload() {
     SystemClock clock;
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
-    SessionManager session(storage, logger);
     TrafficReporter trafficReporter;
+    SessionManager session(storage, logger, trafficReporter);
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
                                                    dummyConfig, trafficReporter);
     json response = json::parse(result.first);
@@ -220,8 +218,8 @@ void testProcessCommandNoItemForUpload() {
     SystemClock clock;
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
-    SessionManager session(storage, logger);
     TrafficReporter trafficReporter;
+    SessionManager session(storage, logger, trafficReporter);
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
                                                    dummyConfig, trafficReporter);
     json response = json::parse(result.first);
@@ -243,8 +241,8 @@ void testProcessCommandNoCategoryForUpload() {
     SystemClock clock;
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
-    SessionManager session(storage, logger);
     TrafficReporter trafficReporter;
+    SessionManager session(storage, logger, trafficReporter);
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
                                                    dummyConfig, trafficReporter);
     json response = json::parse(result.first);
@@ -269,8 +267,8 @@ void testProcessCommandUpdateStockInvalidQuantityType() {
     SystemClock clock;
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
-    SessionManager session(storage, logger);
     TrafficReporter trafficReporter;
+    SessionManager session(storage, logger, trafficReporter);
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
                                                    dummyConfig, trafficReporter);
     json response = json::parse(result.first);
@@ -295,8 +293,8 @@ void testProcessCommandUpdateStockNegativeQuantity() {
     Config dummyConfig = createDummyConfig();
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
-    SessionManager session(storage, logger);
     TrafficReporter trafficReporter;
+    SessionManager session(storage, logger, trafficReporter);
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
                                                    dummyConfig, trafficReporter);
     json response = json::parse(result.first);
@@ -314,11 +312,11 @@ void testProcessCommandgetInventory() {
     storage.initializeSchema();
     storage.createUser(clientId, "pass123");
     Config dummyConfig = createDummyConfig();
-
     SystemClock clock;
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
-    SessionManager session(storage, logger);
+    TrafficReporter trafficReporter;
+    SessionManager session(storage, logger, trafficReporter);
 
     inventory.updateStock(clientId, "food", "meat", 100);
     inventory.updateStock(clientId, "medicine", "bandages", 250);
@@ -326,7 +324,6 @@ void testProcessCommandgetInventory() {
     std::string request_str = "{\"command\":\"get_inventory\"}";
 
     json request_object = json::parse(request_str);
-    TrafficReporter trafficReporter;
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
                                                    dummyConfig, trafficReporter);
 
@@ -358,8 +355,8 @@ void testProcessCommandgGetEmptyInventory() {
     std::string request_str = "{\"command\":\"get_inventory\"}";
     storage.createUser(clientId, "pass123");
     json request_object = json::parse(request_str);
-    SessionManager session(storage, logger);
     TrafficReporter trafficReporter;
+    SessionManager session(storage, logger, trafficReporter);
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
                                                    dummyConfig, trafficReporter);
 
@@ -380,16 +377,15 @@ void testProcessCommandGetStockSuccessfully() {
     storage.initializeSchema();
     storage.createUser(clientId, "pass123");
     Config dummyConfig = createDummyConfig();
-
     SystemClock clock;
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
-    SessionManager session(storage, logger);
+    TrafficReporter trafficReporter;
+    SessionManager session(storage, logger, trafficReporter);
 
     inventory.updateStock(clientId, "food", "meat", 100);
     std::string request_str = "{\"command\":\"get_stock\",\"payload\":{\"category\":\"food\",\"item\":\"meat\"}}";
     json request_object = json::parse(request_str);
-    TrafficReporter trafficReporter;
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
                                                    dummyConfig, trafficReporter);
     json response = json::parse(result.first);
@@ -413,12 +409,12 @@ void testProcessCommandGetStockNoItemFound() {
     SystemClock clock;
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
-    SessionManager session(storage, logger);
+    TrafficReporter trafficReporter;
+    SessionManager session(storage, logger, trafficReporter);
     storage.createUser(clientId, "pass123");
     // inventory.updateStock(clientId, "food", "water", 100);
     std::string request_str = "{\"command\":\"get_stock\",\"payload\":{\"category\":\"food\",\"item\":\"meat\"}}";
     json request_object = json::parse(request_str);
-    TrafficReporter trafficReporter;
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
                                                    dummyConfig, trafficReporter);
     json response = json::parse(result.first);
@@ -441,8 +437,8 @@ void testProcessCommandInvalidPayloadForGetStock() {
     SystemClock clock;
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
-    SessionManager session(storage, logger);
     TrafficReporter trafficReporter;
+    SessionManager session(storage, logger, trafficReporter);
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
                                                    dummyConfig, trafficReporter);
     json response = json::parse(result.first);
@@ -459,11 +455,11 @@ void testCommnadGetHistory() {
     storage.initializeSchema();
     storage.createUser(clientId, "pass123");
     Config dummyConfig = createDummyConfig();
-
     MockClock clock;
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
-    SessionManager session(storage, logger);
+    TrafficReporter trafficReporter;
+    SessionManager session(storage, logger, trafficReporter);
 
     clock.set_time(100);
     inventory.updateStock(clientId, "food", "meat", 100);
@@ -473,7 +469,6 @@ void testCommnadGetHistory() {
     std::string request_str = "{\"command\":\"get_history\"}";
 
     json request_object = json::parse(request_str);
-    TrafficReporter trafficReporter;
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
                                                    dummyConfig, trafficReporter);
 
@@ -511,16 +506,15 @@ void testCommnadGetHistoryNoLogsEmptyData() {
     storage.initializeSchema();
     storage.createUser(clientId, "pass123");
     Config dummyConfig = createDummyConfig();
-
     MockClock clock;
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
-    SessionManager session(storage, logger);
+    TrafficReporter trafficReporter;
+    SessionManager session(storage, logger, trafficReporter);
 
     std::string request_str = "{\"command\":\"get_history\"}";
 
     json request_object = json::parse(request_str);
-    TrafficReporter trafficReporter;
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
                                                    dummyConfig, trafficReporter);
 
@@ -563,7 +557,8 @@ security:
     MockClock clock;
     Logger logger(storage, clock, std::cerr, config);
     Inventory inventory(storage, logger);
-    SessionManager sessionManager(storage, logger);
+    TrafficReporter trafficReporter;
+    SessionManager sessionManager(storage, logger, trafficReporter);
 
     std::string request_str = R"({
         "command": "unlock_client",
@@ -576,7 +571,6 @@ security:
 
     storage.setClientLockStatus("blocked_user", true); // block the user to unlockit with command and secret phrase
 
-    TrafficReporter trafficReporter;
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage,
                                                    sessionManager, config, trafficReporter);
 
@@ -615,7 +609,8 @@ security:
     MockClock clock;
     Logger logger(storage, clock, std::cerr, config);
     Inventory inventory(storage, logger);
-    SessionManager sessionManager(storage, logger);
+    TrafficReporter trafficReporter;
+    SessionManager sessionManager(storage, logger, trafficReporter);
 
     std::string request_str = R"({
         "command": "unlock_client",
@@ -628,7 +623,6 @@ security:
 
     // storage.setClientLockStatus("blocked_user",true);   //block the user to unlockit with command and secret phrase
 
-    TrafficReporter trafficReporter;
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage,
                                                    sessionManager, config, trafficReporter);
 
@@ -667,7 +661,8 @@ security:
     MockClock clock;
     Logger logger(storage, clock, std::cerr, config);
     Inventory inventory(storage, logger);
-    SessionManager sessionManager(storage, logger);
+    TrafficReporter trafficReporter;
+    SessionManager sessionManager(storage, logger, trafficReporter);
 
     std::string request_str = R"({
         "command": "unlock_client",
@@ -680,7 +675,6 @@ security:
 
     // storage.setClientLockStatus("blocked_user",true);   //block the user to unlockit with command and secret phrase
 
-    TrafficReporter trafficReporter;
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage,
                                                    sessionManager, config, trafficReporter);
 
@@ -700,7 +694,8 @@ void testUnlockClientWrongPayload() {
     MockClock clock;
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
-    SessionManager sessionManager(storage, logger);
+    TrafficReporter trafficReporter;
+    SessionManager sessionManager(storage, logger, trafficReporter);
 
     std::string request_str = R"({
         "command": "unlock_client",
@@ -712,7 +707,6 @@ void testUnlockClientWrongPayload() {
 
     // storage.setClientLockStatus("blocked_user",true);   //block the user to unlockit with command and secret phrase
 
-    TrafficReporter trafficReporter;
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage,
                                                    sessionManager, dummyConfig, trafficReporter);
 
@@ -734,7 +728,8 @@ void testUnlockClientNotAdminUser() {
     MockClock clock;
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
-    SessionManager sessionManager(storage, logger);
+    TrafficReporter trafficReporter;
+    SessionManager sessionManager(storage, logger, trafficReporter);
 
     std::string request_str = R"({
         "command": "unlock_client",
@@ -747,7 +742,6 @@ void testUnlockClientNotAdminUser() {
 
     // storage.setClientLockStatus("blocked_user",true);   //block the user to unlockit with command and secret phrase
 
-    TrafficReporter trafficReporter;
     auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage,
                                                    sessionManager, dummyConfig, trafficReporter);
 

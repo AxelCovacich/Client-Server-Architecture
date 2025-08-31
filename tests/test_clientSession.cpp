@@ -23,8 +23,8 @@ void testSessionStartsUnauthenticated() {
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
-    SessionManager sessionManager(storage, logger);
     TrafficReporter trafficReporter;
+    SessionManager sessionManager(storage, logger, trafficReporter);
 
     clientSession session(-1, inventory, authenticator, logger, storage, "Some IP", sessionManager, dummyConfig,
                           trafficReporter);
@@ -41,8 +41,8 @@ void testSessionAuthenticatesWithValidLogin() {
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
-    SessionManager sessionManager(storage, logger);
     TrafficReporter trafficReporter;
+    SessionManager sessionManager(storage, logger, trafficReporter);
 
     auto session = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP",
                                                    sessionManager, dummyConfig, trafficReporter);
@@ -71,8 +71,8 @@ void testSessionAuthenticatesWithInvalidLogin() {
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
-    SessionManager sessionManager(storage, logger);
     TrafficReporter trafficReporter;
+    SessionManager sessionManager(storage, logger, trafficReporter);
     auto session = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP",
                                                    sessionManager, dummyConfig, trafficReporter);
     storage.createUser("warehouse-A", "pass123");
@@ -101,8 +101,8 @@ void testSessionRejectsOtherCommandsWhenUnauthenticated() {
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
-    SessionManager sessionManager(storage, logger);
     TrafficReporter trafficReporter;
+    SessionManager sessionManager(storage, logger, trafficReporter);
     auto session = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP",
                                                    sessionManager, dummyConfig, trafficReporter);
     std::string status_request = "{\"command\":\"status\"}";
@@ -129,8 +129,8 @@ void testProcessMessageHandlesMalformedJson() {
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
-    SessionManager sessionManager(storage, logger);
     TrafficReporter trafficReporter;
+    SessionManager sessionManager(storage, logger, trafficReporter);
     auto session = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP",
                                                    sessionManager, dummyConfig, trafficReporter);
 
@@ -153,8 +153,8 @@ void testProcessMessageHandlesInvalidLoginRequest() {
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
-    SessionManager sessionManager(storage, logger);
     TrafficReporter trafficReporter;
+    SessionManager sessionManager(storage, logger, trafficReporter);
     auto session = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP",
                                                    sessionManager, dummyConfig, trafficReporter);
 
@@ -178,8 +178,8 @@ void testProcessMessageAuthenticatedCommand() {
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
-    SessionManager sessionManager(storage, logger);
     TrafficReporter trafficReporter;
+    SessionManager sessionManager(storage, logger, trafficReporter);
 
     auto session = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP",
                                                    sessionManager, dummyConfig, trafficReporter);
@@ -213,8 +213,8 @@ void testProcessMessageCatchExceptionFromAuthenticatedCommand() {
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
-    SessionManager sessionManager(storage, logger);
     TrafficReporter trafficReporter;
+    SessionManager sessionManager(storage, logger, trafficReporter);
     auto session = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP",
                                                    sessionManager, dummyConfig, trafficReporter);
 
@@ -262,8 +262,8 @@ void testProcessMessageUserReachLimitFailedAttemps() {
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
-    SessionManager sessionManager(storage, logger);
     TrafficReporter trafficReporter;
+    SessionManager sessionManager(storage, logger, trafficReporter);
     auto session = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP",
                                                    sessionManager, dummyConfig, trafficReporter);
 
@@ -293,8 +293,8 @@ void testProcessMessageUserLockedAlertTrigger() {
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
-    SessionManager sessionManager(storage, logger);
     TrafficReporter trafficReporter;
+    SessionManager sessionManager(storage, logger, trafficReporter);
     auto session = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP",
                                                    sessionManager, dummyConfig, trafficReporter);
 
@@ -324,8 +324,8 @@ void testsetUdpAddress() {
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
-    SessionManager sessionManager(storage, logger);
     TrafficReporter trafficReporter;
+    SessionManager sessionManager(storage, logger, trafficReporter);
     auto session = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP",
                                                    sessionManager, dummyConfig, trafficReporter);
     sockaddr_storage testAddr{};
@@ -354,8 +354,8 @@ void testClientSessionHandlesSQlExceptionOnLogin() {
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
-    SessionManager sessionManager(storage, logger);
     TrafficReporter trafficReporter;
+    SessionManager sessionManager(storage, logger, trafficReporter);
     auto session = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP",
                                                    sessionManager, dummyConfig, trafficReporter);
 

@@ -23,8 +23,8 @@ void testProcessAlertLocksClientOnValidAlert() {
     SystemClock clock;
     Config dummyConfig = createDummyConfig();
     Logger logger(storage, clock, std::cerr, dummyConfig);
-    SessionManager sessionManager(storage, logger);
     TrafficReporter trafficreporter;
+    SessionManager sessionManager(storage, logger, trafficreporter);
     UdpHandler udpHandler(-1, logger, sessionManager, trafficreporter);
     AlertManager alertManager(logger, sessionManager, udpHandler);
 
@@ -50,8 +50,8 @@ void testProcessAlertHandlesMalformedJsonGracefully() {
     SystemClock clock;
     Config dummyConfig = createDummyConfig();
     Logger logger(storage, clock, std::cerr, dummyConfig);
-    SessionManager sessionManager(storage, logger);
     TrafficReporter trafficreporter;
+    SessionManager sessionManager(storage, logger, trafficreporter);
     UdpHandler udpHandler(-1, logger, sessionManager, trafficreporter);
     AlertManager alertManager(logger, sessionManager, udpHandler);
 

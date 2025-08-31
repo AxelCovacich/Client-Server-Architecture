@@ -14,8 +14,8 @@ void testIpcHandlerReadError() {
     Storage mockStorage(":memory:");
     SystemClock clock;
     Logger mockLogger(mockStorage, clock, std::cerr, dummyConfig);
-    SessionManager mockSessionManager(mockStorage, mockLogger);
     TrafficReporter trafficreporter;
+    SessionManager mockSessionManager(mockStorage, mockLogger, trafficreporter);
     UdpHandler mockUdpHandler(-1, mockLogger, mockSessionManager, trafficreporter);
     AlertManager mockAlertManager(mockLogger, mockSessionManager, mockUdpHandler);
 

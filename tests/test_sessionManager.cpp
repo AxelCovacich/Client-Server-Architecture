@@ -22,7 +22,8 @@ void testLockAndUnlockClient() {
     storage.createUser("warehouse-A", "pass123");
     SystemClock clock;
     Logger logger(storage, clock, std::cerr, dummyConfig);
-    SessionManager sessionManager(storage, logger);
+    TrafficReporter trafficReporter;
+    SessionManager sessionManager(storage, logger, trafficReporter);
 
     TEST_ASSERT_FALSE(sessionManager.isClientLocked("warehouse-A"));
 
@@ -33,7 +34,7 @@ void testLockAndUnlockClient() {
 
     storage.setClientLockStatus("warehouse-A", false);
 
-    SessionManager newSessionManager(storage, logger);
+    SessionManager newSessionManager(storage, logger, trafficReporter);
     TEST_ASSERT_FALSE(newSessionManager.isClientLocked("warehouse-A"));
 }
 
@@ -44,7 +45,8 @@ void testLockNonExistentClient() {
     storage.createUser("warehouse-A", "pass123");
     SystemClock clock;
     Logger logger(storage, clock, std::cerr, dummyConfig);
-    SessionManager sessionManager(storage, logger);
+    TrafficReporter trafficReporter;
+    SessionManager sessionManager(storage, logger, trafficReporter);
 
     bool success = sessionManager.lockClient("Non_existent_user");
     TEST_ASSERT_FALSE(success);
@@ -58,12 +60,11 @@ void testIsClientLockedHandlesCacheMiss() {
     Storage storage(":memory:");
     storage.initializeSchema();
     storage.createUser("warehouse-B", "pass123");
-
     storage.setClientLockStatus("warehouse-B", true);
-
     SystemClock clock;
     Logger logger(storage, clock, std::cerr, dummyConfig);
-    SessionManager sessionManager(storage, logger);
+    TrafficReporter trafficReporter;
+    SessionManager sessionManager(storage, logger, trafficReporter);
 
     TEST_ASSERT_TRUE(sessionManager.isClientLocked("warehouse-B"));
 
@@ -79,8 +80,8 @@ void testRegisterAndUnregisterSession() {
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
-    SessionManager sessionManager(storage, logger);
     TrafficReporter trafficReporter;
+    SessionManager sessionManager(storage, logger, trafficReporter);
     auto session = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP",
                                                    sessionManager, dummyConfig, trafficReporter);
     std::string clientId = "warehouse-A";
@@ -104,8 +105,9 @@ void testgetActiveUdpAddresses() {
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
-    SessionManager sessionManager(storage, logger);
     TrafficReporter trafficReporter;
+    SessionManager sessionManager(storage, logger, trafficReporter);
+
     // first session
     auto session1 = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "192.168.0.10",
                                                     sessionManager, dummyConfig, trafficReporter);
@@ -163,8 +165,9 @@ void testSessionManagerGetClientSession() {
     Logger logger(storage, clock, std::cerr, dummyConfig);
     Inventory inventory(storage, logger);
     Authenticator authenticator(storage, clock, logger);
-    SessionManager sessionManager(storage, logger);
     TrafficReporter trafficReporter;
+    SessionManager sessionManager(storage, logger, trafficReporter);
+
     auto session = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP",
                                                    sessionManager, dummyConfig, trafficReporter);
 
