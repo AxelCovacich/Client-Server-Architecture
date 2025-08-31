@@ -60,7 +60,7 @@ void clientSession::run() {
         if (bytes_read <= 0) {
             if (bytes_read < 0) {
                 perror("Error reading from socket");
-                m_trafficReporter.onError();
+                m_trafficReporter.incrementError("tcp", "rx");
                 m_logger.log(LogLevel::ERROR, "ClientSession",
                              "Error reading from client socket from IP: " + m_clientIP);
             }
@@ -79,7 +79,7 @@ void clientSession::run() {
         if (write(m_clientSocket, result.first.c_str(), result.first.length()) < 0) {
 
             perror("Error writing response to socket");
-            m_trafficReporter.onError();
+            m_trafficReporter.incrementError("tcp", "tx");
             m_logger.log(LogLevel::ERROR, "ClientSession", "Error writing to client socket from IP: " + m_clientIP);
             break;
         }
@@ -112,10 +112,10 @@ clientSession::processResult clientSession::processMessage(const std::string &js
     if (request.is_discarded()) {
 
         m_logger.log(LogLevel::WARNING, "ClientSession", "Invalid JSON format from clientIP: " + m_clientIP);
-        m_trafficReporter.onError();
+        m_trafficReporter.incrementError("tcp", "rx");
         return {"{\"status\":\"error\",\"message\":\"Invalid JSON format.\"}", true};
     }
-    m_trafficReporter.onMessageReceived();
+    m_trafficReporter.incrementMessage("tcp", "rx");
 
     // log call with masked password for safety
     m_logger.log(LogLevel::DEBUG, "ClientSession", "Received message: " + createLoggableRequest(request).dump());
@@ -148,18 +148,18 @@ clientSession::processResult clientSession::processMessage(const std::string &js
                 case AuthResult::FAILED_ACCOUNT_LOCKED:
                     response["status"] = "error";
                     response["message"] = "Account is temporarily locked due to too many failed attempts.";
-                    m_trafficReporter.onError();
+                    m_trafficReporter.incrementError("tcp", "rx");
                     break;
                 case AuthResult::FAILED_ALERT_LOCKED:
                     response["status"] = "error";
                     response["message"] = "Account is locked untill manually freed by an admin, due to alert trigger.";
-                    m_trafficReporter.onError();
+                    m_trafficReporter.incrementError("tcp", "rx");
                     break;
                 case AuthResult::FAILED_USER_NOT_FOUND:
                 case AuthResult::FAILED_BAD_CREDENTIALS:
                     response["status"] = "error";
                     response["message"] = "Login failed. Invalid hostname or password.";
-                    m_trafficReporter.onError();
+                    m_trafficReporter.incrementError("tcp", "rx");
                     break;
                 }
 
@@ -175,7 +175,7 @@ clientSession::processResult clientSession::processMessage(const std::string &js
                 response["status"] = "error";
                 response["message"] =
                     "Malformed login request. Please provide a valid JSON with 'payload', 'hostname' and 'password'.";
-                m_trafficReporter.onError();
+                m_trafficReporter.incrementError("tcp", "rx");
                 return {response.dump(), true};
             } catch (const std::exception &e) {
                 // std::cerr << "CRITICAL ERROR during login attempt from clientIP: " << m_clientIP << ": " << e.what()
@@ -187,7 +187,7 @@ clientSession::processResult clientSession::processMessage(const std::string &js
                 json response;
                 response["status"] = "error";
                 response["message"] = "An internal server error occurred. Please reconnect";
-                m_trafficReporter.onError();
+                m_trafficReporter.incrementError("tcp", "rx");
                 return {response.dump(), false}; // close connection
             }
         } else {
@@ -195,7 +195,7 @@ clientSession::processResult clientSession::processMessage(const std::string &js
             json response;
             response["status"] = "error";
             response["message"] = "Authentication required. Please log in first.";
-            m_trafficReporter.onError();
+            m_trafficReporter.incrementError("tcp", "rx");
             return {response.dump(), true};
         }
 
@@ -215,7 +215,7 @@ clientSession::processResult clientSession::processMessage(const std::string &js
             json response;
             response["status"] = "error";
             response["message"] = "An internal server error occurred. Please reconnect";
-            m_trafficReporter.onError();
+            m_trafficReporter.incrementError("tcp", "rx");
             return {response.dump(), false};
         }
     }

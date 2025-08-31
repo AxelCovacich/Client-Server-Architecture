@@ -35,7 +35,7 @@ commandResult processCommand(const json &request, const std::string &clientId, b
                    "Request from client " + clientId + " is missing 'command' field.", clientId);
         response["status"] = "error";
         response["message"] = "Missing 'command' field in request.";
-        trafficReporter.onError();
+        trafficReporter.incrementError("tcp", "rx");
         return {response.dump(), true}; // Keep waiting for valid command
     }
 
@@ -119,7 +119,7 @@ static commandResult handleGetInventoryCommand(const json &request, const std::s
         response["data"] = inventoryData;
     } else {
         response["status"] = "error";
-        trafficReporter.onError();
+        trafficReporter.incrementError("tcp", "rx");
         response["message"] = "Inventory data for client " + clientId + " is empty.";
     }
     return {response.dump(), true};
@@ -143,7 +143,7 @@ static commandResult handleUpdateStockCommand(const json &request, const std::st
         } else {
 
             response["status"] = "error";
-            trafficReporter.onError();
+            trafficReporter.incrementError("tcp", "rx");
         }
         response["message"] = result.message;
         return {response.dump(), true};
@@ -154,7 +154,7 @@ static commandResult handleUpdateStockCommand(const json &request, const std::st
         // cerr << "Invalid payload for update_stock: " << e.what() << '\n';
         response["status"] = "error";
         response["message"] = "Invalid or missing field in update_stock payload.";
-        trafficReporter.onError();
+        trafficReporter.incrementError("tcp", "rx");
         logger.log(LogLevel::WARNING, "CommandProcessor", "Invalid or missing field in update_stock payload.",
                    clientId);
 
@@ -187,7 +187,7 @@ static commandResult handleGetStockCommand(const json &request, const std::strin
         }
         response["status"] = "error";
         response["message"] = "Item not found for the specified client/category.";
-        trafficReporter.onError();
+        trafficReporter.incrementError("tcp", "rx");
         return {response.dump(), true};
 
     } catch (const json::exception &e) {
@@ -195,7 +195,7 @@ static commandResult handleGetStockCommand(const json &request, const std::strin
         // cerr << "Invalid payload for get_stock: " << e.what() << '\n';
         response["status"] = "error";
         response["message"] = "Invalid or missing field in get_stock payload.";
-        trafficReporter.onError();
+        trafficReporter.incrementError("tcp", "rx");
         logger.log(LogLevel::WARNING, "CommandProcessor", "Invalid or missing field in get_stock payload.", clientId);
         return {response.dump(), true};
     }
@@ -246,7 +246,7 @@ static commandResult handleUnlockClientCommand(const json &request, const std::s
                 response["status"] = "error";
                 response["message"] =
                     "Couldn't unlock Client `" + clientToUnlock + "`. Client didn't found or misspelled.";
-                trafficReporter.onError();
+                trafficReporter.incrementError("tcp", "rx");
                 logger.log(LogLevel::WARNING, "CommandProcessor",
                            "Couldn't unlock Client `" + clientToUnlock + "`. Client didn't found or misspelled.",
                            clientId);
@@ -254,14 +254,14 @@ static commandResult handleUnlockClientCommand(const json &request, const std::s
             }
             response["status"] = "error";
             response["message"] = "Wrong secret phrase. Try again.";
-            trafficReporter.onError();
+            trafficReporter.incrementError("tcp", "rx");
             logger.log(LogLevel::WARNING, "CommandProcessor", "Wrong secret phrase provided for unlock_client command.",
                        clientId);
             return {response.dump(), true};
         } catch (const json::exception &e) {
             response["status"] = "error";
             response["message"] = "Invalid or missing field in unlock_client payload.";
-            trafficReporter.onError();
+            trafficReporter.incrementError("tcp", "rx");
             logger.log(LogLevel::WARNING, "CommandProcessor", "Invalid or missing field in unlock_client payload.",
                        clientId);
             return {response.dump(), true};
@@ -269,7 +269,7 @@ static commandResult handleUnlockClientCommand(const json &request, const std::s
     } else {
         response["status"] = "error";
         response["message"] = "Command only available for admin user.";
-        trafficReporter.onError();
+        trafficReporter.incrementError("tcp", "rx");
         logger.log(LogLevel::WARNING, "CommandProcessor", "Trying to execute admin commands with a invalid user.",
                    clientId);
         return {response.dump(), true};

@@ -18,7 +18,7 @@ bool IpcHandler::handleConnection(int acceptedSocketFd) {
     if (bytes_read <= 0) {
         perror("Error reading from unix socket");
         m_logger.log(LogLevel::ERROR, "IpcHandler", "IPC read error");
-        m_trafficReporter.onError();
+        m_trafficReporter.incrementError("ipc", "rx");
         return false;
     }
 
@@ -29,6 +29,6 @@ bool IpcHandler::handleConnection(int acceptedSocketFd) {
     m_alertManager.processAlert(alertMessage); // Process the alert message
     close(acceptedSocketFd);                   // Close the socket after processing the message
     m_logger.log(LogLevel::INFO, "IpcHandler", "UNIX message processed successfully");
-    m_trafficReporter.onMessageReceived();
+    m_trafficReporter.incrementMessage("ipc", "rx");
     return true;
 }
