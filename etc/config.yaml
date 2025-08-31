@@ -9,6 +9,7 @@ server:
     port: "8888"
     max_clients: 1000
     max_unix_connections: 1000
+    metric_host_port: "0.0.0.0:8080"
     
 logger:
     max_log_size_mb: 10
