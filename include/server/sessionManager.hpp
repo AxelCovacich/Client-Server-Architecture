@@ -3,11 +3,13 @@
 
 #include "logger.hpp"
 #include "storage.hpp"
+#include "trafficReporter.hpp"
 #include <map>
 #include <memory> // std::shared_ptr
 #include <mutex>
 #include <set>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 class clientSession;
@@ -22,7 +24,7 @@ class clientSession;
  */
 class SessionManager {
   public:
-    SessionManager(Storage &storage, Logger &logger);
+    SessionManager(Storage &storage, Logger &logger, TrafficReporter &trafficReporter);
     /**
      * @brief Registers a new client session.
      * @param clientId The unique ID of the client.
@@ -69,6 +71,7 @@ class SessionManager {
   private:
     Storage &m_storage;
     Logger &m_logger;
+    TrafficReporter &m_trafficReporter;
     // Mutex to protect access to the shared maps and sets from multiple threads.
     std::mutex m_mutex;
 
@@ -77,6 +80,8 @@ class SessionManager {
 
     // A set to quickly check which client IDs are currently locked.
     std::set<std::string> m_lockedClients;
+
+    std::unordered_set<std::string> m_connectedUsers; // Users that have connected once
 };
 
 #endif // SESSION_MANAGER_HPP

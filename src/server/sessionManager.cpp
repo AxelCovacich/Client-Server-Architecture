@@ -1,9 +1,10 @@
 #include "sessionManager.hpp"
 #include "clientSession.hpp"
 
-SessionManager::SessionManager(Storage &storage, Logger &logger)
+SessionManager::SessionManager(Storage &storage, Logger &logger, TrafficReporter &trafficReporter)
     : m_storage(storage)
-    , m_logger(logger) {
+    , m_logger(logger)
+    , m_trafficReporter(trafficReporter) {
 }
 
 void SessionManager::registerSession(const std::string &clientId, std::shared_ptr<clientSession> session) {
@@ -13,6 +14,13 @@ void SessionManager::registerSession(const std::string &clientId, std::shared_pt
     // without doing a copy. Optimization change suggested by sonnarqube
     m_activeSessions[clientId] = std::move(session);
     // m_activeSessions[clientId] = session;
+    if (m_connectedUsers.find(clientId) == m_connectedUsers.end()) {
+        m_connectedUsers.insert(clientId); // mark user as connected at least once
+    } else {
+        // User has reconnected
+        m_trafficReporter.incrementReconnection("tcp", "rx");
+        m_logger.log(LogLevel::INFO, "SessionManager", "User '" + clientId + "' has reconnected.");
+    }
 }
 
 void SessionManager::unregisterSession(const std::string &clientId) {
