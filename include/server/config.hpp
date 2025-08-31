@@ -34,6 +34,7 @@ class Config {
     int getUdpPort() const;
     std::string getDbPath() const;
     std::string getSecretPhrase() const;
+    std::string getMetricHostPort() const;
 
     void logConfig();
     void serverConfig(const std::vector<std::string> &args);
@@ -48,6 +49,7 @@ class Config {
     int m_blockTimeSeconds;
     int m_tcpPort;
     int m_udpPort;
+    std::string m_metricHostPort;
     std::string m_logPath;
     std::string m_dbPath;
     std::string m_secretPhrase;

@@ -60,6 +60,10 @@ int Config::getMaxLogSize() const {
     return m_maxLogSize;
 }
 
+std::string Config::getMetricHostPort() const {
+    return m_metricHostPort;
+}
+
 void Config::logConfig() {
 
     if (!m_configNode["logger"] || !m_configNode["logger"]["max_log_size_mb"] ||
@@ -128,6 +132,14 @@ void Config::serverConfig(const std::vector<std::string> &args) {
     m_maxUnixConnections = m_configNode["server"]["max_unix_connections"].as<int>();
     if (m_maxUnixConnections <= 0) {
         throw std::runtime_error("Max unix connections in config file must be a positive greater than zero integer");
+    }
+
+    if (!m_configNode["server"]["metric_host_port"] || !m_configNode["server"]["metric_host_port"].IsScalar()) {
+        throw std::runtime_error("Metric host-port in config file is not set or is not a valid string");
+    }
+    m_metricHostPort = m_configNode["server"]["metric_host_port"].as<std::string>();
+    if (m_metricHostPort.empty()) {
+        throw std::runtime_error("Metric host-port in config file is empty");
     }
 }
 
