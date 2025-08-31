@@ -19,6 +19,7 @@ void testConfigLoadsPortFromYaml() {
                 port: 9999
                 max_clients: 10
                 max_unix_connections: 5
+                metric_host_port: "localhost:8081"
 
             logger:
                 max_log_size_mb: 10
@@ -47,6 +48,7 @@ void testConfigPrioritizesCliArgumentOverYaml() {
                 port: 9999
                 max_clients: 10
                 max_unix_connections: 5
+                metric_host_port: "localhost:8081"
 
             logger:
                 max_log_size_mb: 10
@@ -78,6 +80,7 @@ void testConfigPrioritizesEnvVariableOverYaml() {
                 port: 9999
                 max_clients: 10
                 max_unix_connections: 5
+                metric_host_port: "localhost:8081"
 
             logger:
                 max_log_size_mb: 10
@@ -110,6 +113,7 @@ void testConfigLoadsdbPathFromYaml() {
                 port: 80
                 max_clients: 10
                 max_unix_connections: 5
+                metric_host_port: "localhost:8081"
 
             logger:
                 max_log_size_mb: 10
@@ -138,6 +142,7 @@ void testConfigSecretPhraseFromYaml() {
                 port: 80
                 max_clients: 10
                 max_unix_connections: 5
+                metric_host_port: "localhost:8081"
 
             logger:
                 max_log_size_mb: 10
@@ -165,6 +170,7 @@ void testConfigPrioritizesCliArgumentsTcpAndUdp() {
                 port: 9999
                 max_clients: 10
                 max_unix_connections: 5
+                metric_host_port: "localhost:8081"
 
             logger:
                 max_log_size_mb: 10
@@ -193,6 +199,7 @@ void testConfigFailsOnInvalidPortInYaml() {
                 port: -1
                 max_clients: 10
                 max_unix_connections: 5
+                metric_host_port: "localhost:8081"
 
             logger:
                 max_log_size_mb: 10
@@ -222,6 +229,7 @@ void testConfigFailsOnInvalidEnvPort() {
                 port: 9999
                 max_clients: 10
                 max_unix_connections: 5
+                metric_host_port: "localhost:8081"
 
             logger:
                 max_log_size_mb: 10
@@ -256,6 +264,7 @@ void testConfigCliArgumentHasPriorityOverEnv() {
                 port: 5555
                 max_clients: 10
                 max_unix_connections: 5
+                metric_host_port: "localhost:8081"
 
             logger:
                 max_log_size_mb: 10
@@ -281,6 +290,7 @@ void testConfigFailsOnMissingDbPathInYaml() {
                 port: 80
                 max_clients: 10
                 max_unix_connections: 5
+                metric_host_port: "localhost:8081"
 
             logger:
                 max_log_size_mb: 10
@@ -312,6 +322,7 @@ void testConfigFailsOnMissingSecretPhraseInYaml() {
                 port: 80
                 max_clients: 10
                 max_unix_connections: 5
+                metric_host_port: "localhost:8081"
 
             logger:
                 max_log_size_mb: 10

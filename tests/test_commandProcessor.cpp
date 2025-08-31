@@ -541,6 +541,7 @@ server:
     port: 9999
     max_clients: 10
     max_unix_connections: 5
+    metric_host_port: "localhost:8081"
 logger:
     max_log_size_mb: 10
     log_path: "./var/logs/server.log"
@@ -594,6 +595,7 @@ server:
     port: 9999
     max_clients: 10
     max_unix_connections: 5
+    metric_host_port: "localhost:8081"
 logger:
     max_log_size_mb: 10
     log_path: "./var/logs/server.log"
@@ -645,6 +647,7 @@ server:
     port: 9999
     max_clients: 10
     max_unix_connections: 5
+    metric_host_port: "localhost:8081"
 logger:
     max_log_size_mb: 10
     log_path: "./var/logs/server.log"
