@@ -164,7 +164,12 @@ target_include_directories(ServerLib PUBLIC
 target_link_libraries(ServerLib PUBLIC nlohmann_json::nlohmann_json)
 target_link_libraries(ServerLib PUBLIC SQLiteCpp bcrypt yaml-cpp)
 target_link_libraries(ServerLib PRIVATE ZLIB::ZLIB)
-target_link_libraries(ServerLib PRIVATE prometheus-cpp::core prometheus-cpp::pull)
+if(TARGET prometheus-cpp::core AND TARGET prometheus-cpp::pull)
+  message(STATUS "prometheus-cpp targets found. Linking to ServerLib")
+  target_link_libraries(ServerLib PUBLIC prometheus-cpp::core prometheus-cpp::pull)
+else()
+  message(WARNING "prometheus-cpp targets NOT found.")
+endif()
 
 
 # 2. ClientLib
