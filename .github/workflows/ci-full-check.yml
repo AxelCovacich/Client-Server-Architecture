@@ -17,6 +17,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      CMAKE_PREFIX_PATH: ${{ github.workspace }}/deps
 
     steps:
       - name: Checkout repository
@@ -37,8 +39,6 @@ jobs:
           cmake .. -DBUILD_SHARED_LIBS=ON -DENABLE_PUSH=OFF -DENABLE_COMPRESSION=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/deps
           cmake --build . --parallel 4
           cmake --install .
-          # Make the install location available to later steps (ensures CMake can find prometheus)
-          echo "CMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/deps" >> $GITHUB_ENV
 
       - name: Build project
         uses: ./.github/actions/build
