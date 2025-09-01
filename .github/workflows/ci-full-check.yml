@@ -17,8 +17,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      CMAKE_PREFIX_PATH: ${{ github.workspace }}/deps
 
     steps:
       - name: Checkout repository
@@ -36,7 +34,7 @@ jobs:
           cd prometheus-cpp
           git submodule update --init --recursive
           mkdir _build && cd _build
-          cmake .. -DBUILD_SHARED_LIBS=ON -DENABLE_PUSH=OFF -DENABLE_COMPRESSION=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/deps
+          cmake .. -DBUILD_SHARED_LIBS=ON -DENABLE_PUSH=OFF -DENABLE_COMPRESSION=OFF
           cmake --build . --parallel 4
           cmake --install .
 

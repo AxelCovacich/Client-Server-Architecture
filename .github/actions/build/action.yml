@@ -9,8 +9,7 @@ runs:
       run: |
         cmake -S . -B build \
           -DENABLE_COVERAGE=ON \
-          -DCMAKE_BUILD_TYPE=Debug \
-          -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}
+          -DCMAKE_BUILD_TYPE=Debug
 
     - name: Build
       shell: bash
