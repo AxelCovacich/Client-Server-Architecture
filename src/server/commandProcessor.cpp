@@ -3,6 +3,8 @@
 #include <map>
 #include <nlohmann/json.hpp>
 #include <optional>
+#include <string>
+#include <string_view>
 
 using json = nlohmann::json;
 using namespace std;
@@ -128,36 +130,45 @@ static commandResult handleGetInventoryCommand(const json &request, const std::s
 static commandResult handleUpdateStockCommand(const json &request, const std::string &clientId, Inventory &inventory,
                                               Logger &logger, json &response, TrafficReporter &trafficReporter) {
 
-    try {
+    if (!clientId.starts_with("Hub")) {
+        try {
 
-        // 1. .at() to add values and check. If a key is not present, catch will attend.
-        const json &payload = request.at("payload");
-        const std::string category = payload.at("category");
-        const std::string item = payload.at("item");
-        const int quantity = payload.at("quantity");
-        auto result = inventory.updateStock(clientId, category, item, quantity);
+            // 1. .at() to add values and check. If a key is not present, catch will attend.
+            const json &payload = request.at("payload");
+            const std::string category = payload.at("category");
+            const std::string item = payload.at("item");
+            const int quantity = payload.at("quantity");
+            auto result = inventory.updateStock(clientId, category, item, quantity);
 
-        if (result.success) {
+            if (result.success) {
 
-            response["status"] = "success";
-        } else {
+                response["status"] = "success";
+            } else {
 
+                response["status"] = "error";
+                trafficReporter.incrementError("tcp", "rx");
+            }
+            response["message"] = result.message;
+            return {response.dump(), true};
+
+        } catch (const json::exception &e) {
+            // If any key is missing, or wrong type this will treat it
+            //    (ej: "quantity": "abc")
             response["status"] = "error";
+            response["message"] = "Invalid or missing field in update_stock payload.";
             trafficReporter.incrementError("tcp", "rx");
+            logger.log(LogLevel::WARNING, "CommandProcessor", "Invalid or missing field in update_stock payload.",
+                       clientId);
+
+            return {response.dump(), true};
         }
-        response["message"] = result.message;
-        return {response.dump(), true};
 
-    } catch (const json::exception &e) {
-        // If any key is missing, or wrong type this will treat it
-        //    (ej: "quantity": "abc")
-        // cerr << "Invalid payload for update_stock: " << e.what() << '\n';
+    } else {
         response["status"] = "error";
-        response["message"] = "Invalid or missing field in update_stock payload.";
+        response["message"] = "update_stock command is not allowed for Hub clients.";
         trafficReporter.incrementError("tcp", "rx");
-        logger.log(LogLevel::WARNING, "CommandProcessor", "Invalid or missing field in update_stock payload.",
+        logger.log(LogLevel::WARNING, "CommandProcessor", "update_stock command is not allowed for Hub clients.",
                    clientId);
-
         return {response.dump(), true};
     }
 }
