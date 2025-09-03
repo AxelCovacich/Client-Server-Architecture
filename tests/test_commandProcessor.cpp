@@ -752,3 +752,26 @@ void testUnlockClientNotAdminUser() {
     TEST_ASSERT_EQUAL_STRING("error", response["status"].get<std::string>().c_str());
     TEST_ASSERT_EQUAL_STRING("Command only available for admin user.", response["message"].get<std::string>().c_str());
 }
+
+void testUpdateStockFailsWithHubUser() {
+    std::string json_request = "{\"command\": \"update_stock\", \"category\": \"food\", \"item\": "
+                               "\"water\", \"quantity\": 500}";
+
+    json request_object = json::parse(json_request);
+    std::string clientId = "Hub-01";
+    Storage storage(":memory:");
+    Config dummyConfig = createDummyConfig();
+    SystemClock clock;
+    Logger logger(storage, clock, std::cerr, dummyConfig);
+    Inventory inventory(storage, logger);
+    TrafficReporter trafficReporter;
+    SessionManager session(storage, logger, trafficReporter);
+    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
+                                                   dummyConfig, trafficReporter);
+    json response = json::parse(result.first);
+
+    TEST_ASSERT_EQUAL_STRING("error", response["status"].get<std::string>().c_str());
+    TEST_ASSERT_EQUAL_STRING("update_stock command is not allowed for Hub clients.",
+                             response["message"].get<std::string>().c_str());
+    TEST_ASSERT_TRUE(result.second);
+}

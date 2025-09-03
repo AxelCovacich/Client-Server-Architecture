@@ -212,6 +212,7 @@ void testLoggerLogRotation();
 void testCompressFileGzipFailsOnInvalidPath();
 void testShouldRotateTrue();
 void testTrafficReporterCounters();
+void testUpdateStockFailsWithHubUser();
 /**
  * @brief Runs all the tests.
  *
@@ -414,5 +415,6 @@ int main() {
     RUN_TEST(testCompressFileGzipFailsOnInvalidPath);
     RUN_TEST(testShouldRotateTrue);
     RUN_TEST(testTrafficReporterCounters);
+    RUN_TEST(testUpdateStockFailsWithHubUser);
     return UNITY_END();
 }
