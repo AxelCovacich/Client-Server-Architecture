@@ -5,6 +5,7 @@
 #include "authenticator.hpp"
 #include "clientSession.hpp"
 #include "config.hpp"
+#include "eventQueue.hpp"
 #include "inventory.hpp"
 #include "ipcHandler.hpp"
 #include "logger.hpp"
@@ -65,6 +66,7 @@ class Server {
     Logger &m_logger;
     TrafficReporter &m_trafficReporter;
 
+    EventQueue m_eventQueue;
     Inventory m_inventory;
     Authenticator m_authenticator;
     AlertManager m_alert;
