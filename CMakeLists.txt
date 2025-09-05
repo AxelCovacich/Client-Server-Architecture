@@ -154,6 +154,7 @@ target_sources(ServerLib PRIVATE
     src/server/udpHandler.cpp
     src/server/ipcHandler.cpp
     src/server/trafficReporter.cpp
+    src/server/eventQueue.cpp
 )
 
 # Add the path to ServerLib's PUBLIC headers
