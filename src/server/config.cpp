@@ -44,6 +44,10 @@ int Config::getBlockTimeSeconds() const {
     return m_blockTimeSeconds;
 }
 
+int Config::getQueueSize() const {
+    return m_queueSize;
+}
+
 std::string Config::getDbPath() const {
     return m_dbPath;
 }
@@ -140,6 +144,14 @@ void Config::serverConfig(const std::vector<std::string> &args) {
     m_metricHostPort = m_configNode["server"]["metric_host_port"].as<std::string>();
     if (m_metricHostPort.empty()) {
         throw std::runtime_error("Metric host-port in config file is empty");
+    }
+
+    if (!m_configNode["server"]["queue_size"] || !m_configNode["server"]["queue_size"].IsScalar()) {
+        throw std::runtime_error("Queue size in config file is not set or is not a valid number");
+    }
+    m_queueSize = m_configNode["server"]["queue_size"].as<int>();
+    if (m_queueSize <= 0) {
+        throw std::runtime_error("Queue size in config file must be a positive greater than zero integer");
     }
 }
 

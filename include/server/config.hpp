@@ -32,6 +32,7 @@ class Config {
     int getBlockTimeSeconds() const;
     int getTcpPort() const;
     int getUdpPort() const;
+    int getQueueSize() const;
     std::string getDbPath() const;
     std::string getSecretPhrase() const;
     std::string getMetricHostPort() const;
@@ -49,6 +50,7 @@ class Config {
     int m_blockTimeSeconds;
     int m_tcpPort;
     int m_udpPort;
+    int m_queueSize;
     std::string m_metricHostPort;
     std::string m_logPath;
     std::string m_dbPath;
