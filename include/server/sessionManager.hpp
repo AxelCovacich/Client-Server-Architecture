@@ -68,6 +68,8 @@ class SessionManager {
 
     std::shared_ptr<clientSession> getSession(const std::string &clientId);
 
+    std::unordered_set<std::string> getOfflineUsers();
+
   private:
     Storage &m_storage;
     Logger &m_logger;
@@ -82,6 +84,7 @@ class SessionManager {
     std::set<std::string> m_lockedClients;
 
     std::unordered_set<std::string> m_connectedUsers; // Users that have connected once
+    std::unordered_set<std::string> m_offlineUsers;   // Users that are currently offline
 };
 
 #endif // SESSION_MANAGER_HPP

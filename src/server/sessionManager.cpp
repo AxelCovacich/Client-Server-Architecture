@@ -13,7 +13,8 @@ void SessionManager::registerSession(const std::string &clientId, std::shared_pt
     // std::move to "transfere" the property of session shared_ptr to the entry of the map
     // without doing a copy. Optimization change suggested by sonnarqube
     m_activeSessions[clientId] = std::move(session);
-    // m_activeSessions[clientId] = session;
+    m_offlineUsers.erase(clientId);
+
     if (m_connectedUsers.find(clientId) == m_connectedUsers.end()) {
         m_connectedUsers.insert(clientId); // mark user as connected at least once
     } else {
@@ -27,6 +28,7 @@ void SessionManager::unregisterSession(const std::string &clientId) {
 
     std::lock_guard<std::mutex> lock(m_mutex);
     m_activeSessions.erase(clientId);
+    m_offlineUsers.insert(clientId);
 }
 
 bool SessionManager::lockClient(const std::string &clientId) {
@@ -99,6 +101,8 @@ std::shared_ptr<clientSession> SessionManager::getSession(const std::string &cli
 }
 
 std::vector<struct sockaddr_storage> SessionManager::getActiveUdpAddresses() {
+    // need to use vector because we may have multiple UDP addresses per session. Use of set would require hash
+    // definition also.
     std::vector<struct sockaddr_storage> addresses;
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -109,4 +113,9 @@ std::vector<struct sockaddr_storage> SessionManager::getActiveUdpAddresses() {
         }
     }
     return addresses;
+}
+
+std::unordered_set<std::string> SessionManager::getOfflineUsers() {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_offlineUsers;
 }
