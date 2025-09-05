@@ -2,6 +2,7 @@
 #define UDP_HANDLER_HPP
 
 #include "clientSession.hpp"
+#include "eventQueue.hpp"
 #include "logger.hpp"
 #include "sessionManager.hpp"
 #include "trafficReporter.hpp"
@@ -30,7 +31,8 @@ class UdpHandler {
      * @param sessionManager A reference to the shared session manager.
      * @param trafficReporter A reference to the shared traffic reporter.
      */
-    UdpHandler(int udpSocketFd, Logger &logger, SessionManager &sessionManager, TrafficReporter &trafficReporter);
+    UdpHandler(int udpSocketFd, Logger &logger, SessionManager &sessionManager, TrafficReporter &trafficReporter,
+               EventQueue &eventQueue);
 
     /**
      * @brief The main entry point for processing a UDP message.
@@ -55,6 +57,8 @@ class UdpHandler {
     void handleKeepalive(const json &request, const struct sockaddr_storage &client_addr);
 
     int m_udpSocketFd;
+
+    EventQueue m_eventQueue;
     Logger &m_logger;
     SessionManager &m_sessionManager;
     TrafficReporter &m_trafficReporter;

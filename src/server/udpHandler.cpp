@@ -2,15 +2,17 @@
 #include <iostream>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <unordered_map>
 
 using namespace std;
 
 UdpHandler::UdpHandler(int udpSocketFd, Logger &logger, SessionManager &sessionManager,
-                       TrafficReporter &trafficReporter)
+                       TrafficReporter &trafficReporter, EventQueue &eventQueue)
     : m_udpSocketFd(udpSocketFd)
     , m_logger(logger)
     , m_sessionManager(sessionManager)
-    , m_trafficReporter(trafficReporter) {
+    , m_trafficReporter(trafficReporter)
+    , m_eventQueue(eventQueue) {
 }
 void UdpHandler::handleMessage() {
 
@@ -111,4 +113,12 @@ void UdpHandler::broadcastMessage(const json &alertMessage) {
         }
     }
     m_logger.log(LogLevel::INFO, "UdpHandler", "Broadcasted alert message to all connected clients: " + alert_str);
+
+    std::unordered_set<std::string> offlineUsers = m_sessionManager.getOfflineUsers();
+    for (const auto &user : offlineUsers) {
+        // queue messages for later delivery
+        m_eventQueue.pushEvent(user, Event{EventType::NOTIFICATION, alert_str});
+        m_logger.log(LogLevel::INFO, "UdpHandler",
+                     "User " + user + " is offline, alert has been queued for later delivery.");
+    }
 }
