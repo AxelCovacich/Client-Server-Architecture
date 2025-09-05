@@ -20,6 +20,7 @@ void testConfigLoadsPortFromYaml() {
                 max_clients: 10
                 max_unix_connections: 5
                 metric_host_port: "localhost:8081"
+                queue_size: 10
 
             logger:
                 max_log_size_mb: 10
@@ -49,6 +50,7 @@ void testConfigPrioritizesCliArgumentOverYaml() {
                 max_clients: 10
                 max_unix_connections: 5
                 metric_host_port: "localhost:8081"
+                queue_size: 10
 
             logger:
                 max_log_size_mb: 10
@@ -81,6 +83,7 @@ void testConfigPrioritizesEnvVariableOverYaml() {
                 max_clients: 10
                 max_unix_connections: 5
                 metric_host_port: "localhost:8081"
+                queue_size: 10
 
             logger:
                 max_log_size_mb: 10
@@ -114,6 +117,7 @@ void testConfigLoadsdbPathFromYaml() {
                 max_clients: 10
                 max_unix_connections: 5
                 metric_host_port: "localhost:8081"
+                queue_size: 10
 
             logger:
                 max_log_size_mb: 10
@@ -143,6 +147,7 @@ void testConfigSecretPhraseFromYaml() {
                 max_clients: 10
                 max_unix_connections: 5
                 metric_host_port: "localhost:8081"
+                queue_size: 10
 
             logger:
                 max_log_size_mb: 10
@@ -171,6 +176,7 @@ void testConfigPrioritizesCliArgumentsTcpAndUdp() {
                 max_clients: 10
                 max_unix_connections: 5
                 metric_host_port: "localhost:8081"
+                queue_size: 10
 
             logger:
                 max_log_size_mb: 10
@@ -200,6 +206,7 @@ void testConfigFailsOnInvalidPortInYaml() {
                 max_clients: 10
                 max_unix_connections: 5
                 metric_host_port: "localhost:8081"
+                queue_size: 10
 
             logger:
                 max_log_size_mb: 10
@@ -230,6 +237,7 @@ void testConfigFailsOnInvalidEnvPort() {
                 max_clients: 10
                 max_unix_connections: 5
                 metric_host_port: "localhost:8081"
+                queue_size: 10
 
             logger:
                 max_log_size_mb: 10
@@ -265,6 +273,7 @@ void testConfigCliArgumentHasPriorityOverEnv() {
                 max_clients: 10
                 max_unix_connections: 5
                 metric_host_port: "localhost:8081"
+                queue_size: 10
 
             logger:
                 max_log_size_mb: 10
@@ -291,6 +300,7 @@ void testConfigFailsOnMissingDbPathInYaml() {
                 max_clients: 10
                 max_unix_connections: 5
                 metric_host_port: "localhost:8081"
+                queue_size: 10
 
             logger:
                 max_log_size_mb: 10
@@ -323,6 +333,7 @@ void testConfigFailsOnMissingSecretPhraseInYaml() {
                 max_clients: 10
                 max_unix_connections: 5
                 metric_host_port: "localhost:8081"
+                queue_size: 10
 
             logger:
                 max_log_size_mb: 10
@@ -354,4 +365,33 @@ void testConfigLoadsFromDefaultWhenNoArgs() {
     } catch (const std::exception &e) {
         TEST_FAIL_MESSAGE("Expected successful load from default config, but exception thrown.");
     }
+}
+
+void testConfigFailsOnNonExistentQueueSize() {
+    createTempYamlFile(R"(
+            database:
+                path: ":memory:"
+
+            security:
+                unlock_secret_phrase: "test"
+                block_time_seconds: 900
+
+            server:
+                port: 80
+                max_clients: 10
+                max_unix_connections: 5
+                metric_host_port: "localhost:8081"
+            )");
+    const std::vector<std::string> args = {"./server", "./temp_config.yaml"};
+
+    try {
+        Config config(args);
+        TEST_FAIL_MESSAGE("Expected std::runtime_error but no exception was thrown.");
+    } catch (const std::runtime_error &e) {
+        TEST_ASSERT_EQUAL_STRING("Queue size is not set in config file", e.what());
+    } catch (...) {
+        TEST_FAIL_MESSAGE("Expected runtime_error but a different exception was thrown.");
+    }
+
+    remove("./temp_config.yaml");
 }

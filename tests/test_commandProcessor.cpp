@@ -542,6 +542,7 @@ server:
     max_clients: 10
     max_unix_connections: 5
     metric_host_port: "localhost:8081"
+    queue_size: 10
 logger:
     max_log_size_mb: 10
     log_path: "./var/logs/server.log"
@@ -596,6 +597,7 @@ server:
     max_clients: 10
     max_unix_connections: 5
     metric_host_port: "localhost:8081"
+    queue_size: 10
 logger:
     max_log_size_mb: 10
     log_path: "./var/logs/server.log"
@@ -632,6 +634,7 @@ security:
     TEST_ASSERT_EQUAL_STRING("error", response["status"].get<std::string>().c_str());
     TEST_ASSERT_EQUAL_STRING("Couldn't unlock Client `blocked_user`. Client didn't found or misspelled.",
                              response["message"].get<std::string>().c_str());
+    remove("./temp_config.yaml");
 }
 
 void testUnlockClientWrongPhrase() {
@@ -648,6 +651,7 @@ server:
     max_clients: 10
     max_unix_connections: 5
     metric_host_port: "localhost:8081"
+    queue_size: 10
 logger:
     max_log_size_mb: 10
     log_path: "./var/logs/server.log"
@@ -684,6 +688,7 @@ security:
     json response = json::parse(result.first);
     TEST_ASSERT_EQUAL_STRING("error", response["status"].get<std::string>().c_str());
     TEST_ASSERT_EQUAL_STRING("Wrong secret phrase. Try again.", response["message"].get<std::string>().c_str());
+    remove("./temp_config.yaml");
 }
 
 void testUnlockClientWrongPayload() {

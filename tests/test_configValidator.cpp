@@ -24,6 +24,8 @@ void testValidatorFailsOnNonNumericPort() {
     bool isValid = ConfigValidator::validateArguments(args);
 
     TEST_ASSERT_FALSE(isValid);
+    tempFile.close();
+    remove(tempFilePath);
 }
 
 void testValidatorSucceedsWithNoArgs() {
@@ -41,6 +43,8 @@ void testValidatorSucceedsWithCorrectArgs() {
 
     bool isValid = ConfigValidator::validateArguments(args);
     TEST_ASSERT_TRUE(isValid);
+    tempFile.close();
+    remove(tempFilePath);
 }
 
 /**
@@ -54,6 +58,8 @@ void testValidatorrInvalidPortNumber() {
     bool isValid = ConfigValidator::validateArguments(args);
 
     TEST_ASSERT_FALSE(isValid);
+    tempFile.close();
+    remove(tempFilePath);
 }
 
 /**
@@ -68,6 +74,8 @@ void testValidatorZeroNumberPort() {
     bool isValid = ConfigValidator::validateArguments(args);
 
     TEST_ASSERT_FALSE(isValid);
+    tempFile.close();
+    remove(tempFilePath);
 }
 
 void testValidatesFalseFileNotFound() {
