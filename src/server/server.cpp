@@ -50,10 +50,10 @@ Server::Server(const Config &config, const IClock &clock, Storage &storage, Logg
     , m_serverTCPFD(-1)
     , m_serverUDPFD(-1)
     , m_serverUnixFD(-1)
-    , m_udpHandler(m_serverUDPFD, m_logger, m_sessionManager, m_trafficReporter)
+    , m_eventQueue(config.getQueueSize())
+    , m_udpHandler(m_serverUDPFD, m_logger, m_sessionManager, m_trafficReporter, m_eventQueue)
     , m_alert(m_logger, m_sessionManager, m_udpHandler)
-    , m_ipcHandler(m_logger, m_alert, m_trafficReporter)
-    , m_eventQueue(config.getQueueSize()) {
+    , m_ipcHandler(m_logger, m_alert, m_trafficReporter) {
 
     setupServer();
     m_trafficReporter.startPrometheusExposer(config.getMetricHostPort());

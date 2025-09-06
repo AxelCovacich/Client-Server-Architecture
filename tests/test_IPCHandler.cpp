@@ -1,4 +1,5 @@
 #include "alertManager.hpp"
+#include "eventQueue.hpp"
 #include "ipcHandler.hpp"
 #include "logger.hpp"
 #include "storage.hpp"
@@ -16,7 +17,8 @@ void testIpcHandlerReadError() {
     Logger mockLogger(mockStorage, clock, std::cerr, dummyConfig);
     TrafficReporter trafficreporter;
     SessionManager mockSessionManager(mockStorage, mockLogger, trafficreporter);
-    UdpHandler mockUdpHandler(-1, mockLogger, mockSessionManager, trafficreporter);
+    EventQueue eventQueue(10);
+    UdpHandler mockUdpHandler(-1, mockLogger, mockSessionManager, trafficreporter, eventQueue);
     AlertManager mockAlertManager(mockLogger, mockSessionManager, mockUdpHandler);
 
     IpcHandler ipcHandler(mockLogger, mockAlertManager, trafficreporter);

@@ -2,6 +2,7 @@
 
 #include "alertManager.hpp"
 #include "clock.hpp"
+#include "eventQueue.hpp"
 #include "logger.hpp"
 #include "sessionManager.hpp"
 #include "storage.hpp"
@@ -25,7 +26,8 @@ void testProcessAlertLocksClientOnValidAlert() {
     Logger logger(storage, clock, std::cerr, dummyConfig);
     TrafficReporter trafficreporter;
     SessionManager sessionManager(storage, logger, trafficreporter);
-    UdpHandler udpHandler(-1, logger, sessionManager, trafficreporter);
+    EventQueue eventQueue(10);
+    UdpHandler udpHandler(-1, logger, sessionManager, trafficreporter, eventQueue);
     AlertManager alertManager(logger, sessionManager, udpHandler);
 
     std::string valid_alert = R"({
@@ -52,7 +54,8 @@ void testProcessAlertHandlesMalformedJsonGracefully() {
     Logger logger(storage, clock, std::cerr, dummyConfig);
     TrafficReporter trafficreporter;
     SessionManager sessionManager(storage, logger, trafficreporter);
-    UdpHandler udpHandler(-1, logger, sessionManager, trafficreporter);
+    EventQueue eventQueue(10);
+    UdpHandler udpHandler(-1, logger, sessionManager, trafficreporter, eventQueue);
     AlertManager alertManager(logger, sessionManager, udpHandler);
 
     std::string malformed_alert = "not a json message";

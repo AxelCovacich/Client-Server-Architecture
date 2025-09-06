@@ -213,6 +213,9 @@ void testCompressFileGzipFailsOnInvalidPath();
 void testShouldRotateTrue();
 void testTrafficReporterCounters();
 void testUpdateStockFailsWithHubUser();
+void testEventQueuePushLimitErasesOld();
+void testEventQueuePopEmpty();
+
 /**
  * @brief Runs all the tests.
  *
@@ -416,5 +419,7 @@ int main() {
     RUN_TEST(testShouldRotateTrue);
     RUN_TEST(testTrafficReporterCounters);
     RUN_TEST(testUpdateStockFailsWithHubUser);
+    RUN_TEST(testEventQueuePushLimitErasesOld);
+    RUN_TEST(testEventQueuePopEmpty);
     return UNITY_END();
 }
