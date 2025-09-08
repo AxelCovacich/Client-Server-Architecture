@@ -1,7 +1,6 @@
 #ifndef UDP_HANDLER_HPP
 #define UDP_HANDLER_HPP
 
-#include "clientSession.hpp"
 #include "eventQueue.hpp"
 #include "logger.hpp"
 #include "sessionManager.hpp"
@@ -48,6 +47,9 @@ class UdpHandler {
         m_udpSocketFd = udpFD;
     }
 
+    void sendMessageToClient(const std::string &clientID, const std::string &message,
+                             const struct sockaddr_storage &client_addr);
+
   private:
     /**
      * @brief Processes a keepalive message from a client.
@@ -58,7 +60,7 @@ class UdpHandler {
 
     int m_udpSocketFd;
 
-    EventQueue m_eventQueue;
+    EventQueue &m_eventQueue;
     Logger &m_logger;
     SessionManager &m_sessionManager;
     TrafficReporter &m_trafficReporter;

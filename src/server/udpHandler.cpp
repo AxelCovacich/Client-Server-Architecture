@@ -1,4 +1,5 @@
 #include "udpHandler.hpp"
+#include "clientSession.hpp"
 #include <iostream>
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -120,5 +121,21 @@ void UdpHandler::broadcastMessage(const json &alertMessage) {
         m_eventQueue.pushEvent(user, Event{EventType::NOTIFICATION, alert_str});
         m_logger.log(LogLevel::INFO, "UdpHandler",
                      "User " + user + " is offline, alert has been queued for later delivery.");
+    }
+}
+
+void UdpHandler::sendMessageToClient(const std::string &clientID, const std::string &message,
+                                     const struct sockaddr_storage &client_addr) {
+
+    socklen_t addr_len = (client_addr.ss_family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
+
+    ssize_t sent = sendto(m_udpSocketFd, message.c_str(), message.length(), 0,
+                          reinterpret_cast<const struct sockaddr *>(&client_addr), addr_len); // NOLINT
+    if (sent <= 0) {
+        m_logger.log(LogLevel::ERROR, "UdpHandler", "Error sending delayed alert message to client " + clientID);
+        m_trafficReporter.incrementError("udp", "tx");
+    } else {
+        m_trafficReporter.incrementMessage("udp", "tx");
+        m_logger.log(LogLevel::INFO, "UdpHandler", "Sent delayed alert message to client " + clientID);
     }
 }
