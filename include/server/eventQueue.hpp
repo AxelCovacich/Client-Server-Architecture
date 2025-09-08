@@ -1,6 +1,7 @@
 #ifndef EVENTQUEUE_HPP
 #define EVENTQUEUE_HPP
 
+#include "logger.hpp"
 #include <deque>
 #include <string>
 #include <unordered_map>
@@ -18,12 +19,14 @@ struct Event {
 
 class EventQueue {
   public:
-    EventQueue(int queueSize);
+    EventQueue(int queueSize, Logger &logger);
     void pushEvent(const std::string &clientID, const Event &event);
     bool popEvent(const std::string &clientID, Event &event);
 
   private:
     int m_queueSize;
     std::unordered_map<std::string, std::deque<Event>> m_eventQueueMap;
+
+    Logger &m_logger;
 };
 #endif // EVENTQUEUE_HPP
