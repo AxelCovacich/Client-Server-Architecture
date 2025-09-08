@@ -50,7 +50,7 @@ Server::Server(const Config &config, const IClock &clock, Storage &storage, Logg
     , m_serverTCPFD(-1)
     , m_serverUDPFD(-1)
     , m_serverUnixFD(-1)
-    , m_eventQueue(config.getQueueSize())
+    , m_eventQueue(config.getQueueSize(), m_logger)
     , m_udpHandler(m_serverUDPFD, m_logger, m_sessionManager, m_trafficReporter, m_eventQueue)
     , m_alert(m_logger, m_sessionManager, m_udpHandler)
     , m_ipcHandler(m_logger, m_alert, m_trafficReporter) {
@@ -259,8 +259,9 @@ void Server::handleTcpConnection() {
     // shared_ptr are used by threads independently of local variable session. When all instances(threads)
     // complete their jobs and there is no more copies of the object clientSession via shared_ptr, memory will
     // be freed automaticly.
-    auto session = std::make_shared<clientSession>(newsockfd, m_inventory, m_authenticator, m_logger, m_storage,
-                                                   clientIp, m_sessionManager, m_config, m_trafficReporter);
+    auto session =
+        std::make_shared<clientSession>(newsockfd, m_inventory, m_authenticator, m_logger, m_storage, clientIp,
+                                        m_sessionManager, m_config, m_trafficReporter, m_eventQueue, m_udpHandler);
     jthread client_thread(&clientSession::run, session);
     client_thread.detach();
 }
