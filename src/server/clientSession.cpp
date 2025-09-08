@@ -2,6 +2,7 @@
 #include "commandProcessor.hpp"
 #include "server.hpp"
 #include <array>
+#include <chrono>
 #include <cstring> // For memset()
 #include <iostream>
 #include <memory>
@@ -13,17 +14,20 @@ using json = nlohmann::json;
 
 clientSession::clientSession(int clientSocket, Inventory &inventory, Authenticator &authenticator, Logger &logger,
                              Storage &storage, const std::string &clientIP, SessionManager &sessionManager,
-                             const Config &config, TrafficReporter &trafficReporter)
+                             const Config &config, TrafficReporter &trafficReporter, EventQueue &eventQueue,
+                             UdpHandler &udpHandler)
     : m_clientSocket(clientSocket)
     , m_isAuthenticated(false)
     , m_inventory(inventory)
     , m_authenticator(authenticator)
     , m_logger(logger)
+    , m_udpHandler(udpHandler)
     , m_clientIP(clientIP)
     , m_storage(storage)
     , m_sessionManager(sessionManager)
     , m_config(config)
     , m_trafficReporter(trafficReporter)
+    , m_eventQueue(eventQueue)
 // m_clientID("") starts empty already
 {
     // constructor actions here
@@ -84,6 +88,9 @@ void clientSession::run() {
             break;
         }
 
+        if (m_isAuthenticated) {
+            handleEventQueue(); // check and send any pending event for this client
+        }
         if (!result.second) {
             // close connection
             break;
@@ -242,4 +249,26 @@ void clientSession::setUdpAddress(const struct sockaddr_storage &addr) {
     std::lock_guard<std::mutex> lock(m_sessionMutex);
 
     m_udpAddress = std::make_shared<sockaddr_storage>(addr);
+}
+
+void clientSession::handleEventQueue() {
+    Event event;
+    while (m_eventQueue.popEvent(m_clientID, event)) {
+        switch (event.type) {
+
+        case EventType::NOTIFICATION: {
+            if (!m_udpAddress) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(
+                    100)); // give time to the client to send a keepalive and set the udp address
+            }
+            if (m_udpAddress) {
+                m_udpHandler.sendMessageToClient(m_clientID, event.message, *m_udpAddress);
+            } else {
+                m_logger.log(LogLevel::WARNING, "ClientSession",
+                             "UDP address not set for client " + m_clientID + ". Cannot send event.");
+            }
+        }
+            // more event types can be added here
+        }
+    }
 }

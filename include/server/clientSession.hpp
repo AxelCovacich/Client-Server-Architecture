@@ -3,10 +3,12 @@
 
 #include "authenticator.hpp"
 #include "config.hpp"
+#include "eventQueue.hpp"
 #include "inventory.hpp"
 #include "logger.hpp"
 #include "sessionManager.hpp"
 #include "trafficReporter.hpp"
+#include "udpHandler.hpp"
 #include <memory>
 #include <mutex>
 #include <nlohmann/json.hpp>
@@ -37,10 +39,12 @@ class clientSession : public std::enable_shared_from_this<clientSession> {
     TrafficReporter &m_trafficReporter;
     Inventory &m_inventory;
     Authenticator &m_authenticator;
+    EventQueue &m_eventQueue;
     Logger &m_logger;
     Storage &m_storage;
     const Config &m_config;
     SessionManager &m_sessionManager;
+    UdpHandler &m_udpHandler;
 
   public:
     /**
@@ -53,7 +57,7 @@ class clientSession : public std::enable_shared_from_this<clientSession> {
      */
     clientSession(int clientSocket, Inventory &inventory, Authenticator &autenthicator, Logger &logger,
                   Storage &storage, const std::string &clientIP, SessionManager &sessionManager, const Config &config,
-                  TrafficReporter &trafficReporter);
+                  TrafficReporter &trafficReporter, EventQueue &eventQueue, UdpHandler &udpHandler);
 
     ~clientSession();
 
@@ -103,6 +107,8 @@ class clientSession : public std::enable_shared_from_this<clientSession> {
     void setUdpAddress(const struct sockaddr_storage &addr);
 
     std::shared_ptr<sockaddr_storage> getUdpAddress() const;
+
+    void handleEventQueue();
 };
 
 #endif // CLIENT_SESSION_HPP
