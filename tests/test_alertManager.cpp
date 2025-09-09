@@ -26,7 +26,7 @@ void testProcessAlertLocksClientOnValidAlert() {
     Logger logger(storage, clock, std::cerr, dummyConfig);
     TrafficReporter trafficreporter;
     SessionManager sessionManager(storage, logger, trafficreporter);
-    EventQueue eventQueue(10);
+    EventQueue eventQueue(10, logger);
     UdpHandler udpHandler(-1, logger, sessionManager, trafficreporter, eventQueue);
     AlertManager alertManager(logger, sessionManager, udpHandler);
 
@@ -54,7 +54,7 @@ void testProcessAlertHandlesMalformedJsonGracefully() {
     Logger logger(storage, clock, std::cerr, dummyConfig);
     TrafficReporter trafficreporter;
     SessionManager sessionManager(storage, logger, trafficreporter);
-    EventQueue eventQueue(10);
+    EventQueue eventQueue(10, logger);
     UdpHandler udpHandler(-1, logger, sessionManager, trafficreporter, eventQueue);
     AlertManager alertManager(logger, sessionManager, udpHandler);
 

@@ -7,6 +7,7 @@
 #include "storage.hpp"
 #include "test_helper.hpp"
 #include "trafficReporter.hpp"
+#include "udpHandler.hpp"
 #include "unity.h"
 #include <arpa/inet.h>
 #include <iostream>
@@ -82,8 +83,11 @@ void testRegisterAndUnregisterSession() {
     Authenticator authenticator(storage, clock, logger);
     TrafficReporter trafficReporter;
     SessionManager sessionManager(storage, logger, trafficReporter);
-    auto session = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP",
-                                                   sessionManager, dummyConfig, trafficReporter);
+    EventQueue eventQueue(10, logger);
+    UdpHandler udpHandler(-1, logger, sessionManager, trafficReporter, eventQueue);
+    auto session =
+        std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP", sessionManager,
+                                        dummyConfig, trafficReporter, eventQueue, udpHandler);
     std::string clientId = "warehouse-A";
 
     TEST_ASSERT_FALSE(sessionManager.isClientRegistered(clientId));
@@ -107,10 +111,12 @@ void testgetActiveUdpAddresses() {
     Authenticator authenticator(storage, clock, logger);
     TrafficReporter trafficReporter;
     SessionManager sessionManager(storage, logger, trafficReporter);
-
+    EventQueue eventQueue(10, logger);
+    UdpHandler udpHandler(-1, logger, sessionManager, trafficReporter, eventQueue);
     // first session
-    auto session1 = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "192.168.0.10",
-                                                    sessionManager, dummyConfig, trafficReporter);
+    auto session1 =
+        std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "192.168.0.10", sessionManager,
+                                        dummyConfig, trafficReporter, eventQueue, udpHandler);
 
     struct sockaddr_in addr1 {};
     addr1.sin_family = AF_INET;
@@ -122,8 +128,9 @@ void testgetActiveUdpAddresses() {
     session1->setUdpAddress(storageAddr1);
 
     // second session
-    auto session2 = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "10.0.0.5",
-                                                    sessionManager, dummyConfig, trafficReporter);
+    auto session2 =
+        std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "10.0.0.5", sessionManager,
+                                        dummyConfig, trafficReporter, eventQueue, udpHandler);
 
     struct sockaddr_in addr2 {};
     addr2.sin_family = AF_INET;
@@ -167,9 +174,11 @@ void testSessionManagerGetClientSession() {
     Authenticator authenticator(storage, clock, logger);
     TrafficReporter trafficReporter;
     SessionManager sessionManager(storage, logger, trafficReporter);
-
-    auto session = std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP",
-                                                   sessionManager, dummyConfig, trafficReporter);
+    EventQueue eventQueue(10, logger);
+    UdpHandler udpHandler(-1, logger, sessionManager, trafficReporter, eventQueue);
+    auto session =
+        std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP", sessionManager,
+                                        dummyConfig, trafficReporter, eventQueue, udpHandler);
 
     sessionManager.registerSession("warehouse-1", session);
 

@@ -1,9 +1,18 @@
+#include "config.hpp"
 #include "eventQueue.hpp"
+#include "storage.hpp"
+#include "test_helper.hpp"
 #include "unity.h"
+#include <iostream>
 #include <string>
 
 void testEventQueuePushLimitErasesOld() {
-    EventQueue eventQueue(3);
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    SystemClock clock;
+    Config dummyConfig = createDummyConfig();
+    Logger logger(storage, clock, std::cerr, dummyConfig);
+    EventQueue eventQueue(3, logger);
     eventQueue.pushEvent("client1", Event{EventType::NOTIFICATION, "Event 1"});
     eventQueue.pushEvent("client1", Event{EventType::NOTIFICATION, "Event 2"});
     eventQueue.pushEvent("client1", Event{EventType::NOTIFICATION, "Event 3"});
@@ -15,7 +24,12 @@ void testEventQueuePushLimitErasesOld() {
 }
 
 void testEventQueuePopEmpty() {
-    EventQueue eventQueue(3);
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    SystemClock clock;
+    Config dummyConfig = createDummyConfig();
+    Logger logger(storage, clock, std::cerr, dummyConfig);
+    EventQueue eventQueue(3, logger);
     Event event;
     eventQueue.pushEvent("client1", Event{EventType::NOTIFICATION, "Event 1"});
     eventQueue.popEvent("client1", event); // Remove the only event to make it empty
