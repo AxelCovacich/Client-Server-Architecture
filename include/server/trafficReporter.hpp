@@ -36,6 +36,9 @@ class TrafficReporter {
     prometheus::Family<prometheus::Counter> *m_api_msg_counter;
     prometheus::Family<prometheus::Counter> *m_api_error_counter;
     prometheus::Family<prometheus::Counter> *m_api_reconnection_counter;
+
+    /// Map to hold counters for each protocol and direction, and for Label usage (unordered_map not supporting custom
+    /// types label)
     std::map<LabelKey, prometheus::Counter *> m_message_counters;
     std::map<LabelKey, prometheus::Counter *> m_error_counters;
     std::map<LabelKey, prometheus::Counter *> m_reconnection_counters;

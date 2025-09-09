@@ -46,7 +46,7 @@ int TrafficReporter::startPrometheusExposer(std::string metricHostPort) {
 }
 
 void TrafficReporter::incrementMessage(std::string protocol, std::string direction) {
-
+    // no need for mutex, prometheus is thread safe (atomic counters)
     LabelKey key{protocol, direction};
     auto tmp = m_message_counters.find(key);
     if (tmp == m_message_counters.end()) {
