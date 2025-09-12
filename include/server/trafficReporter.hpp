@@ -21,14 +21,14 @@ class TrafficReporter {
   public:
     TrafficReporter();
     void initPrometheusMetrics();
-    int startPrometheusExposer(std::string metricHostPort);
-    void incrementMessage(std::string protocol, std::string direction);
-    void incrementError(std::string protocol, std::string direction);
-    void incrementReconnection(std::string protocol, std::string direction);
+    int startPrometheusExposer(const std::string &metricHostPort);
+    void incrementMessage(const std::string &protocol, const std::string &direction);
+    void incrementError(const std::string &protocol, const std::string &direction);
+    void incrementReconnection(const std::string &protocol, const std::string &direction);
 
-    int getMessageCount(std::string protocol, std::string direction);
-    int getErrorCount(std::string protocol, std::string direction);
-    int getReconnectionCount(std::string protocol, std::string direction);
+    int getMessageCount(const std::string &protocol, const std::string &direction);
+    int getErrorCount(const std::string &protocol, const std::string &direction);
+    int getReconnectionCount(const std::string &protocol, const std::string &direction);
 
   private:
     std::shared_ptr<prometheus::Registry> m_registry;

@@ -55,6 +55,8 @@ class Config {
     std::string m_logPath;
     std::string m_dbPath;
     std::string m_secretPhrase;
+
+    void validatePort(const std::vector<std::string> &args);
 };
 
 #endif // CONFIG_HPP

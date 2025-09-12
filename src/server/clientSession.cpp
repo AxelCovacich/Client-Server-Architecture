@@ -259,7 +259,7 @@ void clientSession::handleEventQueue() {
         case EventType::NOTIFICATION: {
             if (!m_udpAddress) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(
-                    100)); // give time to the client to send a keepalive and set the udp address
+                    WaitForDataSleepMs)); // give time to the client to send a keepalive and set the udp address
             }
             if (m_udpAddress) {
                 m_udpHandler.sendMessageToClient(m_clientID, event.message, *m_udpAddress);

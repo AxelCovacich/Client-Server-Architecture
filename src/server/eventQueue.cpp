@@ -4,8 +4,7 @@
 using namespace std;
 
 EventQueue::EventQueue(int queueSize, Logger &logger)
-    : m_eventQueueMap()
-    , m_queueSize(queueSize)
+    : m_queueSize(queueSize)
     , m_logger(logger) {
     // Constructor implementation (if needed)
 }

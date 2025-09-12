@@ -90,38 +90,6 @@ void Config::logConfig() {
 
 void Config::serverConfig(const std::vector<std::string> &args) {
 
-    if (!m_configNode["server"] || !m_configNode["server"]["port"] || !m_configNode["server"]["port"].IsScalar()) {
-        throw std::runtime_error("Port in config file is not set or is not a valid number");
-    }
-    int port = m_configNode["server"]["port"].as<int>();
-    if (port <= 0 || port > MAX_PORT) {
-        throw std::runtime_error("Port in config file out of valid range");
-    }
-    m_tcpPort = port;
-    m_udpPort = port;
-
-    if (args.size() >= 3) {
-        m_tcpPort = std::stoi(args[2]); // at this point args are already validated, no need to check for exceptions
-        m_udpPort = m_tcpPort;          // If only one port is provided, use it for both TCP and UDP
-    }
-    if (args.size() == 4) {
-        m_udpPort = std::stoi(args[3]);
-    } else if (args.size() < 3) {
-        const char *env_port = getenv("SERVER_PORT");
-        if (env_port != nullptr) {
-            try {
-                int env_port_num = std::stoi(env_port);
-                if (env_port_num <= 0 || env_port_num > MAX_PORT) {
-                    throw std::runtime_error("Invalid port number in environment variable. Out of range.");
-                }
-                m_tcpPort = env_port_num;
-                m_udpPort = env_port_num;
-            } catch (const std::exception &) {
-                throw std::runtime_error("Environment variable SERVER_PORT is not a valid number");
-            }
-        }
-    }
-
     if (!m_configNode["server"]["max_clients"] || !m_configNode["server"]["max_clients"].IsScalar()) {
         throw std::runtime_error("Max clients in config file is not set or is not a valid number");
     }
@@ -183,5 +151,40 @@ void Config::securityConfig() {
     m_blockTimeSeconds = m_configNode["security"]["block_time_seconds"].as<int>();
     if (m_blockTimeSeconds <= 0) {
         throw std::runtime_error("Block time seconds must be a positive greater than zero integer");
+    }
+}
+
+void Config::validatePort(const std::vector<std::string> &args) {
+
+    if (!m_configNode["server"] || !m_configNode["server"]["port"] || !m_configNode["server"]["port"].IsScalar()) {
+        throw std::runtime_error("Port in config file is not set or is not a valid number");
+    }
+    int port = m_configNode["server"]["port"].as<int>();
+    if (port <= 0 || port > MAX_PORT) {
+        throw std::runtime_error("Port in config file out of valid range");
+    }
+    m_tcpPort = port;
+    m_udpPort = port;
+
+    if (args.size() >= 3) {
+        m_tcpPort = std::stoi(args[2]); // at this point args are already validated, no need to check for exceptions
+        m_udpPort = m_tcpPort;          // If only one port is provided, use it for both TCP and UDP
+    }
+    if (args.size() == 4) {
+        m_udpPort = std::stoi(args[3]);
+    } else if (args.size() < 3) {
+        const char *env_port = getenv("SERVER_PORT");
+        if (env_port != nullptr) {
+            try {
+                int env_port_num = std::stoi(env_port);
+                if (env_port_num <= 0 || env_port_num > MAX_PORT) {
+                    throw std::runtime_error("Invalid port number in environment variable. Out of range.");
+                }
+                m_tcpPort = env_port_num;
+                m_udpPort = env_port_num;
+            } catch (const std::exception &) {
+                throw std::runtime_error("Environment variable SERVER_PORT is not a valid number");
+            }
+        }
     }
 }

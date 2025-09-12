@@ -8,9 +8,6 @@ TrafficReporter::TrafficReporter()
     : m_api_msg_counter(nullptr)
     , m_api_error_counter(nullptr)
     , m_api_reconnection_counter(nullptr)
-    , m_message_counters()
-    , m_error_counters()
-    , m_reconnection_counters()
     , m_registry(nullptr)
     , m_exposer(nullptr) {
 
@@ -33,7 +30,7 @@ void TrafficReporter::initPrometheusMetrics() {
                                       .Register(*m_registry);
 }
 
-int TrafficReporter::startPrometheusExposer(std::string metricHostPort) {
+int TrafficReporter::startPrometheusExposer(const std::string &metricHostPort) {
     // Start the Prometheus HTTP server
     try {
         m_exposer = std::make_unique<prometheus::Exposer>(metricHostPort);
@@ -45,7 +42,7 @@ int TrafficReporter::startPrometheusExposer(std::string metricHostPort) {
     }
 }
 
-void TrafficReporter::incrementMessage(std::string protocol, std::string direction) {
+void TrafficReporter::incrementMessage(const std::string &protocol, const std::string &direction) {
     // no need for mutex, prometheus is thread safe (atomic counters)
     LabelKey key{protocol, direction};
     auto tmp = m_message_counters.find(key);
@@ -57,7 +54,7 @@ void TrafficReporter::incrementMessage(std::string protocol, std::string directi
     tmp->second->Increment();
 }
 
-void TrafficReporter::incrementError(std::string protocol, std::string direction) {
+void TrafficReporter::incrementError(const std::string &protocol, const std::string &direction) {
 
     LabelKey key{protocol, direction};
     auto tmp = m_error_counters.find(key);
@@ -69,7 +66,7 @@ void TrafficReporter::incrementError(std::string protocol, std::string direction
     tmp->second->Increment();
 }
 
-void TrafficReporter::incrementReconnection(std::string protocol, std::string direction) {
+void TrafficReporter::incrementReconnection(const std::string &protocol, const std::string &direction) {
 
     LabelKey key{protocol, direction};
     auto tmp = m_reconnection_counters.find(key);
@@ -81,7 +78,7 @@ void TrafficReporter::incrementReconnection(std::string protocol, std::string di
     tmp->second->Increment();
 }
 
-int TrafficReporter::getErrorCount(std::string protocol, std::string direction) {
+int TrafficReporter::getErrorCount(const std::string &protocol, const std::string &direction) {
     LabelKey key{protocol, direction};
     auto tmp = m_error_counters.find(key);
     if (tmp == m_error_counters.end()) {
@@ -91,7 +88,7 @@ int TrafficReporter::getErrorCount(std::string protocol, std::string direction) 
     return static_cast<int>(tmp->second->Value());
 }
 
-int TrafficReporter::getReconnectionCount(std::string protocol, std::string direction) {
+int TrafficReporter::getReconnectionCount(const std::string &protocol, const std::string &direction) {
     LabelKey key{protocol, direction};
     auto tmp = m_reconnection_counters.find(key);
     if (tmp == m_reconnection_counters.end()) {
@@ -100,7 +97,7 @@ int TrafficReporter::getReconnectionCount(std::string protocol, std::string dire
     return static_cast<int>(tmp->second->Value());
 }
 
-int TrafficReporter::getMessageCount(std::string protocol, std::string direction) {
+int TrafficReporter::getMessageCount(const std::string &protocol, const std::string &direction) {
     LabelKey key{protocol, direction};
     auto tmp = m_message_counters.find(key);
     if (tmp == m_message_counters.end()) {

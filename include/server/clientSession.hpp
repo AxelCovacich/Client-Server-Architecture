@@ -16,6 +16,8 @@
 #include <string>
 #include <sys/socket.h>
 
+#define WaitForDataSleepMs 100
+
 using json = nlohmann::json;
 
 /**
