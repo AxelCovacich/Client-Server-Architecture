@@ -214,6 +214,7 @@ bool handle_login_response(ClientContext *context, const char *response_string, 
     } else {
         logger_log("Output_handler", WARNING, ("Login failed: %s", message->valuestring));
         fprintf(output_stream, "Error from server: %s\n", message->valuestring); // NOLINT
+        return false;
     }
 
     cJSON_Delete(root);
