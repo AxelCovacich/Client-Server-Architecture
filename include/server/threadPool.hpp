@@ -15,6 +15,7 @@ class ThreadPool {
     ~ThreadPool();
 
     void enqueueTask(std::function<void()> task);
+    void stop();
 
   private:
     std::vector<std::thread> m_threads;

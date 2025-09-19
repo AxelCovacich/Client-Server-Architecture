@@ -9,12 +9,7 @@ ThreadPool::ThreadPool(size_t numThreads)
 }
 
 ThreadPool::~ThreadPool() {
-    m_running = false;
-    m_queueCV.notify_all(); // Wake up all threads to let them exit
-    for (auto &t : m_threads) {
-        if (t.joinable())
-            t.join();
-    }
+    stop(); // Ensure all threads are stopped and joined
 }
 
 void ThreadPool::enqueueTask(std::function<void()> task) {
@@ -41,5 +36,14 @@ void ThreadPool::workerThread() {
         }
         if (task)
             task(); // Execute the task outside the lock scope
+    }
+}
+
+void ThreadPool::stop() {
+    m_running = false;
+    m_queueCV.notify_all();
+    for (auto &t : m_threads) {
+        if (t.joinable())
+            t.join();
     }
 }
