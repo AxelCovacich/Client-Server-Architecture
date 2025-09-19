@@ -40,70 +40,76 @@ clientSession::~clientSession() {
     }
 }
 
-void clientSession::run() {
-
-    m_logger.log(LogLevel::INFO, "ClientSession", "New connection accepted from IP " + m_clientIP);
-
-    const char *welcome_msg =
-        "Welcome to the C++ Server! Please login to start operating or type 'end' to disconnect.\n";
-
-    if (write(m_clientSocket, welcome_msg, strlen(welcome_msg)) < 0) {
-        perror("Writing to client socket");
-        close(m_clientSocket);
-        return;
-    }
+bool clientSession::run() {
 
     ssize_t bytes_read = -1;
     std::array<char, BUFFER_SIZE> buffer{};
 
-    while (true) {
+    buffer.fill('\0'); // fill the buffer with 0 Just like memset
+    bytes_read = read(m_clientSocket, buffer.data(), buffer.size() - 1);
 
-        buffer.fill('\0'); // fill the buffer with 0 Just like memset
-        bytes_read = read(m_clientSocket, buffer.data(), buffer.size() - 1);
+    if (bytes_read <= 0) {
 
-        if (bytes_read <= 0) {
-            if (bytes_read < 0) {
-                perror("Error reading from socket");
-                m_trafficReporter.incrementError("tcp", "rx");
+        if (bytes_read < 0) {
+
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                return true; // No data, try again later
+            } else {
+                // perror("Error reading from TCP socket");
                 m_logger.log(LogLevel::ERROR, "ClientSession",
-                             "Error reading from client socket from IP: " + m_clientIP);
+                             "Error reading from client socket from IP: " + m_clientIP + ". Closing session.");
+                return false; // Error, close connection
             }
-            m_logger.log(LogLevel::WARNING, "ClientSession",
-                         "Client connection from IP: " + m_clientIP + "has been disconnected.");
-            // cout << "Client disconnected. Thread " << this_thread::get_id() << " finishing.\n";
-            break;
         }
+        m_logger.log(LogLevel::WARNING, "ClientSession",
+                     "Client connection from IP: " + m_clientIP + "has been disconnected.");
 
-        buffer.at(bytes_read) = '\0'; // to make it "c string friendly"
+        if (!m_clientID.empty()) {
 
-        string client_message(buffer.data());
+            m_sessionManager.unregisterSession(m_clientID);
+        }
+        return false; // client disconnected
+    }
 
-        processResult result = processMessage(client_message);
+    buffer.at(bytes_read) = '\0'; // to make it "c string friendly"
 
-        if (write(m_clientSocket, result.first.c_str(), result.first.length()) < 0) {
+    string client_message(buffer.data());
 
-            perror("Error writing response to socket");
+    processResult result = processMessage(client_message);
+
+    ssize_t bytes_written = write(m_clientSocket, result.first.c_str(), result.first.length());
+
+    if (bytes_written <= 0) {
+
+        if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            perror("Error writing to TCP socket");
             m_trafficReporter.incrementError("tcp", "tx");
             m_logger.log(LogLevel::ERROR, "ClientSession", "Error writing to client socket from IP: " + m_clientIP);
-            break;
-        }
 
-        if (m_isAuthenticated) {
-            handleEventQueue(); // check and send any pending event for this client
+            if (!m_clientID.empty()) {
+                m_sessionManager.unregisterSession(m_clientID);
+            }
+            return false;
         }
-        if (!result.second) {
-            // close connection
-            break;
-        }
-    }
-    // cout << "Closing connection with client from thread: " << this_thread::get_id() << '\n';
-    //  if is empty, the client has never autenticathed or registered, nothing to do.
-    if (!m_clientID.empty()) {
-        m_sessionManager.unregisterSession(m_clientID);
+        // If EAGAIN or EWOULDBLOCK, socket not ready for writing, store the message to send later
+        std::lock_guard<std::mutex> lock(m_sessionMutex);
+
+        m_pendingMessages.push_back(result.first);
     }
 
-    m_logger.log(LogLevel::INFO, "ClientSession",
-                 "Closing connection with client: " + m_clientID + " from IP: " + m_clientIP);
+    if (m_isAuthenticated) {
+        handleEventQueue(); // check and send any pending event for this client
+    }
+    if (!result.second) {
+        // close connection
+        m_logger.log(LogLevel::INFO, "ClientSession",
+                     "Closing connection with client: " + m_clientID + " from IP: " + m_clientIP);
+        if (!m_clientID.empty()) {
+            m_sessionManager.unregisterSession(m_clientID);
+        }
+        return false;
+    }
+    return true; // keep connection alive
 }
 
 bool clientSession::isAuthenticated() const {
@@ -271,4 +277,51 @@ void clientSession::handleEventQueue() {
             // more event types can be added here
         }
     }
+}
+
+bool clientSession::sendWelcomeMessage() {
+    const char *welcome_msg =
+        "Welcome to the C++ Server! Please login to start operating or type 'end' to disconnect.\n";
+
+    ssize_t bytes_written = write(m_clientSocket, welcome_msg, strlen(welcome_msg));
+    if (bytes_written <= 0) {
+        if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            perror("Error writing to socket");
+            m_trafficReporter.incrementError("tcp", "tx");
+            m_logger.log(LogLevel::ERROR, "ClientSession", "Error writing to client socket from IP: " + m_clientIP);
+            return false;
+        }
+        // If EAGAIN or EWOULDBLOCK, socket not ready for writing, store the message to send later
+        std::lock_guard<std::mutex> lock(m_sessionMutex);
+        m_pendingMessages.push_back(welcome_msg);
+    }
+    return true;
+}
+
+bool clientSession::trySendPendingMessage() {
+    const std::string &msg = m_pendingMessages.front();
+    ssize_t sent = write(m_clientSocket, msg.data(), msg.size());
+    if (sent < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            // Couldn't send, wait for next EPOLLOUT
+            return true;
+        } else {
+            perror("Error writing pending message to socket");
+            m_trafficReporter.incrementError("tcp", "tx");
+            m_logger.log(LogLevel::ERROR, "ClientSession", "Error writing to client socket from IP: " + m_clientIP);
+            return false; // Error occurred, close connection
+        }
+    }
+    m_pendingMessages.pop_front();
+    // If only part of the message was sent, keep the rest and exit
+    if (sent < msg.size()) {
+        m_pendingMessages.front() = msg.substr(sent);
+        return true;
+    }
+    return true; // Message sent successfully
+}
+
+bool clientSession::hasPendingMessages() const {
+    std::lock_guard<std::mutex> lock(m_sessionMutex);
+    return !m_pendingMessages.empty();
 }

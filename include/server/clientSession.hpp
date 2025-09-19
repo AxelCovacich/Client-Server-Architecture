@@ -36,6 +36,7 @@ class clientSession : public std::enable_shared_from_this<clientSession> {
     std::string m_clientIP;
     std::shared_ptr<sockaddr_storage> m_udpAddress;
     mutable std::mutex m_sessionMutex;
+    std::deque<std::string> m_pendingMessages;
 
     // need to be by reference for mutex use. Can't be copies of the object
     TrafficReporter &m_trafficReporter;
@@ -70,7 +71,7 @@ class clientSession : public std::enable_shared_from_this<clientSession> {
      * processes them, and sends responses. This is intended to be run in a
      * separate thread.
      */
-    void run();
+    bool run();
 
     /**
      * @brief Gets the current authentication status of the session.
@@ -111,6 +112,12 @@ class clientSession : public std::enable_shared_from_this<clientSession> {
     std::shared_ptr<sockaddr_storage> getUdpAddress() const;
 
     void handleEventQueue();
+
+    bool trySendPendingMessage();
+
+    bool hasPendingMessages() const;
+
+    bool sendWelcomeMessage();
 };
 
 #endif // CLIENT_SESSION_HPP
