@@ -10,12 +10,16 @@
 #include "ipcHandler.hpp"
 #include "logger.hpp"
 #include "sessionManager.hpp"
+#include "threadPool.hpp"
 #include "trafficReporter.hpp"
 #include "udpHandler.hpp"
 #include <string>
 #include <utility>
 
 #define BUFFER_SIZE 256
+#define MAX_EPOLL_EVENTS 1024
+#define EPOLL_WAIT_TIMEOUT_MS 1000
+#define THREAD_POOL_SIZE 16
 
 /**
  * @class Server
@@ -59,6 +63,9 @@ class Server {
     int m_serverTCPFD;
     int m_serverUDPFD;
     int m_serverUnixFD;
+    int m_epollFD;
+    std::unordered_map<int, std::shared_ptr<clientSession>> m_clientSessions; // map of client socket fd to its session
+    std::unordered_set<int> m_unixConnections;                                // set of active unix socket fds
 
     const Config &m_config;
     const IClock &m_clock;
@@ -66,6 +73,7 @@ class Server {
     Logger &m_logger;
     TrafficReporter &m_trafficReporter;
 
+    ThreadPool m_threadPool;
     EventQueue m_eventQueue;
     Inventory m_inventory;
     Authenticator m_authenticator;
@@ -79,14 +87,6 @@ class Server {
      * @throw std::runtime_error If any step in the socket setup fails.
      */
     void setupServer();
-
-    /**
-     * @brief Handles communication with a single client.
-     * * This function is executed in a separate thread for each client.
-     * * @param client_socket The file descriptor for the connected client's
-     * socket.
-     */
-    void handleClient(int client_socket);
 
     /**
      * @brief Sets up the dual-stack (IPv4/IPv6) TCP listening socket.
@@ -104,19 +104,13 @@ class Server {
      */
     void setUDPConfig();
 
-    /**
-     * @brief Handles an incoming UDP datagram.
-     *
-     * This method is called by the main run loop when 'select()' detects activity
-     * on the UDP socket. It receives the packet and logs its content.
-     */
-    void handleUdpMessage();
-
     void handleTcpConnection();
 
     void setUNIXconfig();
 
     void handleUNIXConnection();
+
+    void tcpHandling(int clientFileDescriptor);
 };
 
 #endif // SERVER_HPP

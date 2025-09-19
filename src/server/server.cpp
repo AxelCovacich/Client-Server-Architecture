@@ -4,12 +4,14 @@
 #include <commandProcessor.hpp>
 #include <csignal> // For std::signal
 #include <cstring> // For memset()
+#include <fcntl.h>
 #include <iostream>
 #include <memory>  //for make_shared
 #include <netdb.h> //getaddrinfo
 #include <netinet/in.h>
 #include <stdexcept> // For std::runtime_error
 #include <string>
+#include <sys/epoll.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/un.h>
@@ -53,13 +55,18 @@ Server::Server(const Config &config, const IClock &clock, Storage &storage, Logg
     , m_eventQueue(config.getQueueSize(), m_logger)
     , m_udpHandler(m_serverUDPFD, m_logger, m_sessionManager, m_trafficReporter, m_eventQueue)
     , m_alert(m_logger, m_sessionManager, m_udpHandler)
-    , m_ipcHandler(m_logger, m_alert, m_trafficReporter) {
+    , m_ipcHandler(m_logger, m_alert, m_trafficReporter)
+    , m_threadPool(THREAD_POOL_SIZE) {
 
     setupServer();
     m_trafficReporter.startPrometheusExposer(config.getMetricHostPort());
 }
 
 Server::~Server() {
+
+    m_threadPool.stop();
+    m_clientSessions.clear();
+
     if (m_serverTCPFD != -1) {
         std::cout << "Closing TCP server socket...\n";
         close(m_serverTCPFD);
@@ -73,53 +80,74 @@ Server::~Server() {
         close(m_serverUnixFD);
         unlink("/tmp/server_ipc.sock");
     }
+    if (m_epollFD >= 0) {
+        std::cout << "Closing epoll FD...\n";
+        close(m_epollFD);
+    }
     m_logger.closeLogFile();
 }
 
 void Server::setupServer() {
 
+    m_epollFD = epoll_create1(0);
+    if (m_epollFD < 0) {
+        throw std::runtime_error("Failed to create epoll");
+    }
     setTCPConfig();
     setUDPConfig();
     setUNIXconfig();
 }
 
-// TODO: migrate to epoll + worker pool
 void Server::run() {
-    fd_set read_fds;
-    struct timeval timevalue {};
+
+    constexpr int MAX_EVENTS = MAX_EPOLL_EVENTS;
+    epoll_event events[MAX_EVENTS];
 
     while (g_shutdown_flag == 0) {
-        FD_ZERO(&read_fds);
-        FD_SET(m_serverTCPFD, &read_fds);
-        FD_SET(m_serverUDPFD, &read_fds);
-        FD_SET(m_serverUnixFD, &read_fds);
-
-        timevalue.tv_sec = 1;
-        timevalue.tv_usec = 0;
-        // use select to wait for 1 sec or a clients connects and then go for another iteration
-
-        // First param of select must be the higher+1 descriptor
-        int partialMaxFD = std::max(m_serverTCPFD, m_serverUDPFD); // higher of the two will compare against unix
-        int maxFD = std::max(partialMaxFD, m_serverUnixFD) + 1;
-
-        int activity = select(maxFD, &read_fds, NULL, NULL, &timevalue);
-
-        if ((activity < 0) && (errno != EINTR)) {
-            // m_logger.log(LogLevel::ERROR, "Server", "Error while trying to select.");
-            perror("select error");
+        int numberEventsFDs = epoll_wait(m_epollFD, events, MAX_EVENTS, EPOLL_WAIT_TIMEOUT_MS);
+        if (numberEventsFDs < 0) {
+            perror("epoll_wait");
+            m_logger.log(LogLevel::ERROR, "Server", "epoll_wait failed");
         }
 
-        if (activity > 0 && FD_ISSET(m_serverTCPFD, &read_fds)) {
-            handleTcpConnection();
-        }
+        for (int i = 0; i < numberEventsFDs; ++i) {
 
-        if (activity > 0 && FD_ISSET(m_serverUDPFD, &read_fds)) {
-            // cout << "UDP activity detected, handling messages...\n";
-            m_udpHandler.handleMessage();
-        }
+            int clientFileDescriptor = events[i].data.fd;
+            // Write event for pending tcp messages
+            if (events[i].events & EPOLLOUT) {
+                auto session = m_clientSessions[clientFileDescriptor];
+                if (session) {
+                    session->trySendPendingMessage();
+                    if (!session->hasPendingMessages()) { // if no more messages are pending, stop listening for write
+                                                          // events
+                        epoll_event ev{};
+                        ev.events = EPOLLIN;
+                        ev.data.fd = clientFileDescriptor;
+                        epoll_ctl(m_epollFD, EPOLL_CTL_MOD, clientFileDescriptor, &ev);
+                    }
+                }
+            }
+            if (clientFileDescriptor == m_serverTCPFD) {
+                handleTcpConnection();
+            }
 
-        if (activity > 0 && FD_ISSET(m_serverUnixFD, &read_fds)) {
-            handleUNIXConnection();
+            else if (clientFileDescriptor == m_serverUDPFD) {
+                m_threadPool.enqueueTask([this]() { m_udpHandler.handleMessage(); });
+            }
+
+            else if (clientFileDescriptor == m_serverUnixFD) {
+                handleUNIXConnection();
+            } else {
+
+                // TCP client socket
+                if (m_clientSessions.find(clientFileDescriptor) != m_clientSessions.end()) {
+
+                    tcpHandling(clientFileDescriptor);
+                } else {
+                    m_logger.log(LogLevel::DEBUG, "Server",
+                                 "Ignoring event for closed FD: " + std::to_string(clientFileDescriptor));
+                }
+            }
         }
     }
     cout << "\nShutdown signal received. Server is now closing.\n";
@@ -143,39 +171,43 @@ void Server::setTCPConfig() {
     // Obtain a list of possible directions
     // Use 'nullptr' for host, to listen on all interfaces.
     // Use stored port number in m_port.
-    if (getaddrinfo(nullptr, std::to_string(m_tcpPort).c_str(), &hints, &resultList) != 0) {
-        m_logger.log(LogLevel::ERROR, "Server", "getaddrinfo failed.");
-        throw std::runtime_error("getaddrinfo failed");
+    int error_code = getaddrinfo(nullptr, std::to_string(m_tcpPort).c_str(), &hints, &resultList);
+    if (error_code != 0) {
+        m_logger.log(LogLevel::ERROR, "Server", "getaddrinfo failed: " + std::string(gai_strerror(error_code)));
+        throw std::runtime_error("getaddrinfo failed\n");
     }
 
     // Iterate over the result list and select the first that works(WARNING first default is ipv4 only, must choose a
     // ipv6 with ipv6_only off)
     for (iterator = resultList; iterator != nullptr; iterator = iterator->ai_next) {
         // Create the socket with the config getaddrinfo give back in resultList
-        m_serverTCPFD = socket(iterator->ai_family, iterator->ai_socktype, iterator->ai_protocol);
-        if (m_serverTCPFD < 0) {
+        int FileDescriptor = socket(iterator->ai_family, iterator->ai_socktype, iterator->ai_protocol);
+        if (FileDescriptor < 0) {
             continue; // If it fails, try the next one
         }
+        // Set the socket to non-blocking mode
+        fcntl(FileDescriptor, F_SETFL, O_NONBLOCK);
 
         // turn off the ipv6 only option, so socket “::” (wildcard IPv6) will recieve IPv4 “packed”
         // (::ffff:127.0.0.1) and can listen on both v4 and v6 with one FD.
-        if (setsockopt(m_serverTCPFD, IPPROTO_IPV6, IPV6_V6ONLY, &IPv6_onlyOff, sizeof(IPv6_onlyOff)) < 0) {
-            throw std::system_error(errno, std::system_category(), "setsockopt IPV6_V6ONLY failed");
+        if (setsockopt(FileDescriptor, IPPROTO_IPV6, IPV6_V6ONLY, &IPv6_onlyOff, sizeof(IPv6_onlyOff)) < 0) {
+            throw std::system_error(errno, std::system_category(), "setsockopt IPV6_V6ONLY failed\n");
         }
 
-        // With this socket option we can restart the server without having to wait for the OS to free the port to
+        // Restart the server without having to wait for the OS to free the port to
         // re-use. This fixes the "Address already in use" problem so its possible to restart the server quickly without
         // failing.
-        if (setsockopt(m_serverTCPFD, SOL_SOCKET, SO_REUSEADDR, &setOption, sizeof(setOption)) < 0) {
-            throw std::system_error(errno, std::system_category(), "setsockopt to reuse port failed");
+        if (setsockopt(FileDescriptor, SOL_SOCKET, SO_REUSEADDR, &setOption, sizeof(setOption)) < 0) {
+            throw std::system_error(errno, std::system_category(), "setsockopt to reuse port failed\n");
         }
 
         // Try to bind
-        if (bind(m_serverTCPFD, iterator->ai_addr, iterator->ai_addrlen) == 0) {
+        if (bind(FileDescriptor, iterator->ai_addr, iterator->ai_addrlen) == 0) {
+            m_serverTCPFD = FileDescriptor;
             break; // If the bind succeds,keep it and break the loop.
         }
 
-        close(m_serverTCPFD); // If the bind fails, close the FD and try another result from the list.
+        close(FileDescriptor); // If the bind fails, close the FD and try another result from the list.
     }
 
     // once the loop is done, free the getadrrinfo result
@@ -184,13 +216,25 @@ void Server::setTCPConfig() {
     // Check if could bind on any of the given results, if not the config failed
     if (iterator == nullptr) {
         m_logger.log(LogLevel::ERROR, "Server", "Failed to bind to any address.");
-        throw std::runtime_error("Failed to bind");
+        throw std::runtime_error("Failed to bind\n");
     }
 
     // everything is ready to listen
     if (listen(m_serverTCPFD, m_config.getMaxClients()) < 0) {
         m_logger.log(LogLevel::ERROR, "Server", "Failed to listen on socket.");
-        throw std::runtime_error("Failed to listen");
+        throw std::runtime_error("Failed to listen\n");
+    }
+
+    // Add the server TCP socket to the epoll instance
+    epoll_event ev{};
+    ev.events = EPOLLIN; // For reading
+    ev.data.fd = m_serverTCPFD;
+    int result = epoll_ctl(m_epollFD, EPOLL_CTL_ADD, m_serverTCPFD, &ev);
+
+    if (result < 0) {
+        perror("epoll_ctl");
+        m_logger.log(LogLevel::ERROR, "Server", "Failed to add server TCP socket to epoll");
+        throw std::runtime_error("Failed to add server TCP socket to epoll\n");
     }
 
     m_logger.log(LogLevel::INFO, "Server", "Server TCP socket listening on port " + std::to_string(m_tcpPort));
@@ -213,6 +257,9 @@ void Server::setUDPConfig() {
     // No need for loop here, first result will work
     m_serverUDPFD = socket(udp_result->ai_family, udp_result->ai_socktype, udp_result->ai_protocol);
 
+    // Set the socket to non-blocking mode
+    fcntl(m_serverUDPFD, F_SETFL, O_NONBLOCK);
+
     if (m_serverUDPFD < 0) {
         m_logger.log(LogLevel::ERROR, "Server", "Failed to create socket.");
         throw std::runtime_error("Failed to create socket");
@@ -226,6 +273,18 @@ void Server::setUDPConfig() {
 
     freeaddrinfo(udp_result);
     m_udpHandler.setSocketFd(m_serverUDPFD); // Set the socket FD in the UDP handler
+
+    // Add the server UDP socket to the epoll instance
+    epoll_event ev{};
+    ev.events = EPOLLIN; // For reading
+    ev.data.fd = m_serverUDPFD;
+    int result = epoll_ctl(m_epollFD, EPOLL_CTL_ADD, m_serverUDPFD, &ev);
+
+    if (result < 0) {
+        perror("epoll_ctl");
+        m_logger.log(LogLevel::ERROR, "Server", "Failed to add server UDP socket to epoll");
+        throw std::runtime_error("Failed to add server UDP socket to epoll");
+    }
 
     m_logger.log(LogLevel::INFO, "Server", "UDP socket listening on port " + std::to_string(m_udpPort));
     cout << "Server UDP socket listening on port: " << std::to_string(m_udpPort) << " with FD: " << m_serverUDPFD
@@ -248,6 +307,19 @@ void Server::handleTcpConnection() {
         return;
     }
 
+    fcntl(newsockfd, F_SETFL, O_NONBLOCK);
+    // add new client socket to epoll
+    epoll_event ev{};
+    ev.events = EPOLLIN | EPOLLONESHOT;
+    ev.data.fd = newsockfd;
+    int result = epoll_ctl(m_epollFD, EPOLL_CTL_ADD, newsockfd, &ev);
+    if (result < 0) {
+        perror("epoll_ctl: add client");
+        close(newsockfd);
+        m_logger.log(LogLevel::ERROR, "Server", "Failed to add client socket to epoll");
+        return;
+    }
+
     auto clientIp = getClientIP(clientAddress);
     if (clientIp == "UNKNOWN") {
 
@@ -262,8 +334,10 @@ void Server::handleTcpConnection() {
     auto session =
         std::make_shared<clientSession>(newsockfd, m_inventory, m_authenticator, m_logger, m_storage, clientIp,
                                         m_sessionManager, m_config, m_trafficReporter, m_eventQueue, m_udpHandler);
-    jthread client_thread(&clientSession::run, session);
-    client_thread.detach();
+
+    m_clientSessions[newsockfd] = session; // store the session in the map
+    m_logger.log(LogLevel::INFO, "ClientSession", "New connection accepted from IP " + clientIp);
+    session->sendWelcomeMessage();
 }
 
 void Server::setUNIXconfig() {
@@ -274,6 +348,8 @@ void Server::setUNIXconfig() {
     if (m_serverUnixFD < 0) {
         throw std::runtime_error("Failed to create UNIX socket");
     }
+    // Set the socket to non-blocking mode
+    fcntl(m_serverUnixFD, F_SETFL, O_NONBLOCK);
 
     struct sockaddr_un server_addr {};
     server_addr.sun_family = AF_UNIX;
@@ -295,6 +371,17 @@ void Server::setUNIXconfig() {
         throw std::runtime_error("Failed to listen on IPC socket");
     }
 
+    // Add the server UNIX socket to the epoll instance
+    epoll_event ev{};
+    ev.events = EPOLLIN; // For reading
+    ev.data.fd = m_serverUnixFD;
+    int result = epoll_ctl(m_epollFD, EPOLL_CTL_ADD, m_serverUnixFD, &ev);
+    if (result < 0) {
+        perror("epoll_ctl: add unix socket");
+        close(m_serverUnixFD);
+        throw std::runtime_error("Failed to add IPC socket to epoll");
+    }
+
     m_logger.log(LogLevel::INFO, "Server", "IPC socket listening on " + std::string(socketPath));
     cout << "Server IPC socket listening on path: " << socketPath << " with FD: " << m_serverUnixFD << '\n';
 }
@@ -313,11 +400,11 @@ void Server::handleUNIXConnection() {
         perror("Error on accept");
         return;
     }
-    m_logger.log(LogLevel::INFO, "Server", "IPC connection established.");
+    fcntl(newsockfd, F_SETFL, O_NONBLOCK);
 
-    if (!m_ipcHandler.handleConnection(newsockfd)) {
-        close(newsockfd); // error reading from socket
-    }
+    m_threadPool.enqueueTask([this, newsockfd]() { m_ipcHandler.handleConnection(newsockfd); });
+
+    m_logger.log(LogLevel::INFO, "Server", "IPC connection established.");
 }
 
 std::string Server::getClientIP(const struct sockaddr_storage &clientAddress) {
@@ -342,4 +429,49 @@ std::string Server::getClientIP(const struct sockaddr_storage &clientAddress) {
         return "UNKNOWN"; // Unsupported address family
     }
     return std::string(clientIPArray.data());
+}
+
+void Server::tcpHandling(int clientFileDescriptor) {
+
+    auto session = m_clientSessions[clientFileDescriptor];
+    if (session) {
+        m_threadPool.enqueueTask(
+            [this, session,
+             clientFileDescriptor]() { // enqueue the task (run function of the session) for the thread pool
+                bool continueSession = session->run();
+                if (!continueSession) {
+
+                    // Session ended, clean up
+                    m_logger.log(LogLevel::INFO, "Server",
+                                 "Closing client connection from FD: " + std::to_string(clientFileDescriptor));
+                    if (epoll_ctl(m_epollFD, EPOLL_CTL_DEL, clientFileDescriptor, nullptr) < 0) {
+                        if (errno == EBADF) {
+                            // FD already removed, ignore
+                            m_logger.log(LogLevel::WARNING, "Server",
+                                         "FD already removed or closed: " + std::to_string(clientFileDescriptor));
+                        } else {
+                            perror("error at removing TCP FD from epoll_ctl");
+                            m_logger.log(LogLevel::ERROR, "Server",
+                                         "Failed to remove FD from epoll: " + std::to_string(clientFileDescriptor));
+                        }
+                    }
+                    close(clientFileDescriptor);
+                    m_clientSessions.erase(clientFileDescriptor);
+                } else {
+                    // re-arm the socket for the next read event
+                    epoll_event ev{};
+                    ev.events = EPOLLIN | EPOLLONESHOT;
+                    if (session->hasPendingMessages()) {
+                        ev.events |= EPOLLOUT;
+                    }
+                    ev.data.fd = clientFileDescriptor;
+
+                    epoll_ctl(m_epollFD, EPOLL_CTL_MOD, clientFileDescriptor, &ev);
+                }
+            });
+
+    } else {
+        m_logger.log(LogLevel::WARNING, "Server",
+                     "Invalid client session for FD: " + std::to_string(clientFileDescriptor));
+    }
 }
