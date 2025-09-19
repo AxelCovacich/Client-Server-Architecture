@@ -26,6 +26,12 @@ void UdpHandler::handleMessage() {
                                   reinterpret_cast<struct sockaddr *>(&client_addr), &addr_len); // NOLINT
 
     if (bytes_read < 0) {
+
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            // No data available, not an error, just return and wait for the next event
+            return;
+        }
+
         perror("recvfrom");
         // cout << "Error receiving UDP message.\n";
         m_logger.log(LogLevel::ERROR, "UdpHandler", "UDP recvfrom error");
