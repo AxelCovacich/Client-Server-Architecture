@@ -90,6 +90,8 @@ void Config::logConfig() {
 
 void Config::serverConfig(const std::vector<std::string> &args) {
 
+    validatePort(args);
+
     if (!m_configNode["server"]["max_clients"] || !m_configNode["server"]["max_clients"].IsScalar()) {
         throw std::runtime_error("Max clients in config file is not set or is not a valid number");
     }
