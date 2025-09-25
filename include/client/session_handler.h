@@ -30,6 +30,7 @@ typedef char *(*input_fn)(char *buf, int size, FILE *stream);
  * @param sockfd The active TCP socket file descriptor.
  * @param recieve A function pointer to the receive function to use (e.g., tcp_recv).
  * @param send A function pointer to the send function to use (e.g., tcp_send).
+ * @param input A function pointer to the input function to use (e.g., fgets).
  * @return 0 on a clean shutdown, or -1 if a critical error occurs.
  */
 int start_communication(ClientContext *context, recv_fn recieve, send_fn send, input_fn input);
@@ -55,8 +56,17 @@ bool session_start_aux_threads(ClientContext *context);
 transaction_result execute_client_action(ClientContext *context, UserInputAction action, char *buffer, recv_fn recieve,
                                          send_fn send);
 
+/**
+ * @brief Launches a simple dashboard interface in the terminal.
+ * @param context Pointer to the client context.
+ * @return True on success, false on failure.
+ */
 bool launch_dashboard(ClientContext *context);
 
+/**
+ * @brief Signal handler for graceful shutdown on SIGINT, SIGTERM, and SIGQUIT.
+ * @param signum The signal number received.
+ */
 void signal_handler(int signum);
 
 #endif // SESSION_HANDLER_H

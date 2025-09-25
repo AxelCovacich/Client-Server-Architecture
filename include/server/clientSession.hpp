@@ -57,6 +57,13 @@ class clientSession : public std::enable_shared_from_this<clientSession> {
      * @param authenticator A reference to the shared authenticator.
      * @param logger A reference to the shared system logger.
      * @param clientIP The IP from the connected client.
+     * @param storage A reference to the shared database storage.
+     * @param sessionManager A reference to the shared session manager.
+     * @param config A reference to the shared server configuration.
+     * @param trafficReporter A reference to the shared traffic reporter.
+     * @param eventQueue A reference to the shared event queue.
+     * @param udpHandler A reference to the shared UDP handler.
+     * @throw std::exception if a critical setup step fails.
      */
     clientSession(int clientSocket, Inventory &inventory, Authenticator &autenthicator, Logger &logger,
                   Storage &storage, const std::string &clientIP, SessionManager &sessionManager, const Config &config,
@@ -67,9 +74,9 @@ class clientSession : public std::enable_shared_from_this<clientSession> {
     /**
      * @brief The main entry point for the session's logic.
      *
-     * This function contains the main loop that reads commands from the client,
-     * processes them, and sends responses. This is intended to be run in a
-     * separate thread.
+     * This function contains the main communication functions that reads commands from the client,
+     * processes them, and send responses. This is intended to be run by worker threads from the thread pool.
+     * @return True if the session should continue, false if it should be terminated.
      */
     bool run();
 
@@ -107,16 +114,40 @@ class clientSession : public std::enable_shared_from_this<clientSession> {
      */
     static json createLoggableRequest(json request);
 
+    /**
+     * @brief Sets the UDP address for this client session.
+     * @param addr The sockaddr_storage structure containing the UDP address.
+     */
     void setUdpAddress(const struct sockaddr_storage &addr);
 
+    /**
+     * @brief Gets the UDP address associated with this client session.
+     * @return A shared pointer to the sockaddr_storage containing the UDP address.
+     */
     std::shared_ptr<sockaddr_storage> getUdpAddress() const;
 
-    void handleEventQueue();
+    /**
+     * @brief Handles and processes events from the event queue for this client.
+     * @return True if an event was handled successfully, false otherwise.
+     */
+    bool handleEventQueue();
 
+    /**
+     * @brief Attempts to send any pending messages to the client.
+     * @return True if all pending messages were sent successfully, false otherwise.
+     */
     bool trySendPendingMessage();
 
+    /**
+     * @brief Checks if there are any pending messages to be sent to the client.
+     * @return True if there are pending messages, false otherwise.
+     */
     bool hasPendingMessages() const;
 
+    /**
+     * @brief Sends a welcome message to the client upon connection.
+     * @return True if the message was sent successfully, false otherwise.
+     */
     bool sendWelcomeMessage();
 };
 

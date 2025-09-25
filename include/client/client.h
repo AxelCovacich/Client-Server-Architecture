@@ -33,8 +33,20 @@ typedef enum {
  */
 bool setup_and_connect(ClientContext *context, client_config config, const char *protocol);
 
+/**
+ * @brief Cleans up the client context and closes any open sockets and resources.
+ * @param context A pointer to the ClientContext to clean up.
+ */
 void client_cleanup(ClientContext *context);
 
+/**
+ * @brief Validates the socket and assigns it to the appropriate field in the context.
+ * @param current_addr The current address info being processed.
+ * @param context The client context to update.
+ * @param sockfd The socket file descriptor to validate.
+ * @param protocol The protocol used to create the socket. Can be `tcp` or `udp`.
+ * @return Boolean indicating success or failure of the validation.
+ */
 bool socket_validation(struct addrinfo *current_addr, ClientContext *context, int sockfd, const char *protocol);
 
 #endif // CLIENT_H

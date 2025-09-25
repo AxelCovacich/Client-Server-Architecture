@@ -16,8 +16,24 @@ typedef struct {
 
 } ClientContext;
 
+/**
+ * @brief Initializes the client context.
+ * @param context A pointer to the ClientContext to initialize.
+ */
 void client_context_init(ClientContext *context);
+
+/**
+ * @brief Sets the client ID in a thread-safe manner.
+ * @param context A pointer to the ClientContext.
+ * @param id The client ID to set.
+ */
 void client_context_set_id(ClientContext *context, const char *id);
+
+/**
+ * @brief Gets the client ID in a thread-safe manner.
+ * @param context A pointer to the ClientContext.
+ * @return The client ID string.
+ */
 const char *client_context_get_id(ClientContext *context);
 
 #endif

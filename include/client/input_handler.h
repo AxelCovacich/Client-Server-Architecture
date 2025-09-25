@@ -115,6 +115,13 @@ json_build_result build_json_for_login(char *command);
  */
 json_build_result build_json_for_single_command(char *command);
 
+/**
+ * @brief Configures TCP and UDP ports from command-line arguments.
+ * @param argc The argument count from main.
+ * @param argv The argument vector from main.
+ * @param out_config A pointer to a ClientConfig struct to be filled with port info.
+ * @return True on successful parsing, false otherwise.
+ */
 bool config_arguments_ports(int argc, const char *argv[], client_config *out_config);
 
 #endif // INPUT_HANDLER_H

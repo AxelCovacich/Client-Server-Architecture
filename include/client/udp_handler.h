@@ -13,7 +13,6 @@ void *udp_listener_thread_func(void *arg);
 
 /**
  * @brief The main function for the background keepalive thread.
- *
  * This function runs in a continuous loop, sending a UDP keepalive datagram
  * to the server every 60 seconds.
  * @param arg A pointer to an integer containing the client context with the udp socket, clientId and more client info.

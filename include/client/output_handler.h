@@ -47,8 +47,24 @@ void print_get_stock_response(const char *response_string, FILE *output_stream);
  */
 void print_get_history_response(const char *response_string, FILE *output_stream);
 
+/**
+ * @brief Handles the server response to a login attempt, updating the client context as needed.
+ * @param context The client context to update upon successful login.
+ * @param response_string The raw JSON string containing the login response.
+ * @param output_stream The file stream to write any output messages to.
+ * @return True if login was successful and context updated, false otherwise.
+ */
 bool handle_login_response(ClientContext *context, const char *response_string, FILE *output_stream);
 
+/**
+ * @brief Performs post-login procedures such as updating the client context with the new client ID.
+ * @param context The client context to update.
+ * @param root The parsed cJSON object of the login response.
+ * @param status The cJSON object representing the status of the login response.
+ * @param message The cJSON object representing the message of the login response.
+ * @param output_stream The file stream to write any output messages to.
+ * @return True if post-login procedures were successful, false otherwise.
+ */
 bool post_login_procedures(ClientContext *context, cJSON *root, cJSON *status, cJSON *message, FILE *output_stream);
 
 #endif // OUTPUT_HANDLER_H
