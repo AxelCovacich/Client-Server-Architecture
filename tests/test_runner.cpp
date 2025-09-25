@@ -215,6 +215,11 @@ void testTrafficReporterCounters();
 void testUpdateStockFailsWithHubUser();
 void testEventQueuePushLimitErasesOld();
 void testEventQueuePopEmpty();
+void testThreadpoolExecutesTask();
+void testClientSessionEventQueueHandleNoUDPDirection();
+void testWelcomeMessageFails();
+void testHasPendingMessages();
+void testTrySendPendingMessageFails();
 
 /**
  * @brief Runs all the tests.
@@ -421,5 +426,10 @@ int main() {
     RUN_TEST(testUpdateStockFailsWithHubUser);
     RUN_TEST(testEventQueuePushLimitErasesOld);
     RUN_TEST(testEventQueuePopEmpty);
+    RUN_TEST(testThreadpoolExecutesTask);
+    RUN_TEST(testClientSessionEventQueueHandleNoUDPDirection);
+    RUN_TEST(testWelcomeMessageFails);
+    RUN_TEST(testHasPendingMessages);
+    RUN_TEST(testTrySendPendingMessageFails);
     return UNITY_END();
 }

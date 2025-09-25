@@ -408,3 +408,100 @@ void testClientSessionHandlesSQlExceptionOnLogin() {
 
     TEST_ASSERT_FALSE(result.second);
 }
+
+void testClientSessionEventQueueHandleNoUDPDirection() {
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    SystemClock clock;
+    Config dummyConfig = createDummyConfig();
+    Logger logger(storage, clock, std::cerr, dummyConfig);
+    Inventory inventory(storage, logger);
+    Authenticator authenticator(storage, clock, logger);
+    TrafficReporter trafficReporter;
+    SessionManager sessionManager(storage, logger, trafficReporter);
+    EventQueue eventQueue(10, logger);
+    UdpHandler udpHandler(-1, logger, sessionManager, trafficReporter, eventQueue);
+    auto session =
+        std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP", sessionManager,
+                                        dummyConfig, trafficReporter, eventQueue, udpHandler);
+
+    storage.createUser("warehouse-A", "pass123");
+    // Push an event to the queue
+    Event event;
+    event.type = EventType::NOTIFICATION;
+    event.message = "{\"event\":\"test_event\"}";
+    eventQueue.pushEvent("warehouse-A", event);
+
+    std::string login_request =
+        "{\"command\":\"login\",\"payload\":{\"hostname\":\"warehouse-A\",\"password\":\"pass123\"}}";
+
+    clientSession::processResult response = session->processMessage(login_request); // to authenticate the session
+
+    // Handle the event queue
+    bool result = session->handleEventQueue();
+
+    TEST_ASSERT_FALSE(result); // no udp address
+}
+
+void testWelcomeMessageFails() {
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    SystemClock clock;
+    Config dummyConfig = createDummyConfig();
+    Logger logger(storage, clock, std::cerr, dummyConfig);
+    Inventory inventory(storage, logger);
+    Authenticator authenticator(storage, clock, logger);
+    TrafficReporter trafficReporter;
+    SessionManager sessionManager(storage, logger, trafficReporter);
+    EventQueue eventQueue(10, logger);
+    UdpHandler udpHandler(-1, logger, sessionManager, trafficReporter, eventQueue);
+    auto session =
+        std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP", sessionManager,
+                                        dummyConfig, trafficReporter, eventQueue, udpHandler);
+
+    bool result = session->sendWelcomeMessage();
+
+    TEST_ASSERT_FALSE(result);
+}
+
+void testHasPendingMessages() {
+
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    SystemClock clock;
+    Config dummyConfig = createDummyConfig();
+    Logger logger(storage, clock, std::cerr, dummyConfig);
+    Inventory inventory(storage, logger);
+    Authenticator authenticator(storage, clock, logger);
+    TrafficReporter trafficReporter;
+    SessionManager sessionManager(storage, logger, trafficReporter);
+    EventQueue eventQueue(10, logger);
+    UdpHandler udpHandler(-1, logger, sessionManager, trafficReporter, eventQueue);
+    auto session =
+        std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP", sessionManager,
+                                        dummyConfig, trafficReporter, eventQueue, udpHandler);
+
+    TEST_ASSERT_FALSE(session->hasPendingMessages());
+}
+
+void testTrySendPendingMessageFails() {
+
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    SystemClock clock;
+    Config dummyConfig = createDummyConfig();
+    Logger logger(storage, clock, std::cerr, dummyConfig);
+    Inventory inventory(storage, logger);
+    Authenticator authenticator(storage, clock, logger);
+    TrafficReporter trafficReporter;
+    SessionManager sessionManager(storage, logger, trafficReporter);
+    EventQueue eventQueue(10, logger);
+    UdpHandler udpHandler(-1, logger, sessionManager, trafficReporter, eventQueue);
+    auto session =
+        std::make_shared<clientSession>(-1, inventory, authenticator, logger, storage, "Some IP", sessionManager,
+                                        dummyConfig, trafficReporter, eventQueue, udpHandler);
+
+    bool result = session->trySendPendingMessage();
+
+    TEST_ASSERT_FALSE(result);
+}
