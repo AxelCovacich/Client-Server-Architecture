@@ -29,6 +29,7 @@ class UdpHandler {
      * @param logger A reference to the shared server logger.
      * @param sessionManager A reference to the shared session manager.
      * @param trafficReporter A reference to the shared traffic reporter.
+     * @param eventQueue A reference to the shared event queue.
      */
     UdpHandler(int udpSocketFd, Logger &logger, SessionManager &sessionManager, TrafficReporter &trafficReporter,
                EventQueue &eventQueue);
@@ -41,12 +42,26 @@ class UdpHandler {
      */
     void handleMessage();
 
+    /**
+     * @brief Broadcasts an alert message to all connected clients via UDP.
+     * @param alertMessage The JSON object containing the alert details.
+     */
     void broadcastMessage(const json &alertMessage);
 
+    /**
+     * @brief Sets the UDP socket file descriptor.
+     * @param udpFD The file descriptor for the UDP socket.
+     */
     void setSocketFd(int udpFD) {
         m_udpSocketFd = udpFD;
     }
 
+    /**
+     * @brief Sends a message to a specific client via UDP.
+     * @param clientID The unique identifier of the client.
+     * @param message The message to send.
+     * @param client_addr The network address of the client.
+     */
     void sendMessageToClient(const std::string &clientID, const std::string &message,
                              const struct sockaddr_storage &client_addr);
 

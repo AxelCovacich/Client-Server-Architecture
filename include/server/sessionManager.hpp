@@ -24,7 +24,14 @@ class clientSession;
  */
 class SessionManager {
   public:
+    /**
+     * @brief Constructs a new SessionManager.
+     * @param storage A reference to the shared database storage.
+     * @param logger A reference to the shared system logger.
+     * @param trafficReporter A reference to the shared traffic reporter.
+     */
     SessionManager(Storage &storage, Logger &logger, TrafficReporter &trafficReporter);
+
     /**
      * @brief Registers a new client session.
      * @param clientId The unique ID of the client.
@@ -57,6 +64,11 @@ class SessionManager {
      */
     std::vector<struct sockaddr_storage> getActiveUdpAddresses();
 
+    /**
+     * @brief Unlocks a previously locked client account.
+     * @param clientId The ID of the client to unlock.
+     * @return True if the client was successfully unlocked, false if the client was not found or not locked.
+     */
     bool unlockClient(const std::string &clientId);
 
     /**
@@ -66,8 +78,19 @@ class SessionManager {
      */
     bool isClientRegistered(const std::string &clientId);
 
+    /**
+     * @brief Retrieves the session object for a given client ID.
+     * @param clientId The ID of the client whose session is requested.
+     * @return A shared pointer to the client's session object, or nullptr if not found.
+     */
     std::shared_ptr<clientSession> getSession(const std::string &clientId);
 
+    /**
+     * @brief Retrieves a list of all currently offline users.
+     * @return An unordered set of client IDs representing offline users.
+     * This set is updated whenever a user disconnects, allowing for easy tracking of offline clients.
+     * The method is thread-safe, ensuring consistent data even with concurrent access.
+     */
     std::unordered_set<std::string> getOfflineUsers();
 
   private:

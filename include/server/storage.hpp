@@ -37,6 +37,7 @@ class Storage {
     /**
      * @brief Constructs a Storage object and opens the database connection on read-write by default.
      * @param dbPath The file path to the SQLite database.
+     * @param openFlags Flags for opening the database (default is read-write and create if not exists).
      * @throw SQLite::Exception if the database cannot be opened.
      */
     Storage(const std::string &dbPath, int openFlags = SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
@@ -144,8 +145,19 @@ class Storage {
      */
     std::vector<LogEntry> getInventoryHistoryTransaction(const std::string &clientId);
 
+    /**
+     * @brief Sets the lock status for a specific client.
+     * @param hostname The client's hostname.
+     * @param isLocked True to lock the client, false to unlock.
+     * @return True if the operation was successful, false otherwise.
+     */
     bool setClientLockStatus(const std::string &hostname, bool isLocked);
 
+    /**
+     * @brief Checks if a specific client is currently locked.
+     * @param hostname The client's hostname.
+     * @return True if the client is locked, false otherwise.
+     */
     bool isClientLocked(const std::string &hostname);
 
   private:

@@ -46,16 +46,51 @@ class Logger {
      */
     static std::string levelToString(LogLevel level);
 
+    /**
+     * @brief Opens the log file for writing.
+     * @param filePath The path to the log file.
+     * @return True if the file was opened successfully, false otherwise.
+     */
     bool openLogFile(const std::string &filePath) noexcept;
 
+    /**
+     * @brief Closes the log file if it is open.
+     */
     void closeLogFile() noexcept;
 
+    /**
+     * @brief Performs log rotation if the current log file exceeds the maximum size.
+     *
+     * This function checks the size of the current log file against the configured
+     * maximum size. If the file exceeds this size, it is compressed and archived,
+     * and a new log file is started. Any errors during this process are logged to stderr.
+     */
     void logRotation();
 
+    /**
+     * @brief Compresses a file using gzip compression.
+     * @param srcPath The path to the source file to compress.
+     * @param destPath The path where the compressed file will be saved.
+     * @return True if compression was successful, false otherwise.
+     */
     static bool compressFileGzip(const std::string &srcPath, const std::string &destPath);
 
+    /**
+     * @brief Checks if the log file should be rotated based on its size.
+     * @return True if the log file exceeds the maximum size and should be rotated, false otherwise.
+     */
     bool shouldRotate() const;
+
+    /**
+     * @brief Checks if file logging is currently enabled.
+     * @return True if file logging is enabled, false otherwise.
+     */
     bool isFileEnabled() const;
+
+    /**
+     * @brief Checks if the log file is currently open.
+     * @return True if the log file is open, false otherwise.
+     */
     bool isLogFileOpen() const;
 
   private:

@@ -31,6 +31,8 @@ class IpcHandler {
      *
      * Called by the Server's main loop when IPC activity is detected. It accepts
      * the connection, reads the alert message, and forwards it to the AlertManager.
+     * @param acceptedSocketFd The file descriptor for the accepted IPC connection.
+     * @return True if the connection was handled successfully, false otherwise.
      */
     bool handleConnection(int acceptedSocketFd);
 

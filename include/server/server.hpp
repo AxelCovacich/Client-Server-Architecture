@@ -37,6 +37,7 @@ class Server {
      * @param inventory A reference to the application's inventory management module.
      * @param authenticator A reference to the authentication module.
      * @param logger A reference to the logging module.
+     * @param trafficReporter A reference to the traffic reporting module.
      * @throw std::exception if a critical setup step fails (e.g., socket bind, DB open).
      */
     Server(const Config &config, const IClock &clock, Storage &storage, Logger &logger,
@@ -50,11 +51,18 @@ class Server {
 
     /**
      * @brief Starts the main server loop.
-     * * Enters an infinite loop to accept and handle incoming client connections.
-     * Each client is handled in a separate thread.
+     * Enters an infinite loop to accept and handle incoming client connections.
+     * Each client is handled in a separate thread from the thread pool.
+     * This function blocks indefinitely until the server is shut down.
+     * @throw std::exception if a critical runtime error occurs.
      */
     void run();
 
+    /**
+     * @brief Retrieves the client's IP address as a string.
+     * @param clientAddress The sockaddr_storage structure containing the client's address.
+     * @return A string representation of the client's IP address.
+     */
     static std::string getClientIP(const struct sockaddr_storage &clientAddress);
 
   private:
@@ -104,13 +112,34 @@ class Server {
      */
     void setUDPConfig();
 
+    /**
+     * @brief Handles incoming TCP connections. Adds new client sockets to epoll and creates sessions.
+     */
     void handleTcpConnection();
 
+    /**
+     * @brief Sets up the UNIX domain socket for IPC.
+     */
     void setUNIXconfig();
 
+    /**
+     * @brief Handles incoming IPC connections on the UNIX domain socket.
+     * Accepts new connections and delegates handling to the IpcHandler in a thread pool task.
+     */
     void handleUNIXConnection();
 
+    /**
+     * @brief Handles activity on a client TCP socket.
+     * Reads incoming data and processes client messages in the associated client session with the thread pool task.
+     * @param clientFileDescriptor The file descriptor of the client socket with activity.
+     */
     void tcpHandling(int clientFileDescriptor);
+
+    /**
+     * @brief Processes pending messages for a client.
+     * @param clientFileDescriptor The file descriptor of the client socket.
+     */
+    void pendingMessages(int clientFileDescriptor);
 };
 
 #endif // SERVER_HPP

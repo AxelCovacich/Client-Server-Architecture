@@ -37,6 +37,9 @@ using commandResult = std::pair<std::string, bool>;
  * @param inventory A reference to the server's shared Inventory module.
  * @param logger A reference to the server's shared Logger module.
  * @param storage A reference to the server's shared Storage module.
+ * @param session A reference to the server's shared SessionManager module.
+ * @param config A reference to the server's shared Config module.
+ * @param trafficReporter A reference to the server's shared TrafficReporter module.
  * @return A CommandResult pair containing the JSON string response and a boolean
  * indicating if the session should continue.
  */

@@ -19,9 +19,23 @@
 using LabelKey = std::tuple<std::string, std::string>; // protocol, direction
 class TrafficReporter {
   public:
+    /**
+     * @brief Constructs a TrafficReporter object and initializes Prometheus metrics.
+     */
     TrafficReporter();
+
+    /**
+     * @brief Initializes Prometheus metrics for traffic reporting.
+     */
     void initPrometheusMetrics();
+
+    /**
+     * @brief Starts the Prometheus HTTP exposer on the specified host and port.
+     * @param metricHostPort The host and port in the format "host:port" (e.g., "localhost:8080").
+     * @return The exit code of the exposer thread.
+     */
     int startPrometheusExposer(const std::string &metricHostPort);
+
     void incrementMessage(const std::string &protocol, const std::string &direction);
     void incrementError(const std::string &protocol, const std::string &direction);
     void incrementReconnection(const std::string &protocol, const std::string &direction);

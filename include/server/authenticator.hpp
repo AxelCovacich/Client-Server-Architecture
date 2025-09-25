@@ -22,7 +22,7 @@ enum class AuthResult {
 class Authenticator {
   public:
     Authenticator(Storage &storage, const IClock &clock, Logger &logger);
-    /* @brief Authenticates a client based on provided credentials.
+    /** @brief Authenticates a client based on provided credentials.
      * @param hostname The client's hostname, used as a username.
      * @param password The client's password.
      * @return True if authentication is successful, false otherwise.
