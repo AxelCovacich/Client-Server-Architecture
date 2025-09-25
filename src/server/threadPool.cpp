@@ -28,22 +28,25 @@ void ThreadPool::workerThread() {
             m_queueCV.wait(
                 lock, [this]() { return !m_taskQueue.empty() || !m_running; }); // Wait for tasks or shutdown signal
 
-            if (!m_running && m_taskQueue.empty())
+            if (!m_running && m_taskQueue.empty()) {
                 return; // Exit if shutting down and no tasks left
+            }
 
             task = std::move(m_taskQueue.front()); // Get the next task
             m_taskQueue.pop();
         }
-        if (task)
+        if (task) {
             task(); // Execute the task outside the lock scope
+        }
     }
 }
 
 void ThreadPool::stop() {
     m_running = false;
     m_queueCV.notify_all();
-    for (auto &t : m_threads) {
-        if (t.joinable())
-            t.join();
+    for (auto &thread : m_threads) {
+        if (thread.joinable()) {
+            thread.join();
+        }
     }
 }
