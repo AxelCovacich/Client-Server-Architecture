@@ -54,12 +54,11 @@ bool clientSession::run() {
 
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 return true; // No data, try again later
-            } else {
-                // perror("Error reading from TCP socket");
-                m_logger.log(LogLevel::ERROR, "ClientSession",
-                             "Error reading from client socket from IP: " + m_clientIP + ". Closing session.");
-                return false; // Error, close connection
             }
+            // perror("Error reading from TCP socket");
+            m_logger.log(LogLevel::ERROR, "ClientSession",
+                         "Error reading from client socket from IP: " + m_clientIP + ". Closing session.");
+            return false; // Error, close connection
         }
         m_logger.log(LogLevel::WARNING, "ClientSession",
                      "Client connection from IP: " + m_clientIP + "has been disconnected.");
@@ -98,7 +97,10 @@ bool clientSession::run() {
     }
 
     if (m_isAuthenticated) {
-        handleEventQueue(); // check and send any pending event for this client
+        if (!handleEventQueue()) { // check and send any pending event for this client
+            m_logger.log(LogLevel::ERROR, "ClientSession",
+                         "Failed to send event to client " + m_clientID + " from IP: " + m_clientIP + ".");
+        }
     }
     if (!result.second) {
         // close connection
@@ -257,7 +259,7 @@ void clientSession::setUdpAddress(const struct sockaddr_storage &addr) {
     m_udpAddress = std::make_shared<sockaddr_storage>(addr);
 }
 
-void clientSession::handleEventQueue() {
+bool clientSession::handleEventQueue() {
     Event event;
     while (m_eventQueue.popEvent(m_clientID, event)) {
         switch (event.type) {
@@ -269,14 +271,21 @@ void clientSession::handleEventQueue() {
             }
             if (m_udpAddress) {
                 m_udpHandler.sendMessageToClient(m_clientID, event.message, *m_udpAddress);
+                return true;
             } else {
-                m_logger.log(LogLevel::WARNING, "ClientSession",
-                             "UDP address not set for client " + m_clientID + ". Cannot send event.");
+                m_logger.log(LogLevel::ERROR, "ClientSession",
+                             "UDP address not set for client " + m_clientID + ". Cannot send event \"NOTIFICATION\".");
+                return false;
             }
         }
-            // more event types can be added here
+        // more event types can be added here in the future
+        default:
+
+            m_logger.log(LogLevel::WARNING, "ClientSession", "Unknown event type for client " + m_clientID);
+            return false;
         }
     }
+    return false;
 }
 
 bool clientSession::sendWelcomeMessage() {
@@ -305,12 +314,12 @@ bool clientSession::trySendPendingMessage() {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
             // Couldn't send, wait for next EPOLLOUT
             return true;
-        } else {
-            perror("Error writing pending message to socket");
-            m_trafficReporter.incrementError("tcp", "tx");
-            m_logger.log(LogLevel::ERROR, "ClientSession", "Error writing to client socket from IP: " + m_clientIP);
-            return false; // Error occurred, close connection
         }
+        // perror("Error writing pending message to socket");
+        m_trafficReporter.incrementError("tcp", "tx");
+        m_logger.log(LogLevel::ERROR, "ClientSession",
+                     "Error writing pending message to client socket from IP: " + m_clientIP);
+        return false; // Error occurred, close connection
     }
     m_pendingMessages.pop_front();
     // If only part of the message was sent, keep the rest and exit
