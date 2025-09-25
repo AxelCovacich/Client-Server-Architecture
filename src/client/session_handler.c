@@ -171,6 +171,7 @@ bool session_start_aux_threads(ClientContext *context) {
         return false;
     }
     pthread_detach(udp_listener_thread);
+    logger_log("Session_handler", INFO, "Auxiliary threads started successfully.");
     return true;
 }
 
@@ -195,7 +196,7 @@ bool launch_dashboard(ClientContext *context) {
     }
     if (pid > 0) {
         // Parent process → continues as if nothing happened
-        // don't call wait(), the child is independent
+        // No wait(), the child is independent
 
         logger_log("Session_handler", INFO, "Dashboard launched successfully.");
         return true;

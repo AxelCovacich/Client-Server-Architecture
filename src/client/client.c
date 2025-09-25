@@ -75,7 +75,6 @@ bool setup_and_connect(ClientContext *context, client_config config, const char 
 }
 
 void client_cleanup(ClientContext *context) {
-    logger_close();
     if (context->tcp_socket != -1) {
         close(context->tcp_socket);
     }
@@ -88,6 +87,7 @@ void client_cleanup(ClientContext *context) {
         mq_close(context->ipc_queue);
         mq_unlink(IPC_QUEUE_NAME);
     }
+    logger_close();
     printf("Client cleanup completed.\n"); // NOLINT
 }
 
@@ -98,6 +98,8 @@ bool socket_validation(struct addrinfo *current_addr, ClientContext *context, in
         } else {
             context->udp_socket = sockfd;
         }
+        logger_log("Client", INFO,
+                   (strcmp(protocol, "tcp") == 0) ? "TCP connection established." : "UDP connection established.");
         return true;
     }
     // If we reach here, it means no valid address was found

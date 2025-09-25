@@ -212,8 +212,9 @@ bool handle_login_response(ClientContext *context, const char *response_string, 
             return false;
         }
     } else {
-        logger_log("Output_handler", WARNING, ("Login failed: %s", message->valuestring));
+        logger_log("Output_handler", WARNING, "Login failed");
         fprintf(output_stream, "Error from server: %s\n", message->valuestring); // NOLINT
+        cJSON_Delete(root);
         return false;
     }
 
@@ -232,7 +233,9 @@ bool post_login_procedures(ClientContext *context, cJSON *root, cJSON *status, c
     }
     fprintf(output_stream, "-Status: %s\n", status->valuestring);   // NOLINT
     fprintf(output_stream, "-Message: %s\n", message->valuestring); // NOLINT
-    logger_log("Output_handler", INFO, ("Login successful. Client ID: %s", client_id->valuestring));
+    char log_msg[MAX_LOG_MESSAGE_SIZE];
+    snprintf(log_msg, MAX_LOG_MESSAGE_SIZE, "Login successful. Client ID: %s", client_id->valuestring);
+    logger_log("Output_handler", INFO, log_msg);
 
     client_context_set_id(context, client_id->valuestring);
     return true;

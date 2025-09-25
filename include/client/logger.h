@@ -4,6 +4,7 @@
 #define LOG_DIR "./var/logs"             // Directory for logs
 #define LOG_PATH "./var/logs/client.log" // Default log path
 #define BUFFER_TIME_SIZE 32              // Size for time buffer
+#define MAX_LOG_MESSAGE_SIZE 512         // Max size for a log message
 
 typedef enum { DEBUG, INFO, WARNING, ERROR } log_level;
 

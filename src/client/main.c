@@ -47,6 +47,9 @@ int main(int argc, const char *argv[]) {
         return 1;
     }
     printf("Connection successful to %s! TCP Socket FD is %d\n", argv[1], context.tcp_socket);
+    char log_msg[MAX_LOG_MESSAGE_SIZE];
+    snprintf(log_msg, MAX_LOG_MESSAGE_SIZE, "TCP connection established. Socket FD is %d", context.tcp_socket);
+    logger_log("Main", INFO, log_msg);
 
     bool udp_setup = setup_and_connect(&context, config, "udp");
     if (udp_setup == false) {
@@ -56,6 +59,8 @@ int main(int argc, const char *argv[]) {
         return 1;
     }
     printf("Connection successful to %s! UDP Socket FD is %d\n", argv[1], context.udp_socket);
+    snprintf(log_msg, MAX_LOG_MESSAGE_SIZE, "UDP connection established. Socket FD is %d", context.udp_socket);
+    logger_log("Main", INFO, log_msg);
 
     if (!ipc_init(&context)) {
         logger_log("Main", ERROR, "IPC initialization failed.");
