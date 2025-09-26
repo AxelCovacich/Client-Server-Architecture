@@ -5,7 +5,7 @@ import gzip
 
 
 DB_PATH = "../var/lib/my_db.sqlite3"
-LOG_PATH = "../var/logs/server.log"
+LOG_DIR = "../var/logs"
 BACKUP_DIR = "../backup"
 
 def ensure_backup_dir():
@@ -28,10 +28,18 @@ def backup_file(src_path, prefix, compress=False):
         shutil.copy2(src_path, dest_path)
         print(f"Backup: {dest_path}")
 
+def backup_all_logs():
+    for fname in os.listdir(LOG_DIR):
+        if fname.endswith(".gz"):               # Only copy compressed logs will be backed up
+            src = os.path.join(LOG_DIR, fname)
+            dest = os.path.join(BACKUP_DIR, fname)
+            shutil.copy2(src, dest)
+            print(f"Copied log: {fname}")
+
 def main():
     ensure_backup_dir()
-    backup_file(DB_PATH, "db_backup")
-    backup_file(LOG_PATH, "server_log", compress=True)
+    backup_file(DB_PATH, "db_backup", compress=True)
+    backup_all_logs()
 
 if __name__ == "__main__":
     main()
