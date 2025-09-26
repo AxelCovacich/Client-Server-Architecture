@@ -39,6 +39,7 @@ void test_logger_log_writes_to_file() {
     TEST_ASSERT_NOT_NULL(strstr(line, "TestComponent"));
     TEST_ASSERT_NOT_NULL(strstr(line, "INFO"));
     TEST_ASSERT_NOT_NULL(strstr(line, "Test message"));
+    remove(log_path); // Clean up
 }
 
 void test_level_to_string() {
