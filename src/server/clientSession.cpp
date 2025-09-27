@@ -285,7 +285,7 @@ bool clientSession::handleEventQueue() {
             return false;
         }
     }
-    return false;
+    return true; // no events to process
 }
 
 bool clientSession::sendWelcomeMessage() {
