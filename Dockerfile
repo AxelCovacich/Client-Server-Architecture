@@ -28,10 +28,10 @@ RUN apt-get update && apt-get install -y wget \
 RUN apt-get update && apt-get install -y python3 python3-pip
 
 # Set the working directory
-WORKDIR /my_project
+WORKDIR /Last_of_Us_System
 
 # Copy the entire project into the container
-COPY . /my_project
+COPY . /Last_of_Us_System
 
 #build the project with coverage enabled
 RUN cmake -S . -B build \
@@ -40,3 +40,15 @@ RUN cmake -S . -B build \
 
 #compile the project
 RUN cmake --build build -- -j$(nproc)
+
+RUN apt-get update && apt-get install -y adduser
+
+#create necessary directories and a non-root user to run the server
+RUN addgroup --system serveruser && adduser --system --ingroup serveruser --no-create-home --shell /usr/sbin/nologin serveruser
+
+RUN chown -R serveruser:serveruser /Last_of_Us_System
+
+RUN mkdir -p /Last_of_Us_System/var/lib /Last_of_Us_System/var/logs /Last_of_Us_System/var/run \
+    && chown -R serveruser:serveruser /Last_of_Us_System/var /Last_of_Us_System/etc 
+
+USER serveruser
