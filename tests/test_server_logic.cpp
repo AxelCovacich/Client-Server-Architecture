@@ -59,6 +59,7 @@ void testServerConstructorFailsOnPrivilegedPort() {
 
         TEST_FAIL_MESSAGE("Expected std::runtime_error, but a different exception was thrown.");
     }
+    remove("temp_config.yaml");
 }
 
 void testGetClientIpIpv4() {

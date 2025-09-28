@@ -256,6 +256,6 @@ void testShouldRotateTrue() {
 
     TEST_ASSERT_TRUE(logger.shouldRotate());
 
-    // Cleanup
     std::filesystem::remove(logPath);
+    remove("temp_config.yaml");
 }
