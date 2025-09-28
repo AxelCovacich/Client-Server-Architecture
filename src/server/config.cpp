@@ -68,6 +68,10 @@ std::string Config::getMetricHostPort() const {
     return m_metricHostPort;
 }
 
+std::string Config::getUnixSocketPath() const {
+    return m_unixSocketPath;
+}
+
 void Config::logConfig() {
 
     if (!m_configNode["logger"] || !m_configNode["logger"]["max_log_size_mb"] ||
@@ -122,6 +126,14 @@ void Config::serverConfig(const std::vector<std::string> &args) {
     m_queueSize = m_configNode["server"]["queue_size"].as<int>();
     if (m_queueSize <= 0) {
         throw std::runtime_error("Queue size in config file must be a positive greater than zero integer");
+    }
+
+    if (!m_configNode["server"]["unix_socket_path"] || !m_configNode["server"]["unix_socket_path"].IsScalar()) {
+        throw std::runtime_error("Unix socket path in config file is not set or is not a valid string");
+    }
+    m_unixSocketPath = m_configNode["server"]["unix_socket_path"].as<std::string>();
+    if (m_unixSocketPath.empty()) {
+        throw std::runtime_error("Unix socket path in config file is empty");
     }
 }
 

@@ -79,7 +79,7 @@ Server::~Server() {
     if (m_serverUnixFD != -1) {
         std::cout << "Closing IPC server socket...\n";
         close(m_serverUnixFD);
-        unlink("/tmp/server_ipc.sock");
+        unlink(m_config.getUnixSocketPath().c_str());
     }
     if (m_epollFD >= 0) {
         std::cout << "Closing epoll FD...\n";
@@ -334,7 +334,7 @@ void Server::handleTcpConnection() {
 
 void Server::setUNIXconfig() {
 
-    const char *socketPath = "/tmp/server_ipc.sock";
+    std::string socketPath = m_config.getUnixSocketPath();
 
     m_serverUnixFD = socket(AF_UNIX, SOCK_STREAM, 0);
     if (m_serverUnixFD < 0) {
@@ -348,11 +348,12 @@ void Server::setUNIXconfig() {
 
     // necssary to interact with C API
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-    strncpy(server_addr.sun_path, socketPath, sizeof(server_addr.sun_path) - 1);
+    strncpy(server_addr.sun_path, socketPath.c_str(), sizeof(server_addr.sun_path) - 1);
+    server_addr.sun_path[sizeof(server_addr.sun_path) - 1] = '\0';
 
     // erase socket file if already exists from a previus run.
     // This prevents the "Adress already in use" error for unix sockets
-    unlink(socketPath);
+    unlink(socketPath.c_str());
 
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     if (bind(m_serverUnixFD, reinterpret_cast<struct sockaddr *>(&server_addr), sizeof(server_addr)) < 0) {

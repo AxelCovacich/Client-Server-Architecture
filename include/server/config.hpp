@@ -36,6 +36,7 @@ class Config {
     std::string getDbPath() const;
     std::string getSecretPhrase() const;
     std::string getMetricHostPort() const;
+    std::string getUnixSocketPath() const;
 
     void logConfig();
     void serverConfig(const std::vector<std::string> &args);
@@ -55,6 +56,7 @@ class Config {
     std::string m_logPath;
     std::string m_dbPath;
     std::string m_secretPhrase;
+    std::string m_unixSocketPath;
 
     void validatePort(const std::vector<std::string> &args);
 };

@@ -11,6 +11,7 @@ server:
     max_unix_connections: 1000
     metric_host_port: "0.0.0.0:8086"
     queue_size: 50
+    unix_socket_path: "/tmp/server_ipc.sock"
     
 logger:
     max_log_size_mb: 10
