@@ -1,0 +1,13 @@
+[Unit]
+Description=LastofUs Server
+After=network.target
+
+[Service]
+User=serveruser
+Group=serveruser
+WorkingDirectory=/path/to/your/WorkingDirectory
+ExecStart=/path/to/your/binary/server
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
