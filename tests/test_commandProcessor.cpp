@@ -543,6 +543,7 @@ server:
     max_unix_connections: 5
     metric_host_port: "localhost:8081"
     queue_size: 10
+    unix_socket_path: "/tmp/server_test.sock"
 logger:
     max_log_size_mb: 10
     log_path: "./var/logs/server.log"
@@ -598,6 +599,7 @@ server:
     max_unix_connections: 5
     metric_host_port: "localhost:8081"
     queue_size: 10
+    unix_socket_path: "/tmp/server_test.sock"
 logger:
     max_log_size_mb: 10
     log_path: "./var/logs/server.log"
@@ -652,6 +654,7 @@ server:
     max_unix_connections: 5
     metric_host_port: "localhost:8081"
     queue_size: 10
+    unix_socket_path: "/tmp/server_test.sock"
 logger:
     max_log_size_mb: 10
     log_path: "./var/logs/server.log"

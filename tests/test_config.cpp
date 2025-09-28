@@ -21,6 +21,7 @@ void testConfigLoadsPortFromYaml() {
                 max_unix_connections: 5
                 metric_host_port: "localhost:8081"
                 queue_size: 10
+                unix_socket_path: "/tmp/server_test.sock"
 
             logger:
                 max_log_size_mb: 10
@@ -51,6 +52,7 @@ void testConfigPrioritizesCliArgumentOverYaml() {
                 max_unix_connections: 5
                 metric_host_port: "localhost:8081"
                 queue_size: 10
+                unix_socket_path: "/tmp/server_test.sock"
 
             logger:
                 max_log_size_mb: 10
@@ -84,6 +86,7 @@ void testConfigPrioritizesEnvVariableOverYaml() {
                 max_unix_connections: 5
                 metric_host_port: "localhost:8081"
                 queue_size: 10
+                unix_socket_path: "/tmp/server_test.sock"
 
             logger:
                 max_log_size_mb: 10
@@ -118,7 +121,7 @@ void testConfigLoadsdbPathFromYaml() {
                 max_unix_connections: 5
                 metric_host_port: "localhost:8081"
                 queue_size: 10
-
+                unix_socket_path: "/tmp/server_test.sock"
             logger:
                 max_log_size_mb: 10
                 log_path: "./var/logs/server.log"
@@ -148,6 +151,7 @@ void testConfigSecretPhraseFromYaml() {
                 max_unix_connections: 5
                 metric_host_port: "localhost:8081"
                 queue_size: 10
+                unix_socket_path: "/tmp/server_test.sock"
 
             logger:
                 max_log_size_mb: 10
@@ -177,6 +181,7 @@ void testConfigPrioritizesCliArgumentsTcpAndUdp() {
                 max_unix_connections: 5
                 metric_host_port: "localhost:8081"
                 queue_size: 10
+                unix_socket_path: "/tmp/server_test.sock"
 
             logger:
                 max_log_size_mb: 10
@@ -207,6 +212,7 @@ void testConfigFailsOnInvalidPortInYaml() {
                 max_unix_connections: 5
                 metric_host_port: "localhost:8081"
                 queue_size: 10
+                unix_socket_path: "/tmp/server_test.sock"
 
             logger:
                 max_log_size_mb: 10
@@ -238,7 +244,7 @@ void testConfigFailsOnInvalidEnvPort() {
                 max_unix_connections: 5
                 metric_host_port: "localhost:8081"
                 queue_size: 10
-
+                unix_socket_path: "/tmp/server_test.sock"
             logger:
                 max_log_size_mb: 10
                 log_path: "./var/logs/server.log"
@@ -274,6 +280,7 @@ void testConfigCliArgumentHasPriorityOverEnv() {
                 max_unix_connections: 5
                 metric_host_port: "localhost:8081"
                 queue_size: 10
+                unix_socket_path: "/tmp/server_test.sock"
 
             logger:
                 max_log_size_mb: 10
@@ -301,6 +308,7 @@ void testConfigFailsOnMissingDbPathInYaml() {
                 max_unix_connections: 5
                 metric_host_port: "localhost:8081"
                 queue_size: 10
+                unix_socket_path: "/tmp/server_test.sock"
 
             logger:
                 max_log_size_mb: 10
@@ -334,6 +342,7 @@ void testConfigFailsOnMissingSecretPhraseInYaml() {
                 max_unix_connections: 5
                 metric_host_port: "localhost:8081"
                 queue_size: 10
+                unix_socket_path: "/tmp/server_test.sock"
 
             logger:
                 max_log_size_mb: 10
@@ -381,6 +390,7 @@ void testConfigFailsOnNonExistentQueueSize() {
                 max_clients: 10
                 max_unix_connections: 5
                 metric_host_port: "localhost:8081"
+                unix_socket_path: "/tmp/server_test.sock"
             )");
     const std::vector<std::string> args = {"./server", "./temp_config.yaml"};
 
