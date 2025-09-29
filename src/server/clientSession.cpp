@@ -272,11 +272,10 @@ bool clientSession::handleEventQueue() {
             if (m_udpAddress) {
                 m_udpHandler.sendMessageToClient(m_clientID, event.message, *m_udpAddress);
                 return true;
-            } else {
-                m_logger.log(LogLevel::ERROR, "ClientSession",
-                             "UDP address not set for client " + m_clientID + ". Cannot send event \"NOTIFICATION\".");
-                return false;
             }
+            m_logger.log(LogLevel::ERROR, "ClientSession",
+                         "UDP address not set for client " + m_clientID + ". Cannot send event \"NOTIFICATION\".");
+            return false;
         }
         // more event types can be added here in the future
         default:
@@ -308,7 +307,13 @@ bool clientSession::sendWelcomeMessage() {
 }
 
 bool clientSession::trySendPendingMessage() {
+
+    if (m_pendingMessages.empty() || m_clientSocket < 0) {
+        return false;
+    }
+
     const std::string &msg = m_pendingMessages.front();
+
     ssize_t sent = write(m_clientSocket, msg.data(), msg.size());
     if (sent < 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {

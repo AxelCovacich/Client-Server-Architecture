@@ -113,9 +113,9 @@ void Server::run() {
 
         for (int i = 0; i < numberEventsFDs; ++i) {
 
-            int clientFileDescriptor = events[i].data.fd;
-            // Write event for pending tcp messages
-            bool isWriteEvent = (events[i].events & EPOLLOUT) != 0;
+            int clientFileDescriptor = events[i].data.fd;           // NOLINT
+                                                                    // Write event for pending tcp messages
+            bool isWriteEvent = (events[i].events & EPOLLOUT) != 0; // NOLINT
 
             if (isWriteEvent) {
                 pendingMessages(clientFileDescriptor);
