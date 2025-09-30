@@ -6,6 +6,10 @@ services:
       - "8888:8888"
       - "8888:8888/udp"
       - "8086:8086"
+    volumes:
+      - ./var/lib:/Last_of_Us_System/var/lib
+      - ./var/logs:/Last_of_Us_System/var/logs
+      - ./backup:/Last_of_Us_System/backup
   prometheus:
     image: prom/prometheus
     volumes:
