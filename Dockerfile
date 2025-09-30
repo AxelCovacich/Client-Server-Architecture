@@ -52,3 +52,5 @@ RUN mkdir -p /Last_of_Us_System/var/lib /Last_of_Us_System/var/logs /Last_of_Us_
     && chown -R serveruser:serveruser /Last_of_Us_System/var /Last_of_Us_System/etc 
 
 USER serveruser
+
+CMD ["build/bin/server"]
