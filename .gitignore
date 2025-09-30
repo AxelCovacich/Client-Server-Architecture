@@ -45,6 +45,7 @@ CDashSummary.log
 
 #vscode
 .vscode
+eager_galileo.code-workspace
 
 #valgrind ignore issues
 sqlvalgrind.supp
@@ -52,6 +53,11 @@ sqlvalgrind.supp
 #docs
 docs/1_lab.pdf
 
+#var
+var/
+
 #build
 build/
 venv/
+external/
+
