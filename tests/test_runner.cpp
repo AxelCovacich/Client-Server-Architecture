@@ -220,6 +220,9 @@ void testClientSessionEventQueueHandleNoUDPDirection();
 void testWelcomeMessageFails();
 void testHasPendingMessages();
 void testTrySendPendingMessageFails();
+void testRegisterNewClientSuccessfully();
+void testRegisterNewClientMissingFields();
+void testRegisterNewClientNotAdminUser();
 
 /**
  * @brief Runs all the tests.
@@ -431,5 +434,8 @@ int main() {
     RUN_TEST(testWelcomeMessageFails);
     RUN_TEST(testHasPendingMessages);
     RUN_TEST(testTrySendPendingMessageFails);
+    RUN_TEST(testRegisterNewClientSuccessfully);
+    RUN_TEST(testRegisterNewClientMissingFields);
+    RUN_TEST(testRegisterNewClientNotAdminUser);
     return UNITY_END();
 }

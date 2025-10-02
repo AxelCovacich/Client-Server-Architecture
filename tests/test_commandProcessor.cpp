@@ -783,3 +783,86 @@ void testUpdateStockFailsWithHubUser() {
                              response["message"].get<std::string>().c_str());
     TEST_ASSERT_TRUE(result.second);
 }
+
+void testRegisterNewClientSuccessfully() {
+
+    std::string clientId = "admin";
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    storage.createUser(clientId, "admin");
+    Config dummyConfig = createDummyConfig();
+    SystemClock clock;
+    Logger logger(storage, clock, std::cerr, dummyConfig);
+    Inventory inventory(storage, logger);
+    TrafficReporter trafficReporter;
+    SessionManager session(storage, logger, trafficReporter);
+
+    std::string json_request =
+        "{\"command\": \"register_user\", "
+        "\"payload\":{\"new_client_id\":\"new_user\",\"new_client_password\":\"new_user_pass\"}}";
+
+    json request_object = json::parse(json_request);
+
+    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
+                                                   dummyConfig, trafficReporter);
+
+    bool exists = storage.userExists("new_user");
+    json response = json::parse(result.first);
+
+    TEST_ASSERT_TRUE(exists);
+    TEST_ASSERT_EQUAL_STRING("success", response["status"].get<std::string>().c_str());
+    TEST_ASSERT_EQUAL_STRING("Client `new_user` successfully registered.",
+                             response["message"].get<std::string>().c_str());
+}
+void testRegisterNewClientMissingFields() {
+
+    std::string clientId = "admin";
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    storage.createUser(clientId, "admin");
+    Config dummyConfig = createDummyConfig();
+    SystemClock clock;
+    Logger logger(storage, clock, std::cerr, dummyConfig);
+    Inventory inventory(storage, logger);
+    TrafficReporter trafficReporter;
+    SessionManager session(storage, logger, trafficReporter);
+
+    std::string json_request = "{\"command\": \"register_user\", \"payload\":{\"new_client_id\":\"new_user\"}}";
+
+    json request_object = json::parse(json_request);
+
+    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
+                                                   dummyConfig, trafficReporter);
+
+    json response = json::parse(result.first);
+    TEST_ASSERT_EQUAL_STRING("error", response["status"].get<std::string>().c_str());
+    TEST_ASSERT_EQUAL_STRING("Invalid or missing field in register_user payload.",
+                             response["message"].get<std::string>().c_str());
+}
+
+void testRegisterNewClientNotAdminUser() {
+
+    std::string clientId = "Not_Admin";
+    Storage storage(":memory:");
+    storage.initializeSchema();
+    storage.createUser(clientId, "pass123");
+    Config dummyConfig = createDummyConfig();
+    SystemClock clock;
+    Logger logger(storage, clock, std::cerr, dummyConfig);
+    Inventory inventory(storage, logger);
+    TrafficReporter trafficReporter;
+    SessionManager session(storage, logger, trafficReporter);
+
+    std::string json_request =
+        "{\"command\": \"register_user\", "
+        "\"payload\":{\"new_client_id\":\"new_user\",\"new_client_password\":\"new_user_pass\"}}";
+
+    json request_object = json::parse(json_request);
+
+    auto result = commandProcessor::processCommand(request_object, clientId, false, inventory, logger, storage, session,
+                                                   dummyConfig, trafficReporter);
+
+    json response = json::parse(result.first);
+    TEST_ASSERT_EQUAL_STRING("error", response["status"].get<std::string>().c_str());
+    TEST_ASSERT_EQUAL_STRING("Command only available for admin user.", response["message"].get<std::string>().c_str());
+}
