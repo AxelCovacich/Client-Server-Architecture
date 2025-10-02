@@ -24,6 +24,8 @@ static commandResult handleGetHistoryCommand(const json &request, const std::str
 static commandResult handleUnlockClientCommand(const json &request, const std::string &clientId,
                                                SessionManager &sessionManager, const Config &config, Logger &logger,
                                                json &response, TrafficReporter &trafficReporter);
+static commandResult handleRegisterUser(const json &request, const std::string &clientId, Storage &storage,
+                                        const Config &config, Logger &logger, json &response);
 
 commandResult processCommand(const json &request, const std::string &clientId, bool isInMaintenance,
                              Inventory &inventory, Logger &logger, Storage &storage, SessionManager &sessionManager,
@@ -84,6 +86,10 @@ commandResult processCommand(const json &request, const std::string &clientId, b
 
     if (cmd == "unlock_client") {
         return handleUnlockClientCommand(request, clientId, sessionManager, config, logger, response, trafficReporter);
+    }
+
+    if (cmd == "register_user") {
+        return handleRegisterUser(request, clientId, storage, config, logger, response);
     }
 
     // for unknown command
@@ -281,6 +287,45 @@ static commandResult handleUnlockClientCommand(const json &request, const std::s
         response["status"] = "error";
         response["message"] = "Command only available for admin user.";
         trafficReporter.incrementError("tcp", "rx");
+        logger.log(LogLevel::WARNING, "CommandProcessor", "Trying to execute admin commands with a invalid user.",
+                   clientId);
+        return {response.dump(), true};
+    }
+}
+
+static commandResult handleRegisterUser(const json &request, const std::string &clientId, Storage &storage,
+                                        const Config &config, Logger &logger, json &response) {
+    if (clientId == "admin") {
+
+        try {
+            const json &payload = request.at("payload");
+            const std::string newClientId = payload.at("new_client_id");
+            const std::string newClientPassword = payload.at("new_client_password");
+
+            bool success = storage.createUser(newClientId, newClientPassword);
+            if (success) {
+                response["status"] = "success";
+                response["message"] = "Client `" + newClientId + "` successfully registered.";
+                logger.log(LogLevel::INFO, "CommandProcessor", "Client `" + newClientId + "` registered successfully.",
+                           clientId);
+                return {response.dump(), true};
+            }
+            response["status"] = "error";
+            response["message"] = "Couldn't register Client `" + newClientId + "`.";
+            logger.log(LogLevel::WARNING, "CommandProcessor", "Couldn't register Client `" + newClientId + "`.",
+                       clientId);
+            return {response.dump(), true};
+
+        } catch (const json::exception &e) {
+            response["status"] = "error";
+            response["message"] = "Invalid or missing field in register_user payload.";
+            logger.log(LogLevel::WARNING, "CommandProcessor", "Invalid or missing field in register_user payload.",
+                       clientId);
+            return {response.dump(), true};
+        }
+    } else {
+        response["status"] = "error";
+        response["message"] = "Command only available for admin user.";
         logger.log(LogLevel::WARNING, "CommandProcessor", "Trying to execute admin commands with a invalid user.",
                    clientId);
         return {response.dump(), true};
