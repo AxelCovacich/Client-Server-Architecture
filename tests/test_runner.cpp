@@ -78,6 +78,8 @@ void test_socket_validation_success_tcp();
 void test_socket_validation_success_udp();
 void test_socket_validation_error();
 void test_launch_dashboard_fails_without_clientID();
+void test_build_json_register_user_new_client_successfully();
+void test_build_json_register_user_missing_fields();
 } // extern "C"
 
 void testProcessCommandStatusAsJSON();
@@ -437,5 +439,7 @@ int main() {
     RUN_TEST(testRegisterNewClientSuccessfully);
     RUN_TEST(testRegisterNewClientMissingFields);
     RUN_TEST(testRegisterNewClientNotAdminUser);
+    RUN_TEST(test_build_json_register_user_new_client_successfully);
+    RUN_TEST(test_build_json_register_user_missing_fields);
     return UNITY_END();
 }

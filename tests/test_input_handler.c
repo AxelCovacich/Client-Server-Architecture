@@ -254,3 +254,29 @@ void test_parse_arguments_invalid_env_udp_port() {
     TEST_ASSERT_FALSE(result);
     unsetenv("CLIENT_PORT");
 }
+
+void test_build_json_register_user_new_client_successfully() {
+    char input[] = "register_user new_user new_password";
+
+    const char *expected_json = "{\"command\":\"register_user\",\"payload\":{\"new_client_id\":\"new_user\",\"new_"
+                                "client_password\":\"new_password\"}}";
+
+    json_build_result result = build_json_from_input(input);
+
+    TEST_ASSERT_EQUAL_INT(JSON_BUILD_SUCCESS, result.status);
+    TEST_ASSERT_NOT_NULL(result.json_string);
+    TEST_ASSERT_EQUAL_STRING(expected_json, result.json_string);
+
+    free(result.json_string);
+}
+
+void test_build_json_register_user_missing_fields() {
+    char input[] = "register_user new_user";
+
+    json_build_result result = build_json_from_input(input);
+
+    TEST_ASSERT_EQUAL_INT(JSON_BUILD_ERROR_SYNTAX, result.status);
+    TEST_ASSERT_NULL(result.json_string);
+
+    free(result.json_string);
+}
