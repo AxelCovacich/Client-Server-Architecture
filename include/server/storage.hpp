@@ -94,7 +94,7 @@ class Storage {
      * @param `hostname` The user given hostname.
      * @param `password` The user given password.
      */
-    void createUser(const std::string &hostname, const std::string &password);
+    bool createUser(const std::string &hostname, const std::string &password);
 
     /**
      * @brief Checks if a user with the specified hostname exists in the database.

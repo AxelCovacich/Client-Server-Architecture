@@ -168,7 +168,7 @@ std::optional<Storage::ClientInventoryMap> Storage::getFullInventory(const std::
     }
 }
 
-void Storage::createUser(const std::string &hostname, const std::string &password) {
+bool Storage::createUser(const std::string &hostname, const std::string &password) {
     std::lock_guard<std::mutex> lock(m_dbMutex);
     try {
 
@@ -184,12 +184,15 @@ void Storage::createUser(const std::string &hostname, const std::string &passwor
 
         query.exec(); // NOLINT
 
-        std::cout << "User '" << hostname << "' created or already exists.\n";
+        // std::cout << "User '" << hostname << "' created or already exists.\n";
+
+        return true;
 
     } catch (const std::exception &e) {
         std::cerr << "Error creating user '" << hostname << "': " << e.what() << '\n';
         throw;
     }
+    return false;
 }
 
 bool Storage::userExists(const std::string &hostname) {
