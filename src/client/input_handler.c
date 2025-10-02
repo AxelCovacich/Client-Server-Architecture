@@ -25,6 +25,11 @@ json_build_result build_json_from_input(char *raw_input) {
         return build_json_for_login(command);
     }
 
+    if (strcmp(command, "register_user") == 0) {
+
+        return build_json_for_register_user(command);
+    }
+
     // get_history, status, get_inventory fall here because its only one command to send
     return build_json_for_single_command(command);
 }
@@ -193,6 +198,35 @@ json_build_result build_json_for_single_command(char *command) {
     }
     // for simple commands like status
     cJSON_AddStringToObject(root, "command", command);
+    char *json_string = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    return (json_build_result){.json_string = json_string, .status = JSON_BUILD_SUCCESS};
+}
+
+json_build_result build_json_for_register_user(char *command) {
+
+    char *new_username = strtok(NULL, " ");
+    char *new_password = strtok(NULL, " ");
+
+    if (new_username == NULL || new_password == NULL) {
+        fprintf(stderr, "Error: register_user requires <new_username> and <new_password>.\n"); // NOLINT
+        return (json_build_result){.json_string = NULL, .status = JSON_BUILD_ERROR_SYNTAX};
+    }
+
+    cJSON *root = cJSON_CreateObject();
+    if (root == NULL) {
+        printf("Error creating the cJSON object...\n");
+        logger_log("Input_handler", ERROR, "Error creating the cJSON object for register_user.");
+        return (json_build_result){.json_string = NULL, .status = JSON_BUILD_ERROR_MEMORY};
+    }
+
+    // building the json objects with the arguments obtained
+    cJSON_AddStringToObject(root, "command", command);
+
+    cJSON *payload = cJSON_CreateObject();
+    cJSON_AddStringToObject(payload, "new_client_id", new_username);
+    cJSON_AddStringToObject(payload, "new_client_password", new_password);
+    cJSON_AddItemToObject(root, "payload", payload);
     char *json_string = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
     return (json_build_result){.json_string = json_string, .status = JSON_BUILD_SUCCESS};

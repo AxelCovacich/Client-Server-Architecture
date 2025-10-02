@@ -116,6 +116,13 @@ json_build_result build_json_for_login(char *command);
 json_build_result build_json_for_single_command(char *command);
 
 /**
+ * @brief Builds a JSON message for a 'register_user' command.
+ * @param command The full command string from the user (e.g., "register_user new_user new_pass").
+ * @return A json_build_result struct containing the JSON string and a status code.
+ */
+json_build_result build_json_for_register_user(char *command);
+
+/**
  * @brief Configures TCP and UDP ports from command-line arguments.
  * @param argc The argument count from main.
  * @param argv The argument vector from main.
