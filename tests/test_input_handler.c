@@ -280,3 +280,29 @@ void test_build_json_register_user_missing_fields() {
 
     free(result.json_string);
 }
+
+void test_build_json_unlock_client_success() {
+    char input[] = "unlock_client user123 secret_phrase";
+
+    const char *expected_json = "{\"command\":\"unlock_client\",\"payload\":{\"client_to_unlock\":\"user123\",\"secret_"
+                                "phrase\":\"secret_phrase\"}}";
+
+    json_build_result result = build_json_from_input(input);
+
+    TEST_ASSERT_EQUAL_INT(JSON_BUILD_SUCCESS, result.status);
+    TEST_ASSERT_NOT_NULL(result.json_string);
+    TEST_ASSERT_EQUAL_STRING(expected_json, result.json_string);
+
+    free(result.json_string);
+}
+
+void test_build_json_unlock_client_missing_fields() {
+    char input[] = "unlock_client user123";
+
+    json_build_result result = build_json_from_input(input);
+
+    TEST_ASSERT_EQUAL_INT(JSON_BUILD_ERROR_SYNTAX, result.status);
+    TEST_ASSERT_NULL(result.json_string);
+
+    free(result.json_string);
+}
