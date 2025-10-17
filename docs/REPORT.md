@@ -32,9 +32,9 @@ config:
 ---
 flowchart LR
     subgraph Client["Client (C Executable)"]
-        Client["Hub or Warehouse"]
+        Cli["Hub or Warehouse"]
         Dashboard["Python Dashboard"]
-        Client -- "POSIX MQ (IPC, internal)" --> Dashboard
+        Cli -- "POSIX MQ (IPC, internal)" --> Dashboard
     end
 
     subgraph Server["Server (C++)"]
@@ -43,9 +43,9 @@ flowchart LR
         AlertSensor -- "UNIX File (IPC)" --> Srv
     end
 
-    Client <-->|"TCP (JSON)"| Srv
-    Client <-->|"UDP (Keepalive)"| Srv
-    Srv -- "UDP (Notifications)" --> CLI
+    Cli <-->|"TCP (JSON)"| Srv
+    Cli <-->|"UDP (Keepalive)"| Srv
+    Srv -- "UDP (Notifications)" --> Cli
 
     Srv -- "Metrics (Prometheus-cpp)" --> Prometheus[Prometheus]
     Prometheus -- "Data Source" --> Grafana[Grafana]
