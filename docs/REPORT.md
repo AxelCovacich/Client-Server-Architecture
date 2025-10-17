@@ -32,41 +32,57 @@ config:
 ---
 flowchart LR
     subgraph Client["Client (C Executable)"]
-        CLI["CLI"]
+        CLI["CLI (Command Line Interface)"]
         Dashboard["Python Dashboard"]
-        CLI -- "POSIX MQ (IPC)" --> Dashboard
+        CLI -- "POSIX MQ (IPC, internal)" --> Dashboard
     end
 
     subgraph Server["Server (C++)"]
         Srv["Main Server"]
         AlertSensor["Python Alert Sensor"]
-        Srv -- "UNIX File (IPC)" --> AlertSensor
+        AlertSensor -- "UNIX File (IPC)" --> Srv
     end
 
-    CLI -- "TCP (JSON)" --> Srv
-    Srv -- "UDP (Notifications)" --> CLI
+    CLI <-->|"TCP (JSON, bidirectional)"| Srv
+    CLI <-->|"UDP (Keepalive, bidirectional)"| Srv
+    Srv -- "UDP (Notifications, server to client)" --> CLI
 
     Srv -- "Metrics (Prometheus-cpp)" --> Prometheus[Prometheus]
     Prometheus -- "Data Source" --> Grafana[Grafana]
 
     %% Volumes for persistence
-    Srv -- "DB, Logs, Backups (Docker Volumes)" --- Storage[(Persistent Storage)]
+    Srv -- "DB, Logs, Backups (SQLite via SQLiteCpp, Docker Volumes)" --- Storage[(Persistent Storage)]
   
   ```
-**Description:**
 
-- The **Client** (C executable) communicates with the **Server** using:
-  - **TCP** (JSON messages) for commands and session management.
-  - **UDP** for receiving real-time notifications from the server.
-  - **IPC (POSIX message queue)** to send notifications to a **Python dashboard script** that displays alerts to the user.
+**Description & Clarifications:**
 
-- The **Server**:
-  - Handles all business logic, authentication, inventory, and notifications.
-  - Receives alerts from a **Python alert sensor script** via **IPC (UNIX file)**, then broadcasts these alerts to all connected clients.
-  - Exposes runtime metrics using **prometheus-cpp**.
+- **CLI (Command Line Interface):**
+  Handles user commands and communicates with the server via TCP (JSON messages, bidirectional). UDP and IPC are handled internally by the client, not exposed via CLI.
 
-- **Prometheus** scrapes metrics from the server, and **Grafana** visualizes them in dashboards.
+- **TCP (JSON):**
+  Bidirectional communication; client sends commands, server responds with acknowledgements, data, or errors.
 
+- **UDP (Keepalive):**
+  Bidirectional; client sends periodic "ping" messages, server responds with "pong" or status.
+
+- **UDP (Notifications):**
+  Unidirectional; server sends notifications to client.
+
+- **IPC (POSIX MQ):**
+  Client uses internal IPC to send notifications to the Python dashboard for display.
+
+- **Alert Sensor (Python):**
+  Sends alerts to the server via IPC (UNIX file); server reads these alerts and broadcasts them to clients.
+
+- **Persistence:**
+  All persistent data (database, logs, backups) are stored using SQLite (via SQLiteCpp library) and mapped as Docker volumes for durability.
+
+- **Metrics:**
+  Server exposes metrics using prometheus-cpp, scraped by Prometheus and visualized in Grafana.
+
+> **Notes:** 
+- SQLiteCpp is a C++ wrapper for SQLite, which is a lightweight, file-based relational database (not MySQL).
 - All persistent data (database, logs, backups) are stored in mapped Docker volumes for durability.
 
 
