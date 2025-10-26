@@ -141,11 +141,12 @@ For testing, unit tests were implemented using Unity, as it was practical and st
 
 # 4. Implementation Details
 
-## Server
 
-### General Structure
+## General Structure
 
 The project is organized following the Linux Filesystem Hierarchy Standard (FHS), with all components contained within a single workspace directory. This means there are no system-wide installations required, except for external dependencies such as Grafana or Prometheus.
+
+### Server
 
 The server is built around several key classes, each responsible for a specific aspect of the system. Here are detailed some of the most relevant:
 
@@ -160,7 +161,28 @@ The server is built around several key classes, each responsible for a specific 
 - **IpcHandler:** Handles inter-process communication for alerts and dashboard integration.
 - **AlertManager:** Processes and broadcasts alerts received from the alert sensor.
 
-Each class is designed with a clear responsibility, making the codebase modular and easier to maintain.
+### Client
+
+The client is implemented in C and organized as small modules, each with a focused responsibility. The main modules are:
+
+- **client:**  Configures and establishes TCP/UDP sockets (single setup function accepts a protocol parameter). Provides a cleanup function that closes sockets, shuts down the IPC queue and logger, and releases other resources.
+
+- **client_context:**  Holds runtime state in a struct (TCP/UDP sockets, IPC queue descriptor, client_id, mutex, etc.). Acts as the shared context passed to other modules for accessing and updating client state safely.
+
+- **input_handler:**  Reads user input, determines the user action (send, quit, continue, error) and builds JSON messages to send to the server. Returns a `json_build_result` (string + status enum) so callers can handle syntax or memory errors distinctly.
+
+- **ipc_handler:**  Manages the POSIX message queue used to send notifications to the Python dashboard. Initializes the queue, enqueues messages with priority, and provides safe shutdown semantics.
+
+- **logger:**  Opens/creates the log file, serializes writes with a mutex, and exposes `logger_log`/`logger_close` for modules to record events and errors.
+
+- **output_handler:**  Formats and prints server responses for the user. Detects successful login responses and stores the returned client_id in the `ClientContext`.
+
+- **session_handler:**  Orchestrates the client ↔ server communication loop. Starts the main send/receive loop, executes transactions (send JSON, read reply), and launches auxiliary threads (keepalive sender, UDP listener, dashboard launcher) after successful login.
+
+- **transport:**  Provides low-level TCP/UDP I/O functions (tcp_send/recv, udp_send/recv) and manages the peer UDP address used by `sendto`. Acts as the abstraction over socket API used by the session handler.
+
+- **udp_handler:**  Implements the UDP listener thread and the keepalive thread. Received UDP messages are forwarded to the `ipc_handler` for the dashboard; keepalives are periodically sent to the server using the transport helpers.
+
 
 ### Key Features
 
@@ -227,6 +249,27 @@ Monitoring is implemented with `prometheus-cpp` and Grafana:
 - Metrics are exposed on the configured port (via `TrafficReporter::startPrometheusExposer`).
 - Prometheus scrapes the exposed endpoint and Grafana visualizes the metrics in dashboards (admin must add Prometheus as Grafana data source).
 
+### Client features
+
+- Ports and startup:
+  - TCP/UDP ports can be set via environment variables or passed as command-line arguments. Default ports are used if none are provided.
+- Network support:
+  - IPv4 and IPv6 support for TCP and UDP is provided via getaddrinfo.
+- Command input and validation:
+  - Commands are entered via the keyboard. Unknown commands may be sent (the server will ignore or reject them), but the client does not treat them as local errors.
+  - The `input_handler` validates command syntax and required arguments before sending. If a required field is missing (e.g., `update_stock` without the stock id), the user is informed of the correct usage and asked to re-enter the command.
+- Login and dashboard:
+  - After a successful login the Python notification dashboard is launched automatically and UDP keepalive begins.
+  - Keepalive: the client sends a ping every 1 minute and expects a pong/status reply from the server.
+  - Server UDP notifications and keepalive responses are displayed in the dashboard; the command-line remains available for further input while the dashboard runs.
+- Session lifecycle:
+  - The `end` command or a termination signal (e.g., Ctrl-C) closes the client and the dashboard (if launched) cleanly.
+  - There is currently no reconnection or logout command—closing the client is required to end a session.
+- Output formatting:
+  - The `output_handler` formats server responses into human-readable output (stock, inventory, history, error messages).
+- Logs and backups:
+  - The client logs to a local logfile but currently has no rotation or backup mechanism (logs are expected to be small).
+
 ### Main Flows
 
 #### Client session lifecycle (command flow)
@@ -274,6 +317,58 @@ Monitoring is implemented with `prometheus-cpp` and Grafana:
 - Configuration validation: the `Config` module validates `config.yaml` on startup. If required values are missing or invalid, the server logs the issue and exits to prevent running with incorrect settings.
 
 Overall, the system favors explicit validation, controlled exception handling, informative client responses, and conservative shutdown behavior for unrecoverable errors.
+
+### Client-side Flows (function-level)
+
+This section describes the main runtime flows on the client side from the point of view of functions/modules. It explains the path a command or notification follows from user input to server and back, and how auxiliary threads and IPC are used.
+
+### Command / request flow (user → client → server → user)
+1. The CLI reads user input via input_handler:
+   - input_handler reads a line, determines the action (UserInputAction) and builds the JSON payload (json_build_result).
+   - If the input is syntactically invalid, input_handler returns an error status and prompts the user again (no network send).
+
+2. The session is executed by session_handler:
+   - session_handler.start_communication(...) initializes the transaction and enters communication_loop().
+   - communication_loop calls execute_client_action(...) for each user action.
+
+3. execute_client_action(...) performs the network transaction:
+   - It calls transport (transport.tcp_send) to send the JSON string over the TCP socket.
+   - It then waits for the server reply with transport.tcp_recv
+   - The raw reply is passed to session_handler.session_process_server_msg(...).
+
+4. Response processing and UI:
+   - session_handler forwards the server JSON to output_handler.print_readable_response(...).
+   - output_handler formats the data (stock, inventory, history, errors) and prints it to the console.
+   - If the response indicates a successful login, output_handler informs session_handler so it can store client_id into ClientContext and launch post-login actions.
+
+5. Post-login actions:
+   - session_handler.session_start_aux_threads(...) is invoked after successful authentication.
+   - Auxiliary threads launched include:
+     - keepalive thread (udp_handler.keepalive_thread_func) that periodically sends a ping via transport.udp_send.
+     - UDP listener thread (udp_handler.udp_listener_thread_func) that listens for notifications.
+     - Dashboard launcher (session_handler.launch_dashboard) that initializes ipc_handler and opens the POSIX message queue.
+
+6. Closing:
+   - The `end` command or termination signal triggers session_handler to cleanly shutdown auxiliary threads, close sockets and call client_cleanup() to free resources.
+
+### Notification flow (server UDP → client UDP listener → ipc → dashboard)
+1. The UDP listener thread (udp_handler.udp_listener_thread_func) blocks on the UDP socket via transport.udp_recv.
+2. On receipt of a UDP notification:
+   - udp_handler passes the message to ipc_handler.ipc_send_message(...), adding a priority if required.
+   - ipc_handler enqueues the message to the POSIX message queue (mq_send) consumed by the Python dashboard.
+   - The dashboard reads the POSIX MQ and displays notifications; the client console remains available for command entry.
+
+3. Keepalive/UDP bidirectional behavior:
+   - keepalive thread sends periodic ping messages using transport.udp_send.
+   - The server replies with pong/status; udp_listener processes the pong as a lightweight status update (may update session state or metrics).
+
+4. Offline delivery:
+   - If the client is not currently connected or cannot receive UDP, the server may queue events. When the client reconnects, the server automaticly will attempt to deliver queued content and the queued notifiations will be displayed on the dashboard when launching.
+
+### Error handling, validation and shutdown
+- Every stage validates inputs/outputs: input_handler validates user commands; session_handler and handle_server_transaction validate server replies.
+- session_handler contains a signal handler that sets exit_requested (`volatile sig_atomic_t`) to safely terminate loops from signal context. The main communication loop checks this flag and performs an orderly shutdown.
+- On fatal errors or invalid configuration, the client performs a clean shutdown: stop auxiliary threads, close IPC queue, close sockets, flush logs and exit.
 
 ## Class Diagram for Server
 
@@ -536,12 +631,298 @@ classDiagram
     %% Showing only relevant methods for clarity  
 ```
 
+## Class Diagram for Client
+
+```mermaid
+---
+config:
+  layout: dagre
+---
+classDiagram
+    class client {
+      <<module>>
+     +client_cleanup(clientContext*)
+     +socket_validation(addrinfo, clientContext*, sockfd, protocol)
+     +setup_and_connect(clientContext*, client_config, protocol)
+    }
+
+    class client_context {
+      +client_context_init(clientContext*)
+      +client_context_set_id(clientContext*, client_id)
+      +client_context_get_id(clientContext*)
+    }
+
+    class input_handler {
+      <<module>>
+      +build_json_from_input(raw_input): json_build_result
+      +process_user_input(buffer): userInputAction
+      +parse_argumments(argc, argv[], client_config)
+      +build_json_for_command(command): json_build_result
+      +config_arguments_ports(argc, argv[], client_config)
+    }
+
+    class ipc_handler {
+      <<module>>
+      +ipc_init(clientContext)
+      +ipc_send_message(clientContext*, message)
+      +priority_check(message)
+      +ipc_exit(clientContext*)
+    }
+
+    class logger {
+      <<module>>
+      -log_mutex: pthread_mutex_t
+      -*pFILE: FILE
+      +logger_init(log_path)
+      +logger_log(level, comp, message)
+      +logger_close()
+      +log_level_to_string(level)
+    }
+
+    class output_handler {
+      <<module>>
+      +print_readable_response(clientContext*, server_response, input_buffer, output_stream)
+      +print_command_response(response_string, output_stream)
+      +handle_login_repsonse(clientContext*, response_string, output_stream)
+      +post_login_procedures(clientContext*, cJSON root, status, message, output_stream)
+    }
+
+    class session_handler {
+      <<module>>
+      -exit_requested: sig_atomic_t
+      -handle_server_transaction(clientContext*, message, recv_fn, send_fn, input_buffer_copy): transaction_result
+      -comunication_loop(clientContext*, recv_fn, send_fn, input_fn, buffer)
+      +execute_client_action(clientContext*, userInputAction, buffer, recv_fn, send_fn): transaction_result
+      +start_communication(clientContext*, recv_fn, send_fn, input_fn)
+      +session_start_aux_threads(clientContext*)
+      +launch_dashboard(clientContext*)
+      +signal_handler(signum)
+    }
+
+    class transport {
+      <<module>>
+      -peer_addr: sockaddr_storage
+      -peer_addr_len: peer_addr_len
+      +tcp_send(sockfd, buf, size_t len, flags): ssize_t
+      +tcp_recv(sockfd, buf, len, flags): ssize_t
+      +udp_send(sockfd, buf, len, flags): ssize_t
+      +udp_recv(sockfd, buf, len, flags): ssize_t
+      +initialize_udp_peer_address(addr, len)
+    }
+
+    class udp_handler {
+      <<module>>
+      +*udp_listener_thread_func(*arg)
+      +*keepalive_thread_func(*arg)
+    }
+
+    class ClientContext {
+      <<struct>>
+     -client_id: char
+     -lock: pthread_mutex_t
+     -tcp_socket: int
+     -udp_socket: int 
+     -ipc_queue: mqd_t
+    }
+
+    class transaction_result{
+    <<enum>>
+    TRANSACTION_SUCCESS
+    TRANSACTION_SERVER_CLOSED
+    TRANSACTION_ERROR
+    TRANSACTION_CLOSE
+    TRANSACTION_LOGIN_SUCCESS
+    }
+
+    class UserInputAction{
+    <<enum>>
+    INPUT_ACTION_SEND
+    INPUT_ACTION_QUIT
+    INPUT_ACTION_CONTINUE
+    INPUT_ACTION_ERROR
+    }
+
+    class json_build_status{
+    <<enum>>
+    JSON_BUILD_SUCCESS
+    JSON_BUILD_ERROR_SYNTAX
+    JSON_BUILD_ERROR_MEMORY
+    }
+
+    class json_build_result{
+        <<struct>>
+        -json_string: char*
+        -status: json_build_status
+    }
+
+    class client_config{
+        <<struct>>
+        -host: char*
+        -port_tcp: char*
+        -port_udp: char*
+    }
+
+
+    %% Relationships (one-to-one uses / ownership)
+    client "1" --> "1" client_context : uses
+    client "1" --> "1" transport : uses
+    client "1" --> "1" ipc_handler : uses
+    client "1" --> "1" input_handler : uses
+    client "1" --> "1" logger : uses
+    client --> transaction_result : contains
+
+    client_context --> ClientContext : contains
+
+    session_handler "1" --> "1" client_context : uses
+    session_handler "1" --> "1" transport : uses
+    session_handler "1" --> "1" ipc_handler : uses
+    session_handler "1" --> "1" logger : uses
+    session_handler --> output_handler : uses
+    session_handler --> input_handler : uses
+    session_handler --> udp_handler : uses
+    session_handler --> client: uses
+
+    udp_handler "1" --> "1" client_context : uses
+    udp_handler --> transport : uses
+    udp_handler --> logger : uses
+    udp_handler --> ipc_handler: uses
+
+    input_handler --> logger: uses
+    input_handler --> UserInputAction : contains
+    input_handler --> json_build_status : contains
+    input_handler --> json_build_result : contains
+    input_handler --> client_config : contains
+
+    ipc_handler "1" --> "1" logger : uses
+    ipc_handler --> client_context : uses
+
+    output_handler --> client : uses
+    output_handler --> logger : uses
+    output_handler --> session_handler : uses
+    output_handler --> client_context: uses
+```
+
 # 5. Requirements Coverage
+
+| Req ID | Type   | Description (short) | Status | Notes |
+|--------|--------|----------------------|:------:|-------|
+| C001 | Constrain | Server in C++20 | ✅ | Constraint fulfilled. |
+| C002 | Constrain | Client in C | ✅ | Client implemented in C. |
+| C003 | Constrain | Use sockets for comms | ✅ | TCP/UDP sockets implemented. |
+| C004 | Constrain | JSON message structure | ✅ | JSON used for TCP messages. |
+| C005 | Constrain | Server broadcast emergency messages | ✅ | Alerts broadcast via UDP. |
+| C006 | Constrain | Client ack reception system | ✅ | TCP replies/acks implemented. |
+| C007 | Constrain | Keep-alive every minute | ✅ | UDP keepalive implemented (1 min). |
+| C008 | Constrain | Graceful shutdown | ✅ | Signal handling + clean shutdown implemented. |
+| C009 | Constrain | Follow FHS | ✅ | Project structured following FHS in workspace. |
+| C010 | Constrain | Deployable as Linux service (Lab2) | N/A | TP2 |
+| C011 | Constrain | Modular server (network/auth/etc) | ✅ | Clear modular separation implemented. |
+| C012 | Constrain | Dynamic updates without recompilation | ❌ | Not implemented. |
+| C013 | Constrain | Handle multiple simultaneous connections | ✅ | epoll + thread pool implemented. |
+| C014 | FR | Secure client authentication | ✅ | bcrypt password hashing and auth implemented. |
+| C015 | Constrain | IPC data sanitized | ✅ | Validation and try/catch used on IPC paths. |
+| C016 | Constrain | Least privilege for clients | ✅ | Role-based permissions implemented. |
+| C017 | Constrain | Server runs under dedicated user | ✅ | Deployment scripts / notes provided. |
+| C018 | Constrain | Logging with timestamps/component/level | ✅ | Central Logger and DB log table implemented. |
+| C019 | Constrain | At least one internal IPC mechanism | ✅ | POSIX MQ and UNIX file IPC used. |
+| C020 | Constrain | Client uses shared libraries (.so) | ❌ | Not implemented. |
+| C021 | Constrain | TCP/UDP over IPv4 & IPv6 | ✅ | getaddrinfo used for v4/v6. |
+| C022 | Constrain | Inventory transaction history retrieval | ✅ | Storage supports history retrieval. |
+| C023 | Constrain | Interactive CLI | ✅ | CLI implemented for client. |
+| C024 | FR | Order cancellation within 30s | N/A | Not applicable for TP1. |
+| C025 | Constrain | Designed for containerized execution | ✅ | Docker support included. |
+| C026 | Constrain | Docker-based DB deployment | ⚠️ | Partial — SQLite file mapped to Docker volumes. |
+| C027 | Constrain | Rate limit unsuccessful password attempts | ✅ | 3 attempts + 15 min lock implemented. |
+| C028 | Constrain | Validate forwarded packages/format | ✅ | JSON validation at parsing stage implemented. |
+| C029 | Constrain | Automatic backups + log rotation | ✅ | Log rotation + backup script provided. |
+| C030 | Constrain | Server delayed events queue | ⚠️ | Partial — EventQueue exists conceptually; delayed events TBD. |
+| C031 | Constrain | Ports configurable via env vars | ✅ | Ports configurable (env/args). |
+| C032 | Constrain | Config file for queue sizes/max clients | ✅ | config.yaml validated and used. |
+| C033 | Constrain | Scalable: add modules without restart | ❌ | Not implemented. |
+| C034 | Constrain | Automatic client updates/rollback | ❌ | Not implemented. |
+| C035 | Constrain | Clients cannot access other clients' data | ✅ | SessionManager enforces isolation. |
+| C036 | Constrain | Lock clients triggered by alerts | ✅ | Alert types lock users; unlock via admin secret. |
+| C037 | Constrain | Automatic traffic reports (counts/errors) | ✅ | prometheus-cpp metrics implemented. |
+| FR001 | FR | Generate supply orders/prioritize shipments | N/A | Not in scope for TP1. |
+| FR002 | FR | Process and broadcast alerts from sensors | ✅ | Implemented (IPC sensor → AlertManager → broadcast). |
+| FR003 | FR | Client register/update inventory every 60s | ⚠️ | Partial — keepalive 60s present; periodic register/update partial. |
+| FR004 | FR | Allow authorized operators to request resources | ✅ | CommandProcessor + permissions implemented. |
+| FR005 | FR | Clients display emergency alerts in real time | ✅ | UDP notifications + dashboard display implemented. |
+| FR007 | FR | Handle ≥10,000 concurrent connections | ⚠️ | Partial — epoll+threadpool designed for scale; full stress tests pending. |
+| FR008 | FR | Store & retrieve inventory transaction history | ✅ | Storage provides history queries. |
+| FR014 | FR | Log key transactions (orders/cancels/shipments) | ⚠️ | Partial — logging exists; specific order lifecycle logging partial. |
+| NoFR001 | NoFR | Real-time health monitoring via Grafana | ✅ | Prometheus + Grafana integrated. |
+| NoFR003 | NoFR | Structured error handling for failures | ✅ | Exception handling and validation implemented. |
+| NoFR004 | NoFR | Uptime ≥ 99% | ⚠️ | Partial — design supports availability, not validated. |
+| NoFR005 | NoFR | Containerized deployment flexibility | ✅ | Docker environment provided. |
+| NoFR006 | NoFR | Max latency 20ms for message processing | ⚠️ | Partial — low-latency design, not tested under stress |
+| NoFR007 | NoFR | Graceful failure recovery / persistence after crash | ⚠️ | Partial — backups and persistence exist, full recovery scenarios untested. |
+| NoFR008 | NoFR | Implement log rotation to prevent disk usage | ✅ | Log rotation & compression implemented. |
+
+- **Notes:**  Some functional (FR) and non-functional (NoFR) requirements that were not part of the original SRS were implemented later as a result of design decisions and best-practice improvements. Conversely, some constraints were not implemented due to initial misinterpretation; adding them at a late stage would have required large refactors of core modules, so they were deferred. Remaining or partially implemented FRs will be addressed in subsequent labs.
 
 # 6. Testing & Validation
 
+### CI / Automation
+- A GitHub Actions pipeline runs on push to:
+  - format code with clang-format,
+  - build the project,
+  - generate Doxygen documentation,
+  - run the test suite.
+- Test results and coverage reports are published in the CI artifacts and visible in the GitHub push details.
+
+### Unit testing
+- Unit tests are implemented with Unity.  
+- A single test executable runs all tests for both server and client, grouping tests per module.
+- Tests focus on module logic: command parsing, authentication logic, inventory operations, logger behavior, storage helpers, etc.
+- Edge cases and failure scenarios are covered where meaningful.
+
+### Coverage and scope
+- Achieved approximate coverage: 70% (server + client).
+- Network-dependent code (actual TCP/UDP socket interactions, address resolution, OS-level I/O) was not unit-tested. Those areas require mocks or full integration tests and were considered out of scope for unit testing in this lab.
+
+### Integration and manual validation
+- Features not easily unit-testable were validated with manual integration runs:
+  - multiple clients connected to the server,
+  - sending/receiving commands,
+  - alert sensor and dashboard interaction,
+  - verify logging, metrics and backups.
+- These manual tests complement unit tests to validate end-to-end behavior.
+
+### Static and dynamic analysis
+- Static/dynamic tools integrated in CI and SonarQube:
+  - clang-tidy, cppcheck, clang analyzer reports,
+  - Valgrind for memory checks,
+  - SonarQube for code quality dashboards.
+- Reports are produced during CI and imported into Sonar for review.
+
+### Limitations and next steps
+- Missing automated integration tests for networking and end-to-end flows. Adding mocks for socket functions or a separate integration test stage is recommended.
+- Coverage could increase by isolating and mocking OS/network dependencies and adding focused integration tests.
+- Stress tests on multiple simultaneus clients are pending
+
 # 7. Issues & Solutions
 
-# 8. Limitations & Future Work
+## 7.1 Resolved issues (summary)
+- Concurrency/scalability: refactored from select + one-thread-per-connection to epoll + thread pool (default 16 threads). Result: much better resource usage and scalability.
+- ClientSession redesign: centralized per-connection lifecycle, authentication and message processing moved into session object.
+- Authentication: bcrypt password hashing and login lockout (3 attempts, 15 min) implemented.
+- IPC integration: POSIX MQ (client → dashboard) and UNIX file (sensor → server) added and validated.
+- Persistence: integrated SQLite via SQLiteCpp and implemented schema (users, inventory, logs).
+- Logging & rotation: mutex-protected logging, size-based rotation, compression and backup script implemented.
+- Monitoring: prometheus-cpp metrics and Grafana integration added (traffic/errors/connections).
+- Error handling: try/catch validation across parsing, storage and command processing; config validation on startup.
+- CI & quality: GitHub Actions for format/build/tests, clang-tidy, valgrind/cppcheck integration and SonarQube reporting.
+- Unit testing: single test executable with Unity; ~70% coverage focusing on logic modules.
+- Integrated the prometheuscpp library with Grafana (older versions of C prometheus not working)
 
-# 9. Conclusions
+## 7.2 Known issues
+- The system does not support at the moment a logout function. The user must close the client to logout and re-open to login again. 
+- The system does not check for duplicate sessions: two users can be loged in at the same time, and may cause unexpected behivour.
+- At the moment there is no way to create a user in a fresh new server through the CLI. Admin user must be first created directly into the DB or within the code. Then a user admin can register new users one by one.
+
+# 8. Conclusions
+
+The first lab focused on building a solid foundation for the system, ensuring core infrastructure is in place and ready for future enhancements. The project was useful to learn and apply many aspects of software development: good GitHub practices, automated testing and CI, CMake, networking, monitoring with Prometheus/Grafana, database integration, and Linux system practices — all guided by software engineering best practices where possible.
+
+Work took longer than initially planned because continuous improvements and robustness fixes were applied during development. Although the scope and complexity grew, an orderly approach and adherence to design principles made it possible to resolve most problems and meet the main requirements. With this base completed, the project is well positioned to implement additional features and address remaining items in the next labs.
