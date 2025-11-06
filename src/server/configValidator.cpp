@@ -5,7 +5,8 @@
 
 bool ConfigValidator::validateArguments(const std::vector<std::string> &args) {
     if (args.size() > 4) {
-        std::cerr << "Usage: " << args[0] << " <path_to_config.yaml> [optional_tcp_port] [optional_udp_port]\n";
+        std::cerr << "Usage: " << args[0]
+                  << " [optional_path_to_config.yaml] [optional_tcp_port] [optional_udp_port]\n";
         return false;
     }
 

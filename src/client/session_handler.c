@@ -11,7 +11,7 @@
 #include <sys/prctl.h>
 #include <unistd.h>
 
-volatile sig_atomic_t exit_requested = 0;
+static volatile sig_atomic_t exit_requested = 0;
 
 /**
  * @brief Handles a single transaction: sends a message and receives the response.

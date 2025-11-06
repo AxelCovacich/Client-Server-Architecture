@@ -23,7 +23,8 @@ bool IpcHandler::handleConnection(int acceptedSocketFd) {
     if (bytes_read < 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
             // No data available now on non-blocking socket
-            std::cout << "DEBUG: No data available on IPC socket FD: " << acceptedSocketFd << "\n";
+            // std::cout << "DEBUG: No data available on IPC socket FD: " << acceptedSocketFd << "\n";
+            m_logger.log(LogLevel::DEBUG, "IpcHandler", "No data available on IPC socket");
             return true;
         }
         // Real error

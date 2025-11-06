@@ -38,6 +38,4 @@ int priority_check(const char *message);
  */
 bool ipc_exit(ClientContext *context);
 
-// char *ipc_receive_message();
-
 #endif
