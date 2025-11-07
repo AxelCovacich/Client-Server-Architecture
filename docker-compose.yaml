@@ -27,7 +27,7 @@ services:
     ports:
       - "3001:3000"
 
-  volumes:
+volumes:
   galileo-db:
   galileo-logs:
   galileo-backup:
