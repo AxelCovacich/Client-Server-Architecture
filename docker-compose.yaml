@@ -10,12 +10,16 @@ services:
       - galileo-db:/Last_of_Us_System/var/lib
       - galileo-logs:/Last_of_Us_System/var/logs
       - galileo-backup:/Last_of_Us_System/backup
-    command: build/bin/server
+    command: ["stdbuf", "-oL", "build/bin/server"]
   galileo-client:
     build: .
     volumes:
       - galileo-logs:/Last_of_Us_System/var/logs
-    command: build/bin/client galileo-server
+    environment:
+      - SERVER_ADDR=${SERVER_ADDR:-galileo-server}
+      - TCP_PORT=${TCP_PORT:-8888}
+      - UDP_PORT=${UDP_PORT:-8888}
+    command: ["build/bin/client", "${SERVER_ADDR:-galileo-server}", "${TCP_PORT:-8888}", "${UDP_PORT:-8888}"]
   prometheus:
     image: prom/prometheus
     volumes:
