@@ -75,12 +75,6 @@ void Storage::initializeSchema() {
         )");
         cout << "Logs table initialized successfully.\n";
 
-        // Create default admin if not exists
-        if (!userExists("admin")) {
-            createUser("admin", "admin");
-            std::cout << "Default admin user created.\n";
-        }
-
     } catch (const SQLite::Exception &e) {
         std::cerr << "Error initializing schema: " << e.what() << '\n';
         // so main program who call knows about failure

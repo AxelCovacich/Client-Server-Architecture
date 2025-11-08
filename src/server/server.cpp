@@ -97,6 +97,13 @@ void Server::setupServer() {
     setTCPConfig();
     setUDPConfig();
     setUNIXconfig();
+
+    // Create default admin if not exists
+    if (!m_storage.userExists("admin")) {
+        m_storage.createUser("admin", "admin");
+        m_logger.log(LogLevel::INFO, "Server", "Default admin user created with username 'admin' and password 'admin'");
+        std::cout << "Default admin user created.\n";
+    }
 }
 
 void Server::run() {
