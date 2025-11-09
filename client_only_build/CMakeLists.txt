@@ -19,6 +19,7 @@ add_library(ClientLib SHARED
     ../src/client/input_handler.c
     ../src/client/transport.c
     ../src/client/session_handler.c
+    ../external/cJSON/cJSON.c
     ../src/client/output_handler.c
     ../src/client/client_context.c
     ../src/client/udp_handler.c
