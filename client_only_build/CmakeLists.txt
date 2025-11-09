@@ -1,0 +1,35 @@
+cmake_minimum_required(VERSION 3.25)
+project(ClientOnly LANGUAGES C)
+
+set(CMAKE_C_STANDARD 17)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+
+# Output bin in local folder
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
+# for client thread
+find_package(Threads REQUIRED)
+
+# Include cJSON (ajustá el path si lo moviste)
+add_library(cjson STATIC ../external/cJSON/cJSON.c)
+target_include_directories(cjson PUBLIC ../external/cJSON)
+
+add_library(ClientLib SHARED
+    ../src/client/client.c
+    ../src/client/input_handler.c
+    ../src/client/transport.c
+    ../src/client/session_handler.c
+    ../src/client/output_handler.c
+    ../src/client/client_context.c
+    ../src/client/udp_handler.c
+    ../src/client/logger.c
+    ../src/client/ipc_handler.c
+)
+
+target_include_directories(ClientLib PUBLIC
+    ../include/client
+    ../external/cJSON
+)
+
+add_executable(client ../src/client/main.c)
+target_link_libraries(client PRIVATE ClientLib Threads::Threads)
