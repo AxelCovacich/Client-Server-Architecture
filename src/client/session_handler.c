@@ -109,8 +109,8 @@ static int communication_loop(ClientContext *context, recv_fn recieve, send_fn s
                 return -1;
             }
             if (!launch_dashboard(context)) {
-                logger_log("Session_handler", ERROR, "Failed to launch dashboard.");
-                return -1;
+                logger_log("Session_handler", WARNING, "Failed to launch dashboard.");
+                continue;
             }
             continue;
 
