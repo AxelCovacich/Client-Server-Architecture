@@ -26,6 +26,7 @@ RUN apt-get update && apt-get install -y wget \
 
 # Install Python 3 and pip to run scripts
 RUN apt-get update && apt-get install -y python3 python3-pip
+RUN pip3 install posix_ipc
 
 # Set the working directory
 WORKDIR /Last_of_Us_System
