@@ -183,6 +183,16 @@ bool launch_dashboard(ClientContext *context) {
         fprintf(stderr, "Client ID is not set, cannot launch dashboard.\n"); // NOLINT
         return false;
     }
+
+    // Detect Docker via env variable
+    const char *is_docker = getenv("IS_DOCKER");
+    if (is_docker && strcmp(is_docker, "1") == 0) {
+        logger_log("Session_handler", INFO, "Running in Docker, dashboard must be launched manually.");
+        fprintf(stderr, "Dashboard must be launched manually in Docker:\npython3 ./scripts/dashboard.py %s\n",
+                client_id);
+        return false;
+    }
+
     pid_t pid = fork();
     if (pid == 0) {
         // Child process → runs dashboard
@@ -192,10 +202,9 @@ bool launch_dashboard(ClientContext *context) {
         const char *args[] = {"gnome-terminal", "--", "/usr/bin/python3", "./scripts/dashboard.py", client_id, NULL};
         execv("/usr/bin/gnome-terminal", (char *const *)args);
 
-        perror("execv failed: ");
         logger_log("Session_handler", ERROR, ("Failed to execv gnome-terminal for dashboard: %s", strerror(errno)));
         fprintf(stderr, "No graphical terminal found. Please run:\npython3 ./scripts/dashboard.py %s\n", client_id);
-        return false;
+        exit(1);
     }
     if (pid > 0) {
         // Parent process → continues as if nothing happened
