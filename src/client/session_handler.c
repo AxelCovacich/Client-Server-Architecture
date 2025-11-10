@@ -188,10 +188,13 @@ bool launch_dashboard(ClientContext *context) {
         // Child process → runs dashboard
 
         prctl(PR_SET_PDEATHSIG, SIGTERM); // Ensure child terminates if parent dies abruptly
-        const char *args[] = {"gnome-terminal", "--", "./venv/bin/python", "./scripts/dashboard.py", client_id, NULL};
 
+        const char *args[] = {"gnome-terminal", "--", "/usr/bin/python3", "./scripts/dashboard.py", client_id, NULL};
         execv("/usr/bin/gnome-terminal", (char *const *)args);
-        perror("execv failed");
+
+        perror("execv failed: ");
+        logger_log("Session_handler", ERROR, ("Failed to execv gnome-terminal for dashboard: %s", strerror(errno)));
+        fprintf(stderr, "No graphical terminal found. Please run:\npython3 ./scripts/dashboard.py %s\n", client_id);
         return false;
     }
     if (pid > 0) {
