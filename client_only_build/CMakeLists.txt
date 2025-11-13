@@ -10,7 +10,33 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/../build/bin)
 # for client thread
 find_package(Threads REQUIRED)
 
-# Include cJSON (ajustá el path si lo moviste)
+# --- Python dependencies for dashboard ---
+
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+execute_process(
+    COMMAND ${Python3_EXECUTABLE} -m pip --version
+    RESULT_VARIABLE PIP_CHECK
+    OUTPUT_QUIET
+    ERROR_QUIET
+)
+
+if (NOT PIP_CHECK EQUAL 0)
+    message(FATAL_ERROR "pip is not available for ${Python3_EXECUTABLE}. Please install pip.")
+endif()
+
+set(PYTHON_LIB_DIR "${CMAKE_SOURCE_DIR}/../external/python_libs")
+
+add_custom_target(
+    python_deps ALL
+    COMMAND ${CMAKE_COMMAND} -E echo "Installing Python dependencies into ${PYTHON_LIB_DIR}"
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${PYTHON_LIB_DIR}
+    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PYTHON_LIB_DIR} ${Python3_EXECUTABLE} -c "import rich, posix_ipc" 2>/dev/null
+        || pip install --target=${PYTHON_LIB_DIR} rich posix_ipc
+    COMMENT "Checking and installing Python dependencies"
+)
+
+# Include cJSON library
 add_library(cjson STATIC ../external/cJSON/cJSON.c)
 target_include_directories(cjson PUBLIC ../external/cJSON)
 

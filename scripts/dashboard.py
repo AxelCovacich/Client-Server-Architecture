@@ -1,6 +1,18 @@
 #!/usr/bin/env python3
 import sys
 import json
+import os
+
+#obtain path to the current script
+base_dir = os.path.dirname(os.path.abspath(__file__))
+
+# construct the path to the external libraries
+external_libs = os.path.join(base_dir, "../external/python_libs")
+
+# Add that path to sys.path (at the beginning so it takes priority)
+if external_libs not in sys.path:
+    sys.path.insert(0, external_libs)
+
 import posix_ipc
 import time
 from rich.console import Console

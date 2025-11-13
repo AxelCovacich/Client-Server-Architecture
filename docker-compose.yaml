@@ -3,14 +3,18 @@ services:
   galileo-server:
     build: .
     ports:
-      - "8888:8888"
-      - "8888:8888/udp"
+      - "${TCP_PORT:-8888}:${TCP_PORT:-8888}"
+      - "${UDP_PORT:-8888}:${UDP_PORT:-8888}/udp"
       - "8086:8086"
     volumes:
       - galileo-db:/Last_of_Us_System/var/lib
       - galileo-logs:/Last_of_Us_System/var/logs
       - galileo-backup:/Last_of_Us_System/backup
-    command: ["stdbuf", "-oL", "build/bin/server"]
+    environment:
+      - CONFIG_PATH=${CONFIG_PATH:-./etc/config.yaml}
+      - TCP_PORT=${TCP_PORT:-8888}
+      - UDP_PORT=${UDP_PORT:-8888}
+    command: ["stdbuf", "-oL", "build/bin/server", "${CONFIG_PATH:-./etc/config.yaml}", "${TCP_PORT:-8888}", "${UDP_PORT:-8888}"]
   galileo-client:
     build: .
     volumes:
@@ -20,7 +24,10 @@ services:
       - TCP_PORT=${TCP_PORT:-8888}
       - UDP_PORT=${UDP_PORT:-8888}
       - IS_DOCKER=1
-    command: ["build/bin/client", "${SERVER_ADDR:-galileo-server}", "${TCP_PORT:-8888}", "${UDP_PORT:-8888}"]
+    tty: true
+    stdin_open: true
+    command: ["/bin/bash"]
+    #command: ["build/bin/client", "${SERVER_ADDR:-galileo-server}", "${TCP_PORT:-8888}", "${UDP_PORT:-8888}"]
   prometheus:
     image: prom/prometheus
     volumes:

@@ -46,7 +46,7 @@ if(ENABLE_CLANG_TIDY)
       "clang-tidy;-checks=*;-header-filter=^${CMAKE_SOURCE_DIR}/(src|include)/.*$")
 endif()
 
-option(ENABLE_ASAN "Enable AddressSanitizer" OFF)
+option(ENABLE_ASAN "Enable AddressSanitizer" ON)
 if(ENABLE_ASAN)
   add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
   add_link_options(-fsanitize=address)
@@ -69,7 +69,7 @@ endif()
 # for client thread
 find_package(Threads REQUIRED)
 
-option(ENABLE_TSAN "Enable ThreadSanitizer" OFF)
+option(ENABLE_TSAN "Enable ThreadSanitizer" ON)
 if(ENABLE_TSAN)
   add_compile_options(-fsanitize=thread)
   add_link_options(-fsanitize=thread)
@@ -132,6 +132,31 @@ set(BCRYPT_TESTS OFF)
 
 FetchContent_MakeAvailable(bcrypt)
 
+# --- Python dependencies for dashboard ---
+
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+execute_process(
+    COMMAND ${Python3_EXECUTABLE} -m pip --version
+    RESULT_VARIABLE PIP_CHECK
+    OUTPUT_QUIET
+    ERROR_QUIET
+)
+
+if (NOT PIP_CHECK EQUAL 0)
+    message(FATAL_ERROR "pip is not available for ${Python3_EXECUTABLE}. Please install pip.")
+endif()
+
+set(PYTHON_LIB_DIR "${CMAKE_SOURCE_DIR}/external/python_libs")
+
+add_custom_target(
+    python_deps ALL
+    COMMAND ${CMAKE_COMMAND} -E echo "Installing Python dependencies into ${PYTHON_LIB_DIR}"
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${PYTHON_LIB_DIR}
+    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PYTHON_LIB_DIR} ${Python3_EXECUTABLE} -c "import rich, posix_ipc" 2>/dev/null
+        || pip install --target=${PYTHON_LIB_DIR} rich posix_ipc
+    COMMENT "Checking and installing Python dependencies"
+)
 
 # --- Library Definitions ---
 
