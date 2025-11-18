@@ -26,7 +26,7 @@ static transaction_result handle_server_transaction(ClientContext *context, cons
 
     if (send(context->tcp_socket, message, strlen(message), 0) < 0) {
         perror("Error writing to socket");
-        logger_log("Session_handler", ERROR, ("Error writing to socket: %s", strerror(errno)));
+        logger_log("Session_handler", ERROR, "Error writing to socket: %s", strerror(errno));
         return TRANSACTION_ERROR;
     }
 
@@ -36,7 +36,7 @@ static transaction_result handle_server_transaction(ClientContext *context, cons
     ssize_t bytes_read = recieve(context->tcp_socket, server_response, BUFFER_SIZE - 1, 0);
     if (bytes_read < 0) {
         perror("Error reading from socket");
-        logger_log("Session_handler", ERROR, ("Error reading from socket: %s", strerror(errno)));
+        logger_log("Session_handler", ERROR, "Error reading from socket: %s", strerror(errno));
         return TRANSACTION_ERROR;
     }
     if (bytes_read == 0) {
@@ -125,10 +125,15 @@ static int communication_loop(ClientContext *context, recv_fn recieve, send_fn s
             printf("\nClosing client...\n");
             return 0;
 
+        case TRANSACTION_SUCCESS:
+            // Nothing to do, continue the loop
+            break;
         default:
             break;
         }
     }
+    client_context_request_exit(context);
+    return 0;
 }
 
 int start_communication(ClientContext *context, recv_fn recieve, send_fn send, input_fn input) {
@@ -141,8 +146,8 @@ int start_communication(ClientContext *context, recv_fn recieve, send_fn send, i
     bytes_read = recieve(context->tcp_socket, buffer, BUFFER_SIZE - 1, 0);
 
     if (bytes_read <= 0) {
-        logger_log("Session_handler", ERROR,
-                   ("Failed to receive welcome message or server closed connection: %s", strerror(errno)));
+        logger_log("Session_handler", ERROR, "Failed to receive welcome message or server closed connection: %s",
+                   strerror(errno));
         perror("Failed to receive welcome message or server closed connection");
         return -1;
     }
@@ -157,7 +162,7 @@ bool session_start_aux_threads(ClientContext *context) {
 
     pthread_t keepalive_thread = 0;
     if (pthread_create(&keepalive_thread, NULL, keepalive_thread_func, context) != 0) {
-        logger_log("Session_handler", ERROR, ("Failed to create keepalive thread: %s", strerror(errno)));
+        logger_log("Session_handler", ERROR, "Failed to create keepalive thread: %s", strerror(errno));
         perror("Failed to create keepalive thread");
         return false;
     }
@@ -166,7 +171,7 @@ bool session_start_aux_threads(ClientContext *context) {
 
     pthread_t udp_listener_thread = 0;
     if (pthread_create(&udp_listener_thread, NULL, udp_listener_thread_func, context) != 0) {
-        logger_log("Session_handler", ERROR, ("Failed to create UDP listener thread: %s", strerror(errno)));
+        logger_log("Session_handler", ERROR, "Failed to create UDP listener thread: %s", strerror(errno));
         perror("Failed to create UDP listener thread");
         return false;
     }
@@ -202,7 +207,7 @@ bool launch_dashboard(ClientContext *context) {
         const char *args[] = {"gnome-terminal", "--", "/usr/bin/python3", "./scripts/dashboard.py", client_id, NULL};
         execv("/usr/bin/gnome-terminal", (char *const *)args);
 
-        logger_log("Session_handler", ERROR, ("Failed to execv gnome-terminal for dashboard: %s", strerror(errno)));
+        logger_log("Session_handler", ERROR, "Failed to execv gnome-terminal for dashboard: %s", strerror(errno));
         fprintf(stderr, "No graphical terminal found. Please run:\npython3 ./scripts/dashboard.py %s\n", client_id);
         exit(1);
     }
@@ -214,11 +219,12 @@ bool launch_dashboard(ClientContext *context) {
         return true;
     }
     perror("fork failed");
-    logger_log("Session_handler", ERROR, ("Failed to fork for dashboard: %s", strerror(errno)));
+    logger_log("Session_handler", ERROR, "Failed to fork for dashboard: %s", strerror(errno));
     return false;
 }
 
 void signal_handler(int signum) {
+    (void)signum; // not used but needed to declare function
     exit_requested = 1;
     fclose(stdin); // EoF to break fgets loop
 }

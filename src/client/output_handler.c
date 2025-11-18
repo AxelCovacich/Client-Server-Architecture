@@ -91,8 +91,8 @@ void print_inventory_response(const char *response_string, FILE *output_stream) 
 
         cJSON *message = cJSON_GetObjectItem(root, "message");
         if (message && cJSON_IsString(message)) {
-            logger_log("Output_handler", WARNING,
-                       ("Error while processing inventory report from server: %s", message->valuestring));
+            logger_log("Output_handler", WARNING, "Error while processing inventory report from server: %s",
+                       message->valuestring);
             fprintf(output_stream, "Error from server: %s\n", message->valuestring); // NOLINT
         }
     }
@@ -130,8 +130,8 @@ void print_get_stock_response(const char *response_string, FILE *output_stream) 
 
         cJSON *message = cJSON_GetObjectItem(root, "message");
         if (message && cJSON_IsString(message)) {
-            logger_log("Output_handler", WARNING,
-                       ("Error while processing stock report from server: %s", message->valuestring));
+            logger_log("Output_handler", WARNING, "Error while processing stock report from server: %s",
+                       message->valuestring);
             fprintf(output_stream, "Error from server: %s\n", message->valuestring); // NOLINT
         }
     }
@@ -174,8 +174,8 @@ void print_get_history_response(const char *response_string, FILE *output_stream
 
         cJSON *message = cJSON_GetObjectItem(root, "message");
         if (message && cJSON_IsString(message)) {
-            logger_log("Output_handler", WARNING,
-                       ("Error while retrieving inventory history from server: %s", message->valuestring));
+            logger_log("Output_handler", WARNING, "Error while retrieving inventory history from server: %s",
+                       message->valuestring);
             fprintf(output_stream, "Error from server: %s\n", message->valuestring); // NOLINT
         }
     }

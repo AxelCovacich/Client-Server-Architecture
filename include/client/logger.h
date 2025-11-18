@@ -23,7 +23,7 @@ const char *log_level_to_string(log_level level);
  * @param level The log level (DEBUG, INFO, WARNING, ERROR).
  * @param message The message to log.
  */
-void logger_log(const char *component, log_level level, const char *message);
+void logger_log(const char *component, log_level level, const char *format, ...);
 
 /**
  * @brief Closes the logger and releases resources.

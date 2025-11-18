@@ -1,5 +1,6 @@
 #include "logger.h"
 #include <pthread.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <sys/stat.h>
 #include <time.h>
@@ -21,7 +22,7 @@ int logger_init(const char *log_path) {
     return 0;
 }
 
-void logger_log(const char *component, log_level level, const char *message) {
+void logger_log(const char *component, log_level level, const char *format, ...) {
     pthread_mutex_lock(&log_mutex); // Ensure thread safety
     if (pFile == NULL) {
         fprintf(stderr, "Logger not initialized.\n"); // NOLINT
@@ -34,8 +35,15 @@ void logger_log(const char *component, log_level level, const char *message) {
     char buffer[BUFFER_TIME_SIZE];
     strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", utc_time);
 
-    // Write log entry
-    fprintf(pFile, "[%s] [%s] [%s]: %s\n", buffer, component, log_level_to_string(level), message); // NOLINT
+    // Print log prefix
+    fprintf(pFile, "[%s] [%s] [%s]: ", buffer, component, log_level_to_string(level)); // NOLINT
+    // Print formatted message
+    va_list args;
+    va_start(args, format);
+    vfprintf(pFile, format, args);
+    va_end(args);
+
+    fprintf(pFile, "\n");
     fflush(pFile);                    // Ensure the log is written immediately
     pthread_mutex_unlock(&log_mutex); // Release the mutex
 }

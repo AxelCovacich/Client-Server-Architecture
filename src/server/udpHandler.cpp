@@ -10,11 +10,12 @@ using namespace std;
 UdpHandler::UdpHandler(int udpSocketFd, Logger &logger, SessionManager &sessionManager,
                        TrafficReporter &trafficReporter, EventQueue &eventQueue)
     : m_udpSocketFd(udpSocketFd)
+    , m_eventQueue(eventQueue)
     , m_logger(logger)
     , m_sessionManager(sessionManager)
-    , m_trafficReporter(trafficReporter)
-    , m_eventQueue(eventQueue) {
+    , m_trafficReporter(trafficReporter) {
 }
+
 void UdpHandler::handleMessage() {
 
     struct sockaddr_storage client_addr {};
@@ -80,8 +81,8 @@ void UdpHandler::handleKeepalive(const json &request, const struct sockaddr_stor
             socklen_t addr_len =
                 (client_addr.ss_family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
 
-            size_t sent = sendto(m_udpSocketFd, pongString.c_str(), pongString.length(), 0,
-                                 reinterpret_cast<const struct sockaddr *>(&client_addr), addr_len); // NOLINT
+            ssize_t sent = sendto(m_udpSocketFd, pongString.c_str(), pongString.length(), 0,
+                                  reinterpret_cast<const struct sockaddr *>(&client_addr), addr_len); // NOLINT
             if (sent < 0) {
                 m_logger.log(LogLevel::ERROR, "UdpHandler", "Error sending PONG message to client " + clientId);
                 m_trafficReporter.incrementError("udp", "tx");

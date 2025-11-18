@@ -11,7 +11,7 @@ EventQueue::EventQueue(int queueSize, Logger &logger)
 
 void EventQueue::pushEvent(const std::string &clientID, const Event &event) {
     // no need to initialize the deque, operator[] does it if not exists
-    if (m_eventQueueMap[clientID].size() >= m_queueSize) {
+    if (m_eventQueueMap[clientID].size() >= static_cast<size_t>(m_queueSize)) {
         m_eventQueueMap[clientID].pop_front(); // Remove oldest event if at capacity
         m_logger.log(LogLevel::WARNING, "EventQueue",
                      "Event queue for client " + clientID + " is full. Oldest event dropped.");

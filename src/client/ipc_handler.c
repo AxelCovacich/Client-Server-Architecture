@@ -20,7 +20,7 @@ bool ipc_init(ClientContext *context) {
                                   &attr); // 0644  Permissions: rw-r--r--
     if (message_queue == (mqd_t)-1) {
         perror("mq_open");
-        logger_log("IPC_handler", ERROR, ("Failed to create/open IPC message queue: %s", strerror(errno)));
+        logger_log("IPC_handler", ERROR, "Failed to create/open IPC message queue: %s", strerror(errno));
         return false;
     }
 
@@ -53,7 +53,7 @@ bool ipc_send_message(ClientContext *context, const char *message) {
             logger_log("IPC_handler", WARNING, "IPC queue full, message dropped.");
         } else {
             perror("mq_send");
-            logger_log("IPC_handler", ERROR, ("Failed to send message to IPC queue: %s", strerror(errno)));
+            logger_log("IPC_handler", ERROR, "Failed to send message to IPC queue: %s", strerror(errno));
         }
         return false;
     }

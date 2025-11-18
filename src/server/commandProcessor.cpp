@@ -11,21 +11,21 @@ using namespace std;
 
 namespace commandProcessor {
 
-static commandResult handleStatusCommand(const json &request, bool IsInMaintenance, json &response);
-static commandResult handleEndCommand(const json &request, json &response, Logger &logger, const std::string &clientId);
-static commandResult handleGetInventoryCommand(const json &request, const std::string &clientId, Inventory &inventory,
-                                               Logger &logger, json &response, TrafficReporter &trafficReporter);
+static commandResult handleStatusCommand(bool IsInMaintenance, json &response);
+static commandResult handleEndCommand(json &response, Logger &logger, const std::string &clientId);
+static commandResult handleGetInventoryCommand(const std::string &clientId, Inventory &inventory, Logger &logger,
+                                               json &response, TrafficReporter &trafficReporter);
 static commandResult handleUpdateStockCommand(const json &request, const std::string &clientId, Inventory &inventory,
                                               Logger &logger, json &response, TrafficReporter &trafficReporter);
 static commandResult handleGetStockCommand(const json &request, const std::string &clientId, Inventory &inventory,
                                            Logger &logger, json &response, TrafficReporter &trafficReporter);
-static commandResult handleGetHistoryCommand(const json &request, const std::string &clientId, Storage &storage,
-                                             Logger &logger, json &response);
+static commandResult handleGetHistoryCommand(const std::string &clientId, Storage &storage, Logger &logger,
+                                             json &response);
 static commandResult handleUnlockClientCommand(const json &request, const std::string &clientId,
                                                SessionManager &sessionManager, const Config &config, Logger &logger,
                                                json &response, TrafficReporter &trafficReporter);
 static commandResult handleRegisterUser(const json &request, const std::string &clientId, Storage &storage,
-                                        const Config &config, Logger &logger, json &response);
+                                        Logger &logger, json &response);
 
 commandResult processCommand(const json &request, const std::string &clientId, bool isInMaintenance,
                              Inventory &inventory, Logger &logger, Storage &storage, SessionManager &sessionManager,
@@ -52,7 +52,7 @@ commandResult processCommand(const json &request, const std::string &clientId, b
 
     //  Process the command
     if (cmd == "status") {
-        return handleStatusCommand(request, isInMaintenance, response);
+        return handleStatusCommand(isInMaintenance, response);
     }
 
     if (isInMaintenance) {
@@ -63,12 +63,12 @@ commandResult processCommand(const json &request, const std::string &clientId, b
 
     if (cmd == "end") {
 
-        return handleEndCommand(request, response, logger, clientId);
+        return handleEndCommand(response, logger, clientId);
     }
 
     if (cmd == "get_inventory") {
 
-        return handleGetInventoryCommand(request, clientId, inventory, logger, response, trafficReporter);
+        return handleGetInventoryCommand(clientId, inventory, logger, response, trafficReporter);
     }
 
     if (cmd == "update_stock") {
@@ -81,7 +81,7 @@ commandResult processCommand(const json &request, const std::string &clientId, b
     }
 
     if (cmd == "get_history") {
-        return handleGetHistoryCommand(request, clientId, storage, logger, response);
+        return handleGetHistoryCommand(clientId, storage, logger, response);
     }
 
     if (cmd == "unlock_client") {
@@ -89,7 +89,7 @@ commandResult processCommand(const json &request, const std::string &clientId, b
     }
 
     if (cmd == "register_user") {
-        return handleRegisterUser(request, clientId, storage, config, logger, response);
+        return handleRegisterUser(request, clientId, storage, logger, response);
     }
 
     // for unknown command
@@ -100,14 +100,13 @@ commandResult processCommand(const json &request, const std::string &clientId, b
     return {response.dump(), true};
 }
 
-static commandResult handleStatusCommand(const json &request, bool isInMaintenance, json &response) {
+static commandResult handleStatusCommand(bool isInMaintenance, json &response) {
     response["status"] = "success";
     response["message"] = isInMaintenance ? "STATUS: MAINTENANCE" : "STATUS: OK";
     return {response.dump(), true};
 }
 
-static commandResult handleEndCommand(const json &request, json &response, Logger &logger,
-                                      const std::string &clientId) {
+static commandResult handleEndCommand(json &response, Logger &logger, const std::string &clientId) {
     response["status"] = "success";
     response["message"] = "Goodbye!";
     logger.log(LogLevel::INFO, "CommandProcessor", "Requested disconnection via end command for client " + clientId,
@@ -115,8 +114,8 @@ static commandResult handleEndCommand(const json &request, json &response, Logge
     return {response.dump(), false}; // To finish
 }
 
-static commandResult handleGetInventoryCommand(const json &request, const std::string &clientId, Inventory &inventory,
-                                               Logger &logger, json &response, TrafficReporter &trafficReporter) {
+static commandResult handleGetInventoryCommand(const std::string &clientId, Inventory &inventory, Logger &logger,
+                                               json &response, TrafficReporter &trafficReporter) {
 
     auto inventoryMap = inventory.getInventorySummary(clientId);
 
@@ -125,10 +124,12 @@ static commandResult handleGetInventoryCommand(const json &request, const std::s
         response["status"] = "success";
         response["message"] = "Inventory data for client " + clientId + " retrieved.";
         response["data"] = inventoryData;
+        logger.log(LogLevel::INFO, "CommandProcessor", "Inventory data retrieved for client " + clientId, clientId);
     } else {
         response["status"] = "error";
         trafficReporter.incrementError("tcp", "rx");
         response["message"] = "Inventory data for client " + clientId + " is empty.";
+        logger.log(LogLevel::INFO, "CommandProcessor", "No inventory data found for client " + clientId, clientId);
     }
     return {response.dump(), true};
 }
@@ -218,14 +219,14 @@ static commandResult handleGetStockCommand(const json &request, const std::strin
     }
 }
 
-static commandResult handleGetHistoryCommand(const json &request, const std::string &clientId, Storage &storage,
-                                             Logger &logger, json &response) {
+static commandResult handleGetHistoryCommand(const std::string &clientId, Storage &storage, Logger &logger,
+                                             json &response) {
 
     std::vector<LogEntry> history = storage.getInventoryHistoryTransaction(clientId);
 
     response["status"] = "success";
     response["message"] = "Inventory history retrieved.";
-
+    logger.log(LogLevel::INFO, "CommandProcessor", "Inventory history retrieved for client " + clientId, clientId);
     json historyArray = json::array(); // create an empty json array to store temporarly store the logs
 
     for (const auto &entry : history) {
@@ -294,7 +295,7 @@ static commandResult handleUnlockClientCommand(const json &request, const std::s
 }
 
 static commandResult handleRegisterUser(const json &request, const std::string &clientId, Storage &storage,
-                                        const Config &config, Logger &logger, json &response) {
+                                        Logger &logger, json &response) {
     if (clientId == "admin") {
 
         try {

@@ -7,6 +7,7 @@ void client_context_init(ClientContext *context) {
     context->tcp_socket = -1;
     context->udp_socket = -1;
     context->ipc_queue = (mqd_t)-1; // Initialize message queue to an invalid value
+    context->exit_requested = 0;
 }
 
 void client_context_set_id(ClientContext *context, const char *client_id) {
@@ -26,4 +27,8 @@ const char *client_context_get_id(ClientContext *context) {
     const char *tempid = context->client_id;
     pthread_mutex_unlock(&context->lock);
     return tempid;
+}
+
+void client_context_request_exit(ClientContext *context) {
+    context->exit_requested = 1;
 }

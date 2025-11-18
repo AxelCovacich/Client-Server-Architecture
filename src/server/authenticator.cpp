@@ -7,8 +7,8 @@
 using namespace std;
 
 Authenticator::Authenticator(Storage &storage, const IClock &clock, Logger &logger)
-    : m_storage(storage)
-    , m_clock(clock)
+    : m_clock(clock)
+    , m_storage(storage)
     , m_logger(logger) {
 }
 

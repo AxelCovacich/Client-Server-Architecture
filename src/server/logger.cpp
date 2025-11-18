@@ -6,11 +6,11 @@
 #include <zlib.h>
 
 Logger::Logger(Storage &storage, const IClock &clock, std::ostream &errorStream, const Config &config) noexcept
-    : m_storage(storage)
+    : m_errorStream(errorStream)
+    , m_storage(storage)
     , m_clock(clock)
-    , m_errorStream(errorStream)
-    , m_fileEnabled(false)
-    , m_config(config) {
+    , m_config(config)
+    , m_fileEnabled(false) {
 }
 
 bool Logger::openLogFile(const std::string &filePath) noexcept {
@@ -50,17 +50,13 @@ void Logger::log(LogLevel level, const std::string &component, const std::string
     std::array<char, DATE_BUFFER_SIZE> buffer{}; // Buffer for message
     strftime(buffer.data(), buffer.size(), "%Y-%m-%d %H:%M:%S", UTCTime);
     std::string date = std::string(buffer.data()) + " UTC";
-
     std::string level_str = levelToString(level);
-
-    // std::cout << "[" << date << "] [" << component << "] [" << level_str << "] " << message << '\n';
 
     if (shouldRotate()) {
         logRotation();
     }
 
     try {
-        std::string level_str = levelToString(level);
         m_storage.saveLogEntry(date, level_str, component, message, clientId);
 
     } catch (const std::exception &e) {
@@ -96,9 +92,9 @@ std::string Logger::levelToString(LogLevel level) {
         return "WARNING";
     case LogLevel::ERROR:
         return "ERROR";
+    default:
+        return "UNKNOWN_LEVEL";
     }
-
-    throw std::logic_error("Invalid or unhandled LogLevel in levelToString");
 }
 
 void Logger::closeLogFile() noexcept {

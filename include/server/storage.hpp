@@ -20,7 +20,6 @@ struct LogEntry {
     std::string level;
     std::string component;
     std::string message;
-    std::optional<std::string> clientId;
 };
 
 /**

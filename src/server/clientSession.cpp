@@ -18,18 +18,16 @@ clientSession::clientSession(int clientSocket, Inventory &inventory, Authenticat
                              UdpHandler &udpHandler)
     : m_clientSocket(clientSocket)
     , m_isAuthenticated(false)
+    , m_clientIP(clientIP)
+    , m_trafficReporter(trafficReporter)
     , m_inventory(inventory)
     , m_authenticator(authenticator)
-    , m_logger(logger)
-    , m_udpHandler(udpHandler)
-    , m_clientIP(clientIP)
-    , m_storage(storage)
-    , m_sessionManager(sessionManager)
-    , m_config(config)
-    , m_trafficReporter(trafficReporter)
     , m_eventQueue(eventQueue)
-// m_clientID("") starts empty already
-{
+    , m_logger(logger)
+    , m_storage(storage)
+    , m_config(config)
+    , m_sessionManager(sessionManager)
+    , m_udpHandler(udpHandler) {
     // constructor actions here
 }
 
@@ -328,7 +326,7 @@ bool clientSession::trySendPendingMessage() {
     }
     m_pendingMessages.pop_front();
     // If only part of the message was sent, keep the rest and exit
-    if (sent < msg.size()) {
+    if (sent < static_cast<ssize_t>(msg.size())) {
         m_pendingMessages.front() = msg.substr(sent);
         return true;
     }

@@ -69,7 +69,7 @@ endif()
 # for client thread
 find_package(Threads REQUIRED)
 
-option(ENABLE_TSAN "Enable ThreadSanitizer" ON)
+option(ENABLE_TSAN "Enable ThreadSanitizer" OFF)
 if(ENABLE_TSAN)
   add_compile_options(-fsanitize=thread)
   add_link_options(-fsanitize=thread)
@@ -198,6 +198,8 @@ else()
   message(WARNING "prometheus-cpp targets NOT found.")
 endif()
 
+target_compile_options(ServerLib PRIVATE -Wall -Wextra -Wpedantic -Wswitch-enum -Wshadow -Wno-long-long)
+
 
 # 2. ClientLib
 add_library(ClientLib SHARED
@@ -216,6 +218,8 @@ target_include_directories(ClientLib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include/client
     ${CMAKE_CURRENT_SOURCE_DIR}/external/cJSON
 )
+
+target_compile_options(ClientLib PRIVATE -Wall -Wextra -Wpedantic -Wswitch-enum -Wshadow -Wno-long-long)
 
 # --- Executable Definitions ---
 

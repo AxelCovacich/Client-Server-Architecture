@@ -75,7 +75,7 @@ class Server {
     std::unordered_map<int, std::shared_ptr<clientSession>> m_clientSessions; // map of client socket fd to its session
     std::unordered_set<int> m_unixConnections;                                // set of active unix socket fds
 
-    const Config &m_config;
+    const Config m_config;
     const IClock &m_clock;
     Storage &m_storage;
     Logger &m_logger;
@@ -85,9 +85,9 @@ class Server {
     EventQueue m_eventQueue;
     Inventory m_inventory;
     Authenticator m_authenticator;
-    AlertManager m_alert;
     SessionManager m_sessionManager;
     UdpHandler m_udpHandler;
+    AlertManager m_alert;
     IpcHandler m_ipcHandler;
     /**
      * @brief Sets up the server's listening socket.

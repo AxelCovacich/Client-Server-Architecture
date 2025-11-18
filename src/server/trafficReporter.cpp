@@ -5,11 +5,11 @@
 using namespace prometheus;
 
 TrafficReporter::TrafficReporter()
-    : m_api_msg_counter(nullptr)
+    : m_registry(nullptr)
+    , m_exposer(nullptr)
+    , m_api_msg_counter(nullptr)
     , m_api_error_counter(nullptr)
-    , m_api_reconnection_counter(nullptr)
-    , m_registry(nullptr)
-    , m_exposer(nullptr) {
+    , m_api_reconnection_counter(nullptr) {
 
     initPrometheusMetrics();
 }

@@ -39,7 +39,7 @@ bool setup_and_connect(ClientContext *context, client_config config, const char 
     // gethostbyname (obsolet)
     getaddrinfo_status = getaddrinfo(host, port, &hints, &result_list);
     if (getaddrinfo_status != 0) {
-        logger_log("Client", ERROR, ("getaddrinfo error: %s", gai_strerror(getaddrinfo_status)));
+        logger_log("Client", ERROR, "getaddrinfo error: %s", gai_strerror(getaddrinfo_status));
         fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(getaddrinfo_status)); // NOLINT
         return false;
     }
@@ -48,7 +48,7 @@ bool setup_and_connect(ClientContext *context, client_config config, const char 
 
         sockfd = socket(current_addr->ai_family, current_addr->ai_socktype, current_addr->ai_protocol);
         if (sockfd == -1) {
-            logger_log("Client", ERROR, ("socket error: %s", strerror(errno)));
+            logger_log("Client", ERROR, "socket error: %s", strerror(errno));
             perror("client: socket");
             continue;
         }
@@ -59,7 +59,7 @@ bool setup_and_connect(ClientContext *context, client_config config, const char 
 
         if (hints.ai_socktype == SOCK_STREAM) {
             if (connect(sockfd, current_addr->ai_addr, current_addr->ai_addrlen) == -1) {
-                logger_log("Client", ERROR, ("connect error: %s", strerror(errno)));
+                logger_log("Client", ERROR, "connect error: %s", strerror(errno));
                 perror("client: connect");
                 close(sockfd);
                 sockfd = -1;

@@ -3,6 +3,7 @@
 
 #include <mqueue.h>
 #include <pthread.h>
+#include <signal.h>
 
 #define CLIENT_ID_MAX_LEN 64
 #define KEEPALIVE_INTERVAL_SEC 60
@@ -13,6 +14,7 @@ typedef struct {
     int tcp_socket;
     int udp_socket;
     mqd_t ipc_queue; // Message queue for IPC
+    volatile sig_atomic_t exit_requested;
 
 } ClientContext;
 
@@ -35,5 +37,11 @@ void client_context_set_id(ClientContext *context, const char *id);
  * @return The client ID string.
  */
 const char *client_context_get_id(ClientContext *context);
+
+/**
+ * @brief Requests the client context to exit.
+ * @param context A pointer to the ClientContext.
+ */
+void client_context_request_exit(ClientContext *context);
 
 #endif

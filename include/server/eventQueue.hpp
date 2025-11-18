@@ -46,7 +46,6 @@ class EventQueue {
   private:
     int m_queueSize;
     std::unordered_map<std::string, std::deque<Event>> m_eventQueueMap;
-
     Logger &m_logger;
 };
 #endif // EVENTQUEUE_HPP

@@ -12,10 +12,13 @@ void *udp_listener_thread_func(void *arg) {
     int udp_sock = context->udp_socket;
     char buffer[BUFFER_SIZE_UDP];
 
-    while (1) {
+    while (context->exit_requested == 0) {
         ssize_t bytes = udp_recv(udp_sock, buffer, sizeof(buffer) - 1, 0);
         if (bytes < 0) {
-            logger_log("UDP_handler", ERROR, ("UDP receive error: %s", strerror(errno)));
+            if (context->exit_requested != 0) {
+                break; // Just exit if requested and just wake up from recv
+            }
+            logger_log("UDP_handler", ERROR, "UDP receive error: %s", strerror(errno));
             perror("UDP receive error");
             break; // Exit on error
         }
@@ -26,7 +29,7 @@ void *udp_listener_thread_func(void *arg) {
         }
 
         buffer[bytes] = '\0';
-        logger_log("UDP_handler", INFO, ("UDP Message received: %s", buffer));
+        logger_log("UDP_handler", INFO, "UDP Message received: %s", buffer);
         if (!ipc_send_message(context, buffer)) {
             logger_log("UDP_handler", ERROR, "Error: Failed to send IPC message.");
             fprintf(stderr, "Error: Failed to send IPC message.\n"); // NOLINT
@@ -39,7 +42,7 @@ void *keepalive_thread_func(void *arg) {
     ClientContext *context = (ClientContext *)arg;
     int udp_sock = context->udp_socket;
     if (udp_sock < 0) {
-        logger_log("UDP_handler", ERROR, ("Invalid UDP socket: %s", strerror(errno)));
+        logger_log("UDP_handler", ERROR, "Invalid UDP socket: %s", strerror(errno));
         perror("Invalid UDP socket");
         return NULL;
     }
@@ -53,10 +56,10 @@ void *keepalive_thread_func(void *arg) {
     snprintf(keepalive_msg, sizeof(keepalive_msg), "{\"command\":\"keepalive\", \"clientId\":\"%s\"}", // NOLINT
              client_id);
 
-    while (1) {
+    while (context->exit_requested == 0) {
 
         if (udp_send(udp_sock, keepalive_msg, strlen(keepalive_msg), 0) < 0) {
-            logger_log("UDP_handler", ERROR, ("Failed to send keepalive message: %s", strerror(errno)));
+            logger_log("UDP_handler", ERROR, "Failed to send keepalive message: %s", strerror(errno));
             perror("Failed to send keepalive message");
             break; // Exit on error
         }
