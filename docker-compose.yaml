@@ -27,7 +27,6 @@ services:
     tty: true
     stdin_open: true
     command: ["/bin/bash"]
-    #command: ["build/bin/client", "${SERVER_ADDR:-galileo-server}", "${TCP_PORT:-8888}", "${UDP_PORT:-8888}"]
   prometheus:
     image: prom/prometheus
     volumes:

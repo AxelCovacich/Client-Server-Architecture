@@ -33,7 +33,6 @@ clientSession::clientSession(int clientSocket, Inventory &inventory, Authenticat
 
 clientSession::~clientSession() {
     if (m_clientSocket != -1) {
-        cout << "Closing client socket.\n";
         close(m_clientSocket);
     }
 }

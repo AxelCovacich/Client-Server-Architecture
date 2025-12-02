@@ -58,28 +58,32 @@ All activity is logged locally, and the client can be cleanly terminated at any 
 
 # 4. Requirements 
 
+You will need Linux OS to run the program. Ubuntu is recommended but should work with most Linux distributions.
+
 ## Recommended (using Docker)
 
 - [Docker](https://docs.docker.com/get-docker/) (tested with version 20.10+)
 - [Docker Compose](https://docs.docker.com/compose/) (v2+)
 - [Git](https://git-scm.com/) (for cloning the repository)
 
-All other dependencies (CMake, compilers, libraries, Prometheus, Python, etc.) are handled automatically inside the Docker container.
+All other dependencies (CMake, compilers, libraries, Prometheus, Python, etc.) are handled automatically inside the Docker container for server, client and grafana.
 
 ## Optional (manual build, not recommended)
 
-If you want to build and run the system outside Docker, you will need:
+If you want to build and run the server outside Docker, you will need:
 
 - CMake >= 3.25
 - GCC/G++ >= 9 (with C++20 and C17 support)
 - Python 3.x
 - SQLite3 and libsqlite3-dev
 - zlib1g-dev
+- pip
 - git
 - wget
 - Prometheus-cpp and its dependencies (must be installed manually)
 - Grafana (optional) (must be installed manually)
 - yaml-cpp, nlohmann-json, bcrypt, cJSON (these are fetched automatically by CMake)
+
 
 # 5. Installation
 
@@ -88,14 +92,26 @@ Clone the repository:
 git clone https://github.com/ICOMP-UNC/eager_galileo.git
 
 cd eager_galileo
-
-docker-compose up --build
-
 ```
+- **Build all images:**  
+  `docker-compose build`
+
 If you manually installed all dependencies on your local host, you should be able to build and compile manually as follows:
 - cmake -S . -B build (from the root project directory)
 - To compile the server: cmake --build build --target server -- -j$(nproc)
-- To compile the client: cmake --build build --target client -- -j$(nproc)
+
+You can build only the client using the CMakeLists.txt under the client_only_build directory as follows:
+```sh
+cd client_only_build
+mkdir -p build
+cd build
+cmake ..
+make
+```
+This will build and compile the client and a bin executable will be created in the root folder: /eager_galileo/build/bin/client.
+For launching, go to the root directory and then execute from there.
+* NOTE: You will need the Threads library installed in your system, but most linux distros should have it as default.
+
 
 # 6. Launching and usage
 
@@ -114,8 +130,16 @@ If you want metrics with grafana:
 ```sh
 docker-compose up galileo-server prometheus grafana
 ```
-If you wish to add arguments to launch the server, you should add them in the docker-compose.yaml under the galileo-server service in the command line: 
-- command: build/bin/server <[optional]path to config> <[optional] tcp port> <[optional] udp port>
+You can use the environment variables to use a different config path or ports as defined in the docker-compose.yaml.
+
+Example using ports:
+`TCP_PORT=9000 UDP_PORT=9001 docker-compose up galileo-server`
+
+This will launch the server inside the docker image with the ports 9000 and 9001 as arguments for tcp and udp ports.
+
+You can change the ports in the docker-compose.yaml under the galileo-server service in the `enviroments` section so defined ports will be used when no arguments are given when launching the docker service.
+
+#### *IMPORTANT NOTE*: You should change the ports values under galileo-server to run the server with the ports you need to use for both tcp and udp. The values provided are just placeholders.
 
 ### Manually 
 To run the server from project root directory:
@@ -131,6 +155,7 @@ The client must be launched with the address of the server. If the server is loc
 ### Using docker
 
 After building the docker image, you can run the client in two ways to use the CLI
+
 ```sh
 docker-compose run --rm galileo-client
 ```
@@ -139,28 +164,37 @@ This will create a new container for the client with a terminal so you can use t
 Or you can run the client and then open a terminal inside:
 ```sh
 docker-compose up galileo-client
-docker exec -it <name of the container> bin/bash
+docker-compose exec galileo-client /usr/bin/bash
 ```
-You can search for the container name with the `docker ps` command.
+This will open a bash console inside the docker service so you can run the client inside:
+`./build/bin/client $SERVER_ADDR $TCP_PORT $UDP_PORT`
+
+The example above uses the environment variables defined in the docker-compose.yaml. These variables should be changed to fit the configuration that you need for address and ports. You can directly use the arguments when running the client bin or just use the environments variables as showed in the example above.
+
 
 ### Connecting from another network or host
 
-To connect from a client running on a different machine or network, use the server's IP address and ensure the ports match the server configuration.
+To connect from a client running on a different machine or network, use the server's IP address and ensure the ports match the server configuration. If you are using docker you can either give the host and ports via enviroment variables like this example:
 
-Example:
 ```sh
-./build/bin/client 192.168.1.100 8888 8888
+SERVER_ADDR=192.168.1.100 TCP_PORT=9000 UDP_PORT=9001 docker-compose up galileo-client
 ```
-Where 192.168.1.100 is the IP address of the server, and 8888 is the TCP/UDP port used by the server. You should change the values to match the server configuration on the docker-compose.yaml file
+And then inside the service when you run:
+`./build/bin/client $SERVER_ADDR $TCP_PORT $UDP_PORT`  The variables will have the values you used in the docker-compose up command before.
+Or you can use the method described in the last section, parsing the arguments directly when launching the client bin inside the docker service. Just be sure to use the right address and ports.
+
 
 ### Manually
 
-If all dependencies are installed, you can run the client by running the bin file, example from the root directory:
+If you build and compile with the client_only_build, you should run the client from the root repo directory as follows:
 ```sh
 ./build/bin/client <server address> <[optional] server tcp port> <[optional] server udp port> 
 ```
+Make sure to use the right ports to match the ones that the server is using. If no ports are specified, defaults 8888 will be used for both tcp and upd. You can also parse the ports via enviroment viarables to the client, example:
 
-Make sure to use the right ports to match the ones that the server is using
+```sh
+TCP_PORT=9000 UDP_PORT=9001 ./build/bin/client <server_address>
+```
 
 ## Using the client
 
@@ -168,17 +202,31 @@ When launched the client will acept commands via CLI. You should first login wit
 ```sh
 login user password
 ```
- If 3 consecutive failed login attemps are reached, the user will be locked for 15 minutes. Once loged in, a dashboard will be launched where notifications from the server will be recieved and displayed such as alerts, keepalive messages or exit messages. Some commands are available depending on the type of user (Hub, Warehouse or admin). Hubs can consult individual stock, inventory history and full inventory stock. Examples:
+If 3 consecutive failed login attemps are reached, the user will be locked for 15 minutes. Once loged in, a dashboard will be launched where notifications from the server will be recieved and displayed such as alerts, keepalive messages or exit messages. Some commands are available depending on the type of user (Hub, Warehouse or admin). `Hubs` can consult individual stock, inventory history and full inventory stock. Examples:
+
  ```sh
  get_stock food water
  get_inventory
  get_history
  ```
-  Warehouses in addition to the mencioned comands, can update stock. Stock products are already predifined in the server, so invalid types of stock will be rejected. Example: 
+
+`Warehouses` in addition to the mencioned comands, can update stock. Stock products are already predifined in the server, so invalid types of stock will be rejected. Usage: 
+
   ```sh
-  update_stock medicine bandages 500
+  update_stock category item 100
   ```
-The admin user in addition to previous commands, can unlock clients when locked due to triggering an alert with a secret passphrase defined in the config.yaml file. Admin client can also register new users in the system. Examples:
+
+Valid inventory:
+Category - Food, items: meat, vegetables, fruits, water, bread.
+Category - Medicine, items: antibiotics, analgesics, bandages.
+Category - Ammo, items: pistol_rounds, shotgun_shells, grenades.
+
+Example:
+```sh
+update_stock Medicine antibiotics 100
+```
+
+The `admin` user in addition to previous commands, can unlock clients when locked due to triggering an alert with a secret passphrase defined in the config.yaml file. Admin client can also register new users in the system. Examples:
 ```sh
 unlock_client username_to_unlock secret_phrase
 register_user username password 
@@ -189,6 +237,14 @@ To close the client gracefully you can enter the end command:
 end
 ```
 This will clean all open resources and exit the client.
+
+### *IMPORTANT NOTE:*
+ When using docker to run the client, you should open a new console/terminal inside the client service and run the python script for the dashboard manually in order to see the notifications dashboard:
+```sh
+docker-compose exec galileo-client /usr/bin/bash
+cd scripts/
+python3 dashboard.py <user_name>
+```
 
 # 7. Monitoring & Metrics
 
@@ -314,12 +370,11 @@ This system exposes runtime metrics for monitoring via [Prometheus](https://prom
 
 # 10. Known Issues
 
-- The client and server must have matching port configurations; mismatches will cause connection failures.
 - If running outside Docker, file permissions on log and database directories may cause errors; ensure correct ownership.
-- User registration is currently only available to admin users via command line.
+- User registration is currently only available to admin user via command line, so admin user will have access to passwords when registering a new user.
 - Log rotation and backup rely on available disk space; low disk space may cause failures.
 - If Prometheus or Grafana are run outside Docker, network/firewall settings may block access to metrics.
-- The system has not been tested on Windows hosts.
-- There is **no reconnection or logout command** for the client: once logged in, to log out you must close and restart the client application.
+- The system has not been tested on Windows hosts as is intended to be run on Linux systems.
+- There is **no reconnection or logout command** for the client: once logged in, in order to log-out you must close and restart the client bin.
 - There is **no mechanism to prevent the same user from logging in simultaneously from multiple clients**. The same user can be logged in from two different clients at the same time, which may cause undefined or unexpected behaviors.
-- When running the server in Docker, **console output is not visible** (e.g., startup success or failure messages). In this case, you must check the log file for server status and errors.
+- When running the server in Docker, **console output may not be visible** (e.g., startup success or failure messages). This should be already fixed, but if this happens, you can check the log file for server status and errors.
