@@ -47,7 +47,7 @@ class Storage {
     ~Storage();
 
     SQLite::Database &getDb() {
-        return m_db;
+        return *m_db;
     } // getter to the db object(reference)
 
     /**
@@ -162,7 +162,7 @@ class Storage {
   private:
     // Library SQLiteCpp wrappes the connection to the data base with SQLite::Database. We use the object of the
     // library.
-    SQLite::Database m_db;
+    std::unique_ptr<SQLite::Database> m_db;
     std::mutex m_dbMutex; // protect access to m_db from multiple threads
 };
 
