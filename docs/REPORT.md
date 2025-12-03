@@ -899,7 +899,8 @@ classDiagram
 ### Limitations and next steps
 - Missing automated integration tests for networking and end-to-end flows. Adding mocks for socket functions or a separate integration test stage is recommended.
 - Coverage could increase by isolating and mocking OS/network dependencies and adding focused integration tests.
-- Stress tests on multiple simultaneus clients are pending
+- Stress tests on multiple simultaneus clients are pending.
+- Changelog and semantic versioning should be implemented in the next projects.
 
 # 7. Issues & Solutions
 
@@ -918,8 +919,9 @@ classDiagram
 
 ## 7.2 Known issues
 - The system does not support at the moment a logout function. The user must close the client to logout and re-open to login again. 
-- The system does not check for duplicate sessions: two users can be loged in at the same time, and may cause unexpected behivour.
+- The system does not check for duplicate sessions: two users with the same account can be loged in at the same time, and may cause unexpected behivour.
 - At the moment there is no way to create a user in a fresh new server through the CLI. Admin user must be first created directly into the DB or within the code. Then a user admin can register new users one by one.
+- There is no change password function, so admin user has access to all users when registering them.
 
 # 8. Conclusions
 

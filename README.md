@@ -329,11 +329,59 @@ This system exposes runtime metrics for monitoring via [Prometheus](https://prom
     - **Detailed automation instructions are included as comments within the script itself.**
 
 ### Persistent Volumes in Docker Compose
-- The `docker-compose.yaml` file defines **persistent volumes** to ensure that data and logs are not lost when containers are restarted or recreated:
-  - `./var/lib:/Last_of_Us_System/var/lib` (database)
-  - `./var/logs:/Last_of_Us_System/var/logs` (client and server logs)
-  - `./backup:/Last_of_Us_System/backup` (generated backups)
-- This allows access to log and backup files from the host, making management and auditing outside containers straightforward.
+- By default, the `docker-compose.yaml` uses Docker-managed volumes to persist database, logs, and backups:
+```yaml
+volumes:
+  galileo-db:
+  galileo-logs:
+  galileo-backup:
+
+services:
+  galileo-server:
+    volumes:
+      - galileo-db:/Last_of_Us_System/var/lib
+      - galileo-logs:/Last_of_Us_System/var/logs
+      - galileo-backup:/Last_of_Us_System/backup
+```
+
+- This ensures data is preserved even if containers are removed or recreated.
+
+With this config, you can access the volumes in many ways.
+
+You can enter the running docker and check the volumes from inside the container:
+
+```sh
+docker-compose exec galileo-server /bin/bash
+cd /Last_of_Us_System/var/lib
+cd /Last_of_Us_System/var/logs
+cd /Last_of_Us_System/backup/
+```
+
+You can also copy the files outside the container, example with the database: 
+```sh
+docker cp galileo-server:/Last_of_Us_System/var/lib/database.sql ./database.sql
+```
+
+Or you can access directly where the volumes are stored in the host:
+```sh
+sudo ls /var/lib/docker/volumes/galileo-db/_data/
+```
+But it is not recommended, as you need root user and it is dangerous to modify data from there.
+
+If you need direct access to files from the host, you can switch to local volumes:  
+```yaml
+services:
+  galileo-server:
+    volumes:
+      - ./var/lib:/Last_of_Us_System/var/lib
+      - ./var/logs:/Last_of_Us_System/var/logs
+      - ./backup:/Last_of_Us_System/backup
+```
+Note: Local volumes may cause permission issues depending on your host and Docker configuration. This configuration is not recommended. 
+
+
+
+
 
 ### Best Practices & Notes
 - Log and backup directories are automatically created with secure permissions (`0755`) if they do not exist.
