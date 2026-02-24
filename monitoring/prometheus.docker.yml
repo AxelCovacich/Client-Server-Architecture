@@ -1,0 +1,7 @@
+global:
+  scrape_interval: 60s
+
+scrape_configs:
+  - job_name: "galileo-server"
+    static_configs:
+      - targets: ["galileo-server:8086"]
